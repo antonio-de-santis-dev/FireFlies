@@ -1,7 +1,8 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, request, type Page } from '@playwright/test';
 
 export const PUBLIC_ROUTES = ['/', '/menu', '/eventi', '/eventi/dj-set-esempio', '/eventi/domeniche-del-fire', '/galleria', '/locale', '/contatti'];
-export const ADMIN_ROUTES = ['/gestione', '/gestione/menu', '/gestione/menu/tagliere', '/gestione/eventi', '/gestione/eventi/dj-set-esempio', '/gestione/richieste', '/gestione/foto', '/gestione/comunicazioni', '/gestione/sito', '/gestione/impostazioni'];
+// {Nome} = voce del menu: l'id (UUID del backend) si ricava al momento dal menu pubblico
+export const ADMIN_ROUTES = ['/gestione', '/gestione/menu', '/gestione/menu/{Tagliere FireFlies}', '/gestione/eventi', '/gestione/eventi/dj-set-esempio', '/gestione/richieste', '/gestione/foto', '/gestione/comunicazioni', '/gestione/sito', '/gestione/impostazioni'];
 
 /** Raccoglie errori di console, eccezioni e richieste fallite. */
 export function watchProblems(page: Page) {
@@ -15,8 +16,23 @@ export function watchProblems(page: Page) {
   return problems;
 }
 
+/** Id di una voce del menu dal suo nome (gli id sono UUID del backend, non più nomi leggibili). */
+export async function menuItemId(name: string): Promise<string> {
+  const ctx = await request.newContext({ baseURL: process.env.FIREFLIES_BACKEND_URL ?? 'http://localhost:18080' });
+  try {
+    const menu = await (await ctx.get('/api/v1/public/menu')).json();
+    const item = menu.categories.flatMap((c: { items: { id: string; name: string }[] }) => c.items).find((i: { name: string }) => i.name === name);
+    if (!item) throw new Error(`Voce di menu non trovata: ${name}`);
+    return item.id;
+  } finally {
+    await ctx.dispose();
+  }
+}
+
 export async function go(page: Page, route: string) {
-  await page.goto(`/#${route}`);
+  const name = route.match(/\{(.+)\}/)?.[1];
+  const resolved = name ? route.replace(`{${name}}`, await menuItemId(name)) : route;
+  await page.goto(`/#${resolved}`);
   await page.waitForLoadState('networkidle');
 }
 

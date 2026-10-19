@@ -1,6 +1,7 @@
 // Test funzionali del walkthrough: ogni interazione richiesta dal brief deve funzionare davvero.
 import { expect, test } from '@playwright/test';
 import { go, signIn, stubGoogleMaps, watchProblems } from './helpers';
+import { keepBaseline, photoSrc } from './baseline';
 
 test.describe('Area pubblica — desktop', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
@@ -185,6 +186,7 @@ test.describe('Area pubblica — mobile', () => {
 
 test.describe('Area gestori', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+  keepBaseline();
 
   test('senza accesso si viene portati al login; errori di compilazione', async ({ page }) => {
     await go(page, '/gestione/richieste');
@@ -194,7 +196,7 @@ test.describe('Area gestori', () => {
     await expect(page.getByLabel('Email')).toBeFocused();
   });
 
-  test('menu: nascondere una voce si riflette sul sito; modifica e salvataggio demo', async ({ page }) => {
+  test('menu: nascondere una voce si riflette sul sito; modifica salvata sul server', async ({ page }) => {
     await signIn(page);
     await page.getByRole('navigation', { name: 'Area gestori' }).getByRole('link', { name: 'Menu' }).click();
     await page.getByRole('row', { name: /Birra/ }).getByRole('switch').click();
@@ -205,13 +207,17 @@ test.describe('Area gestori', () => {
     await expect(page.getByText('Scrivi un prezzo in euro')).toBeVisible();
     await page.getByLabel('Prezzo (€)').fill('12,50');
     await page.getByRole('button', { name: 'Salva' }).click();
-    await expect(page.getByRole('status')).toContainText('solo in questa sessione demo');
+    await expect(page.getByRole('status')).toContainText('«Tagliere FireFlies» salvata');
     await expect(page.getByRole('row', { name: /Tagliere FireFlies/ })).toContainText('€ 12,50');
 
     await page.getByRole('link', { name: 'Vedi il sito' }).click();
     await page.getByRole('navigation', { name: 'Principale' }).getByRole('link', { name: 'Menu', exact: true }).click();
     await expect(page.locator('.menu-item', { hasText: 'Tagliere FireFlies' })).toContainText('€ 12,50');
     await expect(page.locator('.menu-item', { hasText: /^Birra/ })).toHaveCount(0);
+    // salvato davvero: dopo il ricaricamento (e per ogni visitatore) resta così
+    await page.reload();
+    await expect(page.locator('.menu-item', { hasText: 'Tagliere FireFlies' })).toContainText('€ 12,50');
+    await expect(page.locator('.menu-item', { hasText: 'Tagliere FireFlies' }).locator('.badge--demo')).toHaveCount(0);
   });
 
   test('eventi: nuova bozza con validazione, richieste: cambio stato', async ({ page }) => {
@@ -245,6 +251,7 @@ test.describe('Area gestori', () => {
 
 test.describe('Mappa e area del titolare', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+  keepBaseline();
 
   test('contatti: la mappa Google si carica solo dopo il clic', async ({ page }) => {
     await stubGoogleMaps(page);
@@ -291,18 +298,19 @@ test.describe('Mappa e area del titolare', () => {
     await page.getByLabel(/Descrizione per chi non vede/).first().fill('Nuovo cocktail della casa');
     await page.getByRole('switch', { name: 'Non in galleria' }).first().click();
 
-    await go(page, '/gestione/menu/cornetto');
+    await go(page, '/gestione/menu/{Cornetto}');
     await page.locator('.picker__opt').filter({ hasText: 'Nuovo cocktail della casa' }).click();
     await expect(page.getByRole('radio', { name: 'Nuovo cocktail della casa' })).toBeChecked();
     await page.getByRole('button', { name: 'Salva' }).click();
-    await expect(page.getByRole('row', { name: /Cornetto/ }).locator('img')).toHaveAttribute('src', /^blob:/);
+    // variante ricodificata dal backend (PNG con trasparenza), non più un URL blob del browser
+    await expect(page.getByRole('row', { name: /Cornetto/ }).locator('img')).toHaveAttribute('src', /^\/media\/.+\.png$/);
 
     await go(page, '/galleria');
     await expect(page.getByRole('button', { name: 'Ingrandisci: Nuovo cocktail della casa' })).toBeVisible();
 
     // una foto in uso non si può eliminare
     await go(page, '/gestione/foto');
-    await page.locator('.photos__item').first().getByRole('button', { name: 'Elimina' }).click();
+    await page.locator('.photos__item:has(input[value="Nuovo cocktail della casa"])').getByRole('button', { name: 'Elimina' }).click();
     await expect(page.getByRole('alert')).toContainText('è usata in menu «Cornetto»');
   });
 
@@ -343,6 +351,7 @@ test.describe('Mappa e area del titolare', () => {
 
 test.describe('Il locale — titolari', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+  keepBaseline();
 
   test('foto dei titolari accanto alle descrizioni, retro della maglia e testi modificabili', async ({ page }) => {
     await go(page, '/locale');
@@ -358,7 +367,7 @@ test.describe('Il locale — titolari', () => {
     await signIn(page);
     await go(page, '/gestione/sito');
     await page.getByLabel('Nome titolare 2').fill('Luca');
-    await page.locator('#ow-desc-o2').fill('Lo trovi al bancone dalle sei: chiedigli il mojito.');
+    await page.locator('.owner-edit').nth(1).getByLabel('Descrizione').fill('Lo trovi al bancone dalle sei: chiedigli il mojito.');
     await page.getByRole('button', { name: 'Salva e pubblica' }).click();
     await go(page, '/locale');
     await expect(owners.nth(1).getByRole('heading', { level: 3 })).toHaveText('Luca');
@@ -368,6 +377,7 @@ test.describe('Il locale — titolari', () => {
 
 test.describe('Revisione 19/10', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
+  keepBaseline();
 
   test('navbar con Home attiva, footer con Home, mappa nella home con indirizzo confermato', async ({ page }) => {
     await stubGoogleMaps(page);
@@ -418,9 +428,9 @@ test.describe('Revisione 19/10', () => {
     await page.clock.install();
     await go(page, '/menu');
     await expect(page.locator('.menu-hero__dot')).toHaveCount(4);
-    await expect(page.locator('.menu-hero__img.is-active')).toHaveAttribute('src', /tagliere-aperitivo/);
+    await expect(page.locator('.menu-hero__img.is-active')).toHaveAttribute('src', await photoSrc(/^Tagliere da aperitivo/));
     await page.clock.runFor(11_000);
-    await expect(page.locator('.menu-hero__img.is-active')).toHaveAttribute('src', /calice-lamponi/);
+    await expect(page.locator('.menu-hero__img.is-active')).toHaveAttribute('src', await photoSrc(/^Calice decorato/));
   });
 
   test('titolare: cambia la foto di un titolare (fronte) con anteprima', async ({ page }) => {
@@ -429,10 +439,12 @@ test.describe('Revisione 19/10', () => {
     const first = page.locator('.owner-edit').first();
     await first.getByText(/Cambia le foto di/).click();
     await first.locator('.picker').first().locator('.picker__opt').filter({ hasText: 'Bartender versa un cocktail' }).click();
-    await expect(first.locator('.owner-edit__previews img').first()).toHaveAttribute('src', /bartender-shaker-insegna/);
+    const bartender = await photoSrc(/^Bartender versa un cocktail/);
+    await expect(first.locator('.owner-edit__previews img').first()).toHaveAttribute('src', bartender);
     await page.getByRole('button', { name: 'Salva e pubblica' }).click();
+    await expect(page.getByRole('status')).toContainText('Sito aggiornato');
     await go(page, '/locale');
-    await expect(page.locator('.owner').first().locator('.owner__img--front')).toHaveAttribute('src', /bartender-shaker-insegna/);
+    await expect(page.locator('.owner').first().locator('.owner__img--front')).toHaveAttribute('src', bartender);
   });
 
   test('prenotazione: nel passo dati i campi sono allineati anche con errori', async ({ page }) => {

@@ -130,12 +130,12 @@ test.describe('desktop', () => {
     await go(page, '/gestione/menu');
     await loadAllImages(page);
     await shot(page, 'desktop', '23-gestione-menu.png', '/gestione/menu', 'Gestione menu e prodotti');
-    await go(page, '/gestione/menu/tagliere');
+    await go(page, '/gestione/menu/{Tagliere FireFlies}');
     await loadAllImages(page);
     await page.getByLabel('Prezzo (€)').fill('14,00');
     await page.getByLabel('Ho verificato gli allergeni di questa voce').check();
     await page.getByLabel('Glutine').check();
-    await shot(page, 'desktop', '24-modifica-prodotto.png', '/gestione/menu/tagliere', 'Modifica prodotto: prezzo, allergeni, foto', true);
+    await shot(page, 'desktop', '24-modifica-prodotto.png', '/gestione/menu/{Tagliere FireFlies}', 'Modifica prodotto: prezzo, allergeni, foto', true);
     await page.getByRole('button', { name: 'Salva' }).click();
     await shot(page, 'desktop', '25-prodotto-salvato.png', '/gestione/menu', 'Salvataggio simulato (avviso in basso)');
     await page.getByRole('status').filter({ hasText: 'salvata' }).waitFor({ state: 'detached' }).catch(() => {});
