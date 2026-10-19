@@ -1,7 +1,66 @@
 # Report dei test — backend e frontend
 
-> Aggiornato in **FASE 3** (autenticazione) il 19/10/2026. In fondo resta il report della FASE 2.
+> Aggiornato in **FASE 4** (menu, contenuti, foto) il 19/10/2026. Seguono la FASE 3 e, in fondo, la FASE 2.
 > Ambiente: OpenJDK 21.0.12, Maven 3.9.11, Node 22, Playwright 1.56.1 (Chromium), Docker 29.8.2, PostgreSQL **17.11**.
+
+## FASE 4 — Riepilogo
+
+| Suite | Comando | Test | Esito |
+|---|---|---|---|
+| Backend unità e slice | `cd backend && ./mvnw -B clean verify` | 66 | ✅ 66/66 |
+| Backend integrazione, sicurezza, concorrenza, riavvio (PostgreSQL reale) | stesso comando | 222 | ✅ 222/222 |
+| Frontend Playwright con backend e DB reali (funzionali 27 + accesso 10 + contenuti 11 + QA 9 + axe 2) | `cd frontend && npm run verifica` | 59 | ⏳ esecuzione finale in corso |
+| **Totale** | | **347** | ⏳ |
+
+CI su GitHub Actions dell'ultimo commit: vedi §«CI» in fondo a questa sezione.
+
+**Nessuna regressione**: i 282 test della FASE 3 sono presenti e verdi. Attese cambiate per effetto voluto e dichiarate:
+`MigrationIT` conta 9 migrazioni (V9); `UserAdministrationIT.staffAutenticatoRaggiunge…` ora si aspetta `200` su
+`/admin/menu` (prima `404`: l'endpoint non esisteva) e verifica anche `403` su `site-content`/`site-settings`; i test
+Playwright che modificano dati li ripristinano alla fine (`tests/baseline.ts`) e trovano le voci per nome (gli id sono UUID).
+
+### Verifiche obbligatorie della FASE 4
+
+| Verifica | Test | Esito |
+|---|---|---|
+| Autorizzazioni OWNER/STAFF | `MenuApiIT.permessi`, `MediaApiIT.senzaAccesso…`, `ContentApiIT.contenutiEImpostazioniSoloAlTitolare` (staff `403` su testi e orari, anonimo `401`), `UserAdministrationIT`; `content.spec` «staff: testi e orari… anche via API» e «foto in uso… aggirando la UI»; `auth.spec` | ⏳ |
+| CRUD del menu | `MenuApiIT.categorie` (slug dal nome, duplicato `409`, ordine, categoria non vuota `409`), `creaModificaNascondiEliminaUnaVoce` (versione vecchia `409`, voce nascosta fuori dal menu pubblico), `categorieNascoste…`; `content.spec` «nuova voce: creata, visibile, eliminata»; `navigation.spec` «menu: nascondere una voce…» | ⏳ |
+| Validazione prezzi | `MenuApiIT.validazioneDeiPrezzi` (negativo, oltre 1.000 €, `6.5` → `400` e non 6 centesimi, testo → `400`, 0 e 1.000 € ammessi, prezzo demo non scrivibile); `content.spec` «prezzo non valido» (`-3`, `2,505`, `1500`) | ⏳ |
+| Validazione allergeni | `MenuApiIT.allergeniDichiaratiSoloDopoLaVerifica` (codici senza verifica `422`, codice inesistente `422`, ordine del Regolamento, autore e data della verifica, «nessun allergene» ≠ «da dichiarare»); `content.spec` «staff: prezzo e allergeni salvati» | ⏳ |
+| Caricamento foto | `ImageProcessorTest` (13: formati, EXIF/GPS rimossi, orientamento, PNG8 con trasparenza, JPEG progressivo, mai ingrandite, WebP reali), `MediaApiIT.staffCaricaUnaFoto…`, `fileNonValidi…` (finto JPEG, senza testo alternativo, decompression bomb), `oltreCinqueMegabyte…` (`413`); `navigation.spec` «foto: caricamento…», `content.spec` «file finto anche se si chiama .jpg» | ⏳ |
+| Sostituzione foto | `MediaApiIT.sostituzioneMantieneIdEUsi…` (stesso id e testo, file vecchi cancellati); `content.spec` «sostituzione del file, la foto cambia ovunque» | ⏳ |
+| Eliminazione foto | `MediaApiIT.fotoInUsoNonSiElimina…` (`409 MEDIA_IN_USE` con usi, chiave esterna anche aggirando l'API, eliminazione e file rimossi), `ContentApiIT` (foto di titolare e testata bloccate); `navigation.spec` | ⏳ |
+| Persistenza dopo il riavvio | `PersistenceAfterRestartIT`: **due avvii reali** dell'applicazione sullo stesso PostgreSQL e sulla stessa cartella foto (menu, prezzo, allergeni, foto servita, avviso e perfino la sessione del gestore); `navigation.spec` «menu…» con ricaricamento della pagina; `content.spec` «visibili a un altro visitatore» | ⏳ |
+| Errori del servizio di storage | `MediaApiIT.storageIrraggiungibileAlCaricamento503…` (nessuna riga, `Retry-After`), `…InSostituzioneLasciaLaFotoVecchia`, `cancellazioneConStorageGuastoRiprovataDalJob` (orfani, nuovi tentativi, pulizia); `S3MediaStorageTest` (errore del provider ed endpoint irraggiungibile → `StorageException`); `MediaConfigurationTest` (configurazioni mancanti bloccano l'avvio) | ⏳ |
+| Visualizzazione responsive | `qa.spec` su 7 larghezze (360, 375, 390, 768, 1366, 1440, 1920) con i contenuti dal backend: nessun overflow orizzontale, nessuna immagine rotta, nessun errore console/rete, target ≥ 24 px; `a11y.spec` (axe) desktop e mobile | ⏳ |
+| Regressioni FASE 3 | tutti i test di `AuthenticationIT`, `UserAdministrationIT`, `OwnerBootstrapIT`, `auth.spec` | ⏳ |
+| Compilazione backend e frontend | `./mvnw -B clean verify`; `npm run typecheck`, `vite build`, `vite build --mode static` (pagina statica aperta da `file://`: 14 voci, nessun errore) | ⏳ |
+| Playwright con backend reale | `scripts/e2e.mjs`: PostgreSQL in Docker, backend con dati demo e cartella foto temporanea, password casuali | ⏳ |
+
+### Altre verifiche
+- Sessione scaduta in una scheda aperta: salvataggio → accesso con avviso; ritorno sulla scheda → accesso (`content.spec`, 2 test).
+- Modifica concorrente dei contenuti: chi salva per secondo riceve «Qualcun altro ha salvato…» e non sovrascrive (`ContentApiIT`, `content.spec`).
+- Letture pubbliche con ETag: `304` con `If-None-Match`, ETag nuovo subito dopo una modifica, area gestori `no-store` (`MenuApiIT`).
+- `srcset`/`sizes`: una miniatura da 104 px scarica la variante da 480 px; testata del menu `sizes="100vw"` (`content.spec`).
+- Dati demo: caricatore assente nel profilo `test`, una sola volta su DB vuoto, 0 prezzi reali e 0 allergeni dichiarati inventati, database marcato; `DemoDataGuard` blocca `prod` (`DemoContentLoaderIT`, `DemoDataGuardTest`).
+- Bundle di produzione del frontend senza i testi del menu e degli avvisi demo (ricerca nel file JS generato).
+- OpenAPI `draft.4` valido (`npx @redocly/cli@2.1.0 lint`: 0 errori, 0 avvisi).
+- Scansione segreti: secretlint 9.3.4 (preset recommend) su `backend/`, `frontend/src`, `frontend/tests`, `frontend/scripts`, `docs/`, `infra/`: **0 segnalazioni**; controprova con una chiave AWS finta in un file esca: rilevata.
+
+### Difetti trovati dai test e corretti
+1. **Dati vecchi dopo una modifica**: il browser riusava per 60 s la copia in cache di `/public/menu` e `/public/site`
+   (`Cache-Control: max-age=60`), quindi ricaricando la pagina un gestore vedeva ancora il prezzo precedente. Ora il
+   frontend rivalida sempre le letture pubbliche con l'ETag (`304` senza corpo se nulla è cambiato).
+2. **Etichetta «Segnaposto» su una voce confermata**: una voce demo a cui lo staff dava un prezzo vero restava marcata
+   come demo. Con un prezzo reale la voce ora è trattata come confermata.
+3. **PNG trasparenti troppo pesanti** (~500 KB): introdotta la riduzione a 256 colori con un encoder PNG dedicato (~140 KB).
+4. **Upload di prova S3** rifiutato dal finto endpoint: l'SDK usava il caricamento «aws-chunked», non accettato da R2;
+   disattivato (corpo intero firmato).
+
+### CI
+⏳ in attesa dei risultati sull'ultimo commit.
+
+---
 
 ## FASE 3 — Riepilogo
 
