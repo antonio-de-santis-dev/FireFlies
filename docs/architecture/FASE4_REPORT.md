@@ -120,7 +120,15 @@
 `docs/testing/TEST_REPORT.md`, `README.md`.
 
 ## 5. Risultati dei test
-Vedi `docs/testing/TEST_REPORT.md` (sezione FASE 4) per il dettaglio e i risultati della CI sull'ultimo commit.
+| Suite | Test | Esito |
+|---|---|---|
+| Backend unità e slice | 66 | ✅ 66/66 |
+| Backend integrazione su PostgreSQL 17 reale | 222 | ✅ 222/222 |
+| Playwright con backend e DB reali (`npm run verifica`) | 59 | ✅ 59/59 |
+| **Totale** | **347** | ✅ |
+
+Dettaglio, difetti trovati e corretti (cache delle letture pubbliche, etichetta demo, peso dei PNG, test intermittente
+della testata del menu) e risultati della CI in `docs/testing/TEST_REPORT.md`.
 
 ## 6. Limitazioni note
 - **R2 non provato dal vivo**: nessun account creato (vincolo della fase). L'adattatore è verificato contro un finto

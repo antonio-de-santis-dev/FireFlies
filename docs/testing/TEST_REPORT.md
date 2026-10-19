@@ -9,8 +9,8 @@
 |---|---|---|---|
 | Backend unità e slice | `cd backend && ./mvnw -B clean verify` | 66 | ✅ 66/66 |
 | Backend integrazione, sicurezza, concorrenza, riavvio (PostgreSQL reale) | stesso comando | 222 | ✅ 222/222 |
-| Frontend Playwright con backend e DB reali (funzionali 27 + accesso 10 + contenuti 11 + QA 9 + axe 2) | `cd frontend && npm run verifica` | 59 | ⏳ esecuzione finale in corso |
-| **Totale** | | **347** | ⏳ |
+| Frontend Playwright con backend e DB reali (funzionali 27 + accesso 10 + contenuti 11 + QA 9 + axe 2) | `cd frontend && npm run verifica` | 59 | ✅ 59/59 (4,7 min) |
+| **Totale** | | **347** | ✅ 347/347 |
 
 CI su GitHub Actions dell'ultimo commit: vedi §«CI» in fondo a questa sezione.
 
@@ -23,19 +23,19 @@ Playwright che modificano dati li ripristinano alla fine (`tests/baseline.ts`) e
 
 | Verifica | Test | Esito |
 |---|---|---|
-| Autorizzazioni OWNER/STAFF | `MenuApiIT.permessi`, `MediaApiIT.senzaAccesso…`, `ContentApiIT.contenutiEImpostazioniSoloAlTitolare` (staff `403` su testi e orari, anonimo `401`), `UserAdministrationIT`; `content.spec` «staff: testi e orari… anche via API» e «foto in uso… aggirando la UI»; `auth.spec` | ⏳ |
-| CRUD del menu | `MenuApiIT.categorie` (slug dal nome, duplicato `409`, ordine, categoria non vuota `409`), `creaModificaNascondiEliminaUnaVoce` (versione vecchia `409`, voce nascosta fuori dal menu pubblico), `categorieNascoste…`; `content.spec` «nuova voce: creata, visibile, eliminata»; `navigation.spec` «menu: nascondere una voce…» | ⏳ |
-| Validazione prezzi | `MenuApiIT.validazioneDeiPrezzi` (negativo, oltre 1.000 €, `6.5` → `400` e non 6 centesimi, testo → `400`, 0 e 1.000 € ammessi, prezzo demo non scrivibile); `content.spec` «prezzo non valido» (`-3`, `2,505`, `1500`) | ⏳ |
-| Validazione allergeni | `MenuApiIT.allergeniDichiaratiSoloDopoLaVerifica` (codici senza verifica `422`, codice inesistente `422`, ordine del Regolamento, autore e data della verifica, «nessun allergene» ≠ «da dichiarare»); `content.spec` «staff: prezzo e allergeni salvati» | ⏳ |
-| Caricamento foto | `ImageProcessorTest` (13: formati, EXIF/GPS rimossi, orientamento, PNG8 con trasparenza, JPEG progressivo, mai ingrandite, WebP reali), `MediaApiIT.staffCaricaUnaFoto…`, `fileNonValidi…` (finto JPEG, senza testo alternativo, decompression bomb), `oltreCinqueMegabyte…` (`413`); `navigation.spec` «foto: caricamento…», `content.spec` «file finto anche se si chiama .jpg» | ⏳ |
-| Sostituzione foto | `MediaApiIT.sostituzioneMantieneIdEUsi…` (stesso id e testo, file vecchi cancellati); `content.spec` «sostituzione del file, la foto cambia ovunque» | ⏳ |
-| Eliminazione foto | `MediaApiIT.fotoInUsoNonSiElimina…` (`409 MEDIA_IN_USE` con usi, chiave esterna anche aggirando l'API, eliminazione e file rimossi), `ContentApiIT` (foto di titolare e testata bloccate); `navigation.spec` | ⏳ |
-| Persistenza dopo il riavvio | `PersistenceAfterRestartIT`: **due avvii reali** dell'applicazione sullo stesso PostgreSQL e sulla stessa cartella foto (menu, prezzo, allergeni, foto servita, avviso e perfino la sessione del gestore); `navigation.spec` «menu…» con ricaricamento della pagina; `content.spec` «visibili a un altro visitatore» | ⏳ |
-| Errori del servizio di storage | `MediaApiIT.storageIrraggiungibileAlCaricamento503…` (nessuna riga, `Retry-After`), `…InSostituzioneLasciaLaFotoVecchia`, `cancellazioneConStorageGuastoRiprovataDalJob` (orfani, nuovi tentativi, pulizia); `S3MediaStorageTest` (errore del provider ed endpoint irraggiungibile → `StorageException`); `MediaConfigurationTest` (configurazioni mancanti bloccano l'avvio) | ⏳ |
-| Visualizzazione responsive | `qa.spec` su 7 larghezze (360, 375, 390, 768, 1366, 1440, 1920) con i contenuti dal backend: nessun overflow orizzontale, nessuna immagine rotta, nessun errore console/rete, target ≥ 24 px; `a11y.spec` (axe) desktop e mobile | ⏳ |
-| Regressioni FASE 3 | tutti i test di `AuthenticationIT`, `UserAdministrationIT`, `OwnerBootstrapIT`, `auth.spec` | ⏳ |
-| Compilazione backend e frontend | `./mvnw -B clean verify`; `npm run typecheck`, `vite build`, `vite build --mode static` (pagina statica aperta da `file://`: 14 voci, nessun errore) | ⏳ |
-| Playwright con backend reale | `scripts/e2e.mjs`: PostgreSQL in Docker, backend con dati demo e cartella foto temporanea, password casuali | ⏳ |
+| Autorizzazioni OWNER/STAFF | `MenuApiIT.permessi`, `MediaApiIT.senzaAccesso…`, `ContentApiIT.contenutiEImpostazioniSoloAlTitolare` (staff `403` su testi e orari, anonimo `401`), `UserAdministrationIT`; `content.spec` «staff: testi e orari… anche via API» e «foto in uso… aggirando la UI»; `auth.spec` | ✅ |
+| CRUD del menu | `MenuApiIT.categorie` (slug dal nome, duplicato `409`, ordine, categoria non vuota `409`), `creaModificaNascondiEliminaUnaVoce` (versione vecchia `409`, voce nascosta fuori dal menu pubblico), `categorieNascoste…`; `content.spec` «nuova voce: creata, visibile, eliminata»; `navigation.spec` «menu: nascondere una voce…» | ✅ |
+| Validazione prezzi | `MenuApiIT.validazioneDeiPrezzi` (negativo, oltre 1.000 €, `6.5` → `400` e non 6 centesimi, testo → `400`, 0 e 1.000 € ammessi, prezzo demo non scrivibile); `content.spec` «prezzo non valido» (`-3`, `2,505`, `1500`) | ✅ |
+| Validazione allergeni | `MenuApiIT.allergeniDichiaratiSoloDopoLaVerifica` (codici senza verifica `422`, codice inesistente `422`, ordine del Regolamento, autore e data della verifica, «nessun allergene» ≠ «da dichiarare»); `content.spec` «staff: prezzo e allergeni salvati» | ✅ |
+| Caricamento foto | `ImageProcessorTest` (13: formati, EXIF/GPS rimossi, orientamento, PNG8 con trasparenza, JPEG progressivo, mai ingrandite, WebP reali), `MediaApiIT.staffCaricaUnaFoto…`, `fileNonValidi…` (finto JPEG, senza testo alternativo, decompression bomb), `oltreCinqueMegabyte…` (`413`); `navigation.spec` «foto: caricamento…», `content.spec` «file finto anche se si chiama .jpg» | ✅ |
+| Sostituzione foto | `MediaApiIT.sostituzioneMantieneIdEUsi…` (stesso id e testo, file vecchi cancellati); `content.spec` «sostituzione del file, la foto cambia ovunque» | ✅ |
+| Eliminazione foto | `MediaApiIT.fotoInUsoNonSiElimina…` (`409 MEDIA_IN_USE` con usi, chiave esterna anche aggirando l'API, eliminazione e file rimossi), `ContentApiIT` (foto di titolare e testata bloccate); `navigation.spec` | ✅ |
+| Persistenza dopo il riavvio | `PersistenceAfterRestartIT`: **due avvii reali** dell'applicazione sullo stesso PostgreSQL e sulla stessa cartella foto (menu, prezzo, allergeni, foto servita, avviso e perfino la sessione del gestore); `navigation.spec` «menu…» con ricaricamento della pagina; `content.spec` «visibili a un altro visitatore» | ✅ |
+| Errori del servizio di storage | `MediaApiIT.storageIrraggiungibileAlCaricamento503…` (nessuna riga, `Retry-After`), `…InSostituzioneLasciaLaFotoVecchia`, `cancellazioneConStorageGuastoRiprovataDalJob` (orfani, nuovi tentativi, pulizia); `S3MediaStorageTest` (errore del provider ed endpoint irraggiungibile → `StorageException`); `MediaConfigurationTest` (configurazioni mancanti bloccano l'avvio) | ✅ |
+| Visualizzazione responsive | `qa.spec` su 7 larghezze (360, 375, 390, 768, 1366, 1440, 1920) con i contenuti dal backend: nessun overflow orizzontale, nessuna immagine rotta, nessun errore console/rete, target ≥ 24 px; `a11y.spec` (axe) desktop e mobile | ✅ |
+| Regressioni FASE 3 | tutti i test di `AuthenticationIT`, `UserAdministrationIT`, `OwnerBootstrapIT`, `auth.spec` | ✅ |
+| Compilazione backend e frontend | `./mvnw -B clean verify`; `npm run typecheck`, `vite build`, `vite build --mode static` (pagina statica aperta da `file://`: 14 voci, nessun errore) | ✅ |
+| Playwright con backend reale | `scripts/e2e.mjs`: PostgreSQL in Docker, backend con dati demo e cartella foto temporanea, password casuali | ✅ |
 
 ### Altre verifiche
 - Sessione scaduta in una scheda aperta: salvataggio → accesso con avviso; ritorno sulla scheda → accesso (`content.spec`, 2 test).
@@ -54,7 +54,12 @@ Playwright che modificano dati li ripristinano alla fine (`tests/baseline.ts`) e
 2. **Etichetta «Segnaposto» su una voce confermata**: una voce demo a cui lo staff dava un prezzo vero restava marcata
    come demo. Con un prezzo reale la voce ora è trattata come confermata.
 3. **PNG trasparenti troppo pesanti** (~500 KB): introdotta la riduzione a 256 colori con un encoder PNG dedicato (~140 KB).
-4. **Upload di prova S3** rifiutato dal finto endpoint: l'SDK usava il caricamento «aws-chunked», non accettato da R2;
+4. **Test intermittente della testata del menu** («foto che ruotano ogni 60 s»): `page.clock.install()` lascia scorrere il
+   tempo simulato anche durante il caricamento della pagina; dalla FASE 4 la rotazione parte quando arrivano i dati dal
+   backend e, con la macchina carica (suite backend in parallelo), il caricamento superava il margine di 1 s del test
+   (58/59 in quell'esecuzione). L'app è corretta (il cambio avviene 60 s dopo l'avvio del timer): il test ora verifica
+   «ferma a 55 s, cambiata entro 65 s». Esecuzione successiva completa: 59/59.
+5. **Upload di prova S3** rifiutato dal finto endpoint: l'SDK usava il caricamento «aws-chunked», non accettato da R2;
    disattivato (corpo intero firmato).
 
 ### CI
