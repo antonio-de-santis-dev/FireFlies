@@ -1,6 +1,6 @@
 # DECISION LOG — FireFlies Aperitif backend
 
-> Aggiornato: 19/10/2026 · Fase: **1, revisione finale** · Riepilogo della revisione: [FASE1_FINAL_REVIEW](FASE1_FINAL_REVIEW.md).
+> Aggiornato: 19/10/2026 · Fase: **2, backend foundation** · Report: [FASE2_REPORT](FASE2_REPORT.md) · FASE 1 approvata ([FASE1_FINAL_REVIEW](FASE1_FINAL_REVIEW.md)).
 > Legenda: **C** = consolidata dal committente · **A** = approvata dal master plan · **P** = proposta, **attende la tua approvazione** · **Q** = dato da chiedere ai titolari · ~~barrato~~ = superata.
 > Precedenza in caso di contrasto: decisioni consolidate > master plan > mockup > documenti precedenti.
 
@@ -22,6 +22,28 @@
 | C-12 | Richieste telefoniche ed email **inseribili manualmente** dal gestore | 19/10 |
 | C-13 | La capienza complessiva effettiva non deve mai superare quella fisica, né per sovrapposizione di orari né per somma di eventi e servizio ordinario; in assenza di capacità fisicamente separate e configurate la contemporaneità non sicura va bloccata | 19/10 |
 | C-14 | Outbox con semantica **at-least-once**: nessuna promessa di consegna exactly-once senza supporto del provider; chiavi di idempotenza, retry con backoff, gestione degli esiti incerti, prevenzione duplicati, registrazione dei tentativi, nessun SMS reale in sviluppo e test | 19/10 |
+| C-15 | **FASE 1 approvata**; FASE 2 autorizzata | 19/10 |
+| C-16 | Registro di occupazione `capacity_slots` a quanti da **15 minuti** (ex P-03, P-30) | 19/10 |
+| C-17 | Capacità fisica **condivisa** tra eventi e prenotazioni ordinarie (ex P-06) | 19/10 |
+| C-18 | Eventi **esclusivi per impostazione predefinita**; eventi non esclusivi abilitabili **solo esplicitamente dal titolare** (risolve P-31) | 19/10 |
+| C-19 | Blocco predefinito per tavoli con posti insufficienti; eccezione motivata **riservata al titolare** (ex P-08) | 19/10 |
+| C-20 | Gestione degli esiti incerti delle notifiche e nessun invio SMS reale confermati (ex P-34, P-37) | 19/10 |
+| C-21 | **Strategia Git obbligatoria**: un branch per fase derivato dal precedente approvato, nessun merge automatico, `main` intoccabile senza autorizzazione, nessun force-push (MASTER_PLAN §18, sezione 1-bis) | 19/10 |
+
+## 1-bis. Strategia Git (C-21, regola definitiva)
+
+| Branch | Deriva da | Stato |
+|---|---|---|
+| `main` | — | solo README iniziale; non si modifica senza autorizzazione |
+| `fase-0/audit` | `main` | completato e approvato |
+| `fase-1/progettazione` | `fase-0/audit` | completato e approvato |
+| `fase-2/backend-foundation` | `fase-1/progettazione` | in revisione (questa fase) |
+| `fase-3/autenticazione` | `fase-2/backend-foundation` | da creare dopo approvazione |
+| `fase-4/menu-media` | `fase-3/autenticazione` | — |
+| `fase-5/prenotazioni` | `fase-4/menu-media` | — |
+| `fase-6/eventi-capienza`, `fase-7/notifiche`, `fase-8/hardening-deploy` | fase precedente | nomi proposti |
+
+Regole: verificare stato e branch prima di iniziare; branch precedente completo e approvato; lavoro solo sul branch della fase; test eseguiti e documentati; commit ordinati; push previa verifica permessi; nessun merge automatico; `main` intoccabile; nessun force-push.
 
 ## 2. Decisioni approvate dal master plan (ancora valide)
 
@@ -35,7 +57,25 @@
 | A-12 | Niente Redis, Kafka, Kubernetes, MongoDB, microservizi, blob nel DB |
 | A-14 | Una fase alla volta, branch dedicati, nessun merge/deploy senza autorizzazione |
 
-## 3. Proposte — richiedono la tua approvazione finale
+## 2-bis. Decisioni tecniche applicate in FASE 2
+
+| ID | Decisione | Motivo / verifica |
+|---|---|---|
+| T-01 | **Spring Boot 4.1.1**, Java 21, Maven wrapper 3.9.11 | ultima versione su Maven Central; la linea 3.5 è fuori supporto OSS dal 30/06/2026, la 4.1 è supportata fino a metà 2027 (fonti in FASE2_REPORT §2) |
+| T-02 | Versioni gestite dal BOM di Boot: Spring Framework 7.0.9, Flyway 12.4.0 (+ `flyway-database-postgresql`), driver PostgreSQL 42.7.13, HikariCP 7.0.2, Testcontainers 2.0.5, JUnit 6.0.3 | nessuna versione fissata a mano |
+| T-03 | PostgreSQL **17** (immagine `postgres:17-alpine` fissata per digest, uguale in Compose e nei test) | Flyway 12.4 lo riconosce senza avvisi; migrazioni verificate su DB vuoto |
+| T-04 | Accesso ai dati con **JDBC esplicito** (`JdbcClient`) in FASE 2; JPA/Hibernate si aggiunge solo quando servono le prime entità (FASE 3–4) | il registro di occupazione richiede SQL e lock espliciti; nessuna dipendenza inutile |
+| T-05 | **Ordine globale dei lock**: prenotazione → evento → zona → quanti (zona, orario) → **righe dei tavoli in ordine di id** → assegnazioni | in FASE 2 i test hanno mostrato che due assegnazioni concorrenti dello stesso tavolo, senza lock della riga tavolo, possono andare in deadlock (il vincolo resta comunque inviolato) |
+| T-06 | Rete di sicurezza: deadlock/timeout di lock → `409 CONCURRENT_UPDATE` («nulla è stato salvato, riprova») | nessun errore 500 per conflitti di concorrenza |
+| T-07 | `type` dei problem+json come URN `urn:fireflies:problem:<codice>` | evita un dominio inventato; il dominio reale si decide in FASE 8 |
+| T-08 | Tabelle Spring Session rinviate alla FASE 3 (insieme alla dipendenza) | lo schema va copiato dalla versione esatta della libreria |
+| T-09 | Dati iniziali: zona «Locale» **spenta con capienza 0**, prenotazioni web **spente**, template notifiche **inattivi**, nessun utente, indirizzo confermato | nessun dato inventato attivo |
+| T-10 | Nessun provider reale: `SmsGateway`/`EmailGateway` solo `Fake`; avvio bloccato se si configura altro (in `local`/`test` sempre, in `prod` finché non esiste l'adattatore approvato) | C-06, C-20 |
+| T-11 | CI minima GitHub Actions (`./mvnw verify` su Ubuntu con Docker) sui branch `fase-*` | test di integrazione ripetibili fuori da questo container |
+
+## 3. Proposte — stato dopo l'approvazione della FASE 1
+
+> Con l'approvazione della FASE 1 le proposte di questa sezione sono considerate **approvate come impostazione**. Restano da confermare solo i **valori numerici di esempio** (P-05 scadenza 60 min, P-13 anonimizzazione 90 giorni, P-19 massimo 12 persone dal web, P-21 limiti di frequenza, P-27 sessione 8 h) e i dati Q-01…Q-07, che non bloccano lo sviluppo. Le decisioni ancora aperte dopo la FASE 2 sono in FASE2_REPORT §6.
 
 ### 3.1 Capienza, eventi, tavoli (riviste dopo la revisione)
 
