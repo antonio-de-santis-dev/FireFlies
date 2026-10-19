@@ -40,9 +40,12 @@ class UserAdministrationIT extends SecurityIntegrationTest {
     void staffAutenticatoRaggiungeLAreaGestoriMaNonQuellaDelTitolare() {
         TestUser staff = user("staff@example.invalid", Role.STAFF);
         ApiClient browser = signedIn(staff);
-        // Autorizzato: l'endpoint non esiste ancora (FASE 4) → 404, non 401/403.
-        assertThat(browser.get("/api/v1/admin/menu").status()).isEqualTo(404);
+        // Dalla FASE 4 il menu esiste: lo staff lo gestisce, ma account, testi e impostazioni del sito restano del titolare.
+        assertThat(browser.get("/api/v1/admin/menu").status()).isEqualTo(200);
+        assertThat(browser.get("/api/v1/admin/media").status()).isEqualTo(200);
         assertThat(browser.get("/api/v1/admin/users").status()).isEqualTo(403);
+        assertThat(browser.get("/api/v1/admin/site-content").status()).isEqualTo(403);
+        assertThat(browser.get("/api/v1/admin/site-settings").status()).isEqualTo(403);
     }
 
     @Test

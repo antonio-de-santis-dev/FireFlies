@@ -61,6 +61,50 @@ public final class ApiClient {
         return send(withBody("PATCH", path, body), true);
     }
 
+    public Response put(String path, Object body) {
+        return send(withBody("PUT", path, body), true);
+    }
+
+    public Response delete(String path) {
+        return send(HttpRequest.newBuilder(base.resolve(path)).DELETE(), true);
+    }
+
+    /** GET con header aggiuntivi (es. {@code If-None-Match}). */
+    public Response get(String path, Map<String, String> headers) {
+        HttpRequest.Builder request = HttpRequest.newBuilder(base.resolve(path)).GET();
+        headers.forEach(request::header);
+        return send(request, false);
+    }
+
+    /** Scarica un file binario (es. una variante di una foto) senza interpretarlo come JSON. */
+    public HttpResponse<byte[]> download(String path) {
+        try {
+            return http.send(HttpRequest.newBuilder(base.resolve(path)).GET().build(), HttpResponse.BodyHandlers.ofByteArray());
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Upload multipart come il browser: campo {@code file} più campi di testo. */
+    public Response upload(String method, String path, String fileName, String contentType, byte[] content,
+            Map<String, String> fields) {
+        String boundary = "----fireflies" + System.nanoTime();
+        java.io.ByteArrayOutputStream body = new java.io.ByteArrayOutputStream();
+        java.nio.charset.Charset utf8 = java.nio.charset.StandardCharsets.UTF_8;
+        fields.forEach((name, value) -> body.writeBytes(("--" + boundary + "\r\nContent-Disposition: form-data; name=\""
+                + name + "\"\r\n\r\n" + value + "\r\n").getBytes(utf8)));
+        body.writeBytes(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"" + fileName
+                + "\"\r\nContent-Type: " + contentType + "\r\n\r\n").getBytes(utf8));
+        body.writeBytes(content);
+        body.writeBytes(("\r\n--" + boundary + "--\r\n").getBytes(utf8));
+        return send(HttpRequest.newBuilder(base.resolve(path))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .method(method, HttpRequest.BodyPublishers.ofByteArray(body.toByteArray())), true);
+    }
+
     /** POST senza header CSRF (come farebbe un sito estraneo). */
     public Response postWithoutCsrf(String path, Object body) {
         return send(withBody("POST", path, body), false);
@@ -110,7 +154,8 @@ public final class ApiClient {
         try {
             HttpResponse<String> response = http.send(request.build(), HttpResponse.BodyHandlers.ofString());
             String raw = response.body();
-            JsonNode body = raw == null || raw.isBlank() ? null : json.readTree(raw);
+            boolean isJson = response.headers().firstValue("Content-Type").orElse("").contains("json");
+            JsonNode body = raw == null || raw.isBlank() || !isJson ? null : json.readTree(raw);
             return new Response(response.statusCode(), response.headers().map(), raw, body);
         } catch (IOException e) {
             throw new IllegalStateException(e);
