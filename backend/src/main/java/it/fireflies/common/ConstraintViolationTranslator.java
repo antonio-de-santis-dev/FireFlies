@@ -18,6 +18,8 @@ public final class ConstraintViolationTranslator {
     }
 
     private static final Map<String, Translation> KNOWN = Map.of(
+            "ux_app_users_email", new Translation(HttpStatus.CONFLICT, "EMAIL_TAKEN",
+                    "Email già usata", "Esiste già un account con questa email."),
             "ex_table_no_overlap", new Translation(HttpStatus.CONFLICT, "TABLE_CONFLICT",
                     "Tavolo già occupato", "Il tavolo è già assegnato a un'altra prenotazione in quell'orario."),
             "ux_res_web_duplicate", new Translation(HttpStatus.CONFLICT, "DUPLICATE_REQUEST",

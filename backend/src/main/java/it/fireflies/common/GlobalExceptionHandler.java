@@ -33,8 +33,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler(ApiException.class)
-    ProblemDetail handleApi(ApiException ex) {
-        return Problems.of(ex.status(), ex.code(), ex.title(), ex.getMessage(), ex.context());
+    ResponseEntity<ProblemDetail> handleApi(ApiException ex) {
+        ProblemDetail problem = Problems.of(ex.status(), ex.code(), ex.title(), ex.getMessage(), ex.context());
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(ex.status());
+        if (ex.context().get("retryAfterSeconds") instanceof Number seconds) {
+            response.header(HttpHeaders.RETRY_AFTER, String.valueOf(seconds.longValue()));
+        }
+        return response.body(problem);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
