@@ -1,0 +1,43 @@
+# CI del frontend: typecheck + Playwright contro backend e PostgreSQL reali (scripts/e2e.mjs).
+name: frontend
+
+on:
+  push:
+    branches: ["main", "fase-*/**"]
+    paths: ["frontend/**", "backend/**", "infra/**", ".github/workflows/frontend.yml"]
+  pull_request:
+    paths: ["frontend/**", "backend/**", "infra/**", ".github/workflows/frontend.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Typecheck + Playwright (backend e database reali)
+        run: npm run verifica
+      - name: Report e log del backend
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-e2e
+          path: frontend/test-results
+          retention-days: 14
