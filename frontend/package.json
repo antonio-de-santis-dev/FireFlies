@@ -3,18 +3,18 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "FireFlies Aperitif — prototipo navigabile (mockup, non produzione)",
+  "description": "FireFlies Aperitif — frontend (sito pubblico e area gestori con accesso reale)",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit -p . && vite build",
     "build:static": "tsc --noEmit -p . && vite build --mode static",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit -p .",
-    "test": "playwright test tests/navigation.spec.ts",
-    "screenshots": "playwright test tests/screenshots.spec.ts && node tests/frames.mjs && node tests/overview.mjs",
-    "qa": "playwright test tests/qa.spec.ts tests/a11y.spec.ts",
-    "demo": "playwright test tests/demo.spec.ts",
-    "verifica": "npm run typecheck && npm test && npm run qa"
+    "test": "node scripts/e2e.mjs tests/navigation.spec.ts tests/auth.spec.ts",
+    "screenshots": "node scripts/e2e.mjs tests/screenshots.spec.ts && node tests/frames.mjs && node tests/overview.mjs",
+    "qa": "node scripts/e2e.mjs tests/qa.spec.ts tests/a11y.spec.ts",
+    "demo": "node scripts/e2e.mjs tests/demo.spec.ts",
+    "verifica": "npm run typecheck && node scripts/e2e.mjs tests/navigation.spec.ts tests/auth.spec.ts tests/qa.spec.ts tests/a11y.spec.ts"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",

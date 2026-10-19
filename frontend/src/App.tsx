@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { fetchSession, uiRole } from './api/auth';
 import { PublicLayout } from './components/PublicLayout';
 import { AdminLayout } from './pages/admin/AdminLayout';
 import { Announcements } from './pages/admin/Announcements';
@@ -77,7 +78,7 @@ function adminPage(route: string, role: Role): ReactNode {
 export function App() {
   const path = usePath();
   const route = path.split('?')[0];
-  const { role, openBooking } = useStore();
+  const { role, authChecked, dispatch, openBooking } = useStore();
   const signedIn = role != null;
   useReveal(path);
 
@@ -86,11 +87,36 @@ export function App() {
   }, [route, openBooking]);
 
   const isAdmin = route.startsWith('/gestione');
+  // Area gestori: a ogni cambio di pagina si chiede al backend se la sessione è ancora valida.
+  // Il ruolo viene dal backend; se la sessione è scaduta o chiusa si torna all'accesso con un avviso.
   useEffect(() => {
-    if (isAdmin && route !== '/gestione/login' && !signedIn) navigate('/gestione/login');
-  }, [isAdmin, route, signedIn]);
+    if (!isAdmin) return;
+    let current = true;
+    fetchSession()
+      .then((session) => {
+        if (!current) return;
+        if (session.authenticated && session.user) {
+          const { displayName, email } = session.user;
+          dispatch({ type: 'session', role: uiRole(session.user.role), user: { displayName, email } });
+        } else {
+          const expired = session.reason === 'SESSION_EXPIRED' || signedIn;
+          dispatch({ type: 'session', role: null, notice: expired ? 'La sessione è scaduta o è stata chiusa: accedi di nuovo.' : null });
+          if (route !== '/gestione/login') navigate('/gestione/login');
+        }
+      })
+      .catch(() => {
+        if (!current) return;
+        dispatch({ type: 'session', role: null, notice: 'Il server non risponde: non è possibile verificare l’accesso.' });
+        if (route !== '/gestione/login') navigate('/gestione/login');
+      });
+    return () => {
+      current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- si ricontrolla a ogni pagina, non a ogni cambio di stato
+  }, [isAdmin, route]);
 
   if (isAdmin) {
+    if (!authChecked && route !== '/gestione/login') return null; // pochi millisecondi: nessuna pagina riservata prima della verifica
     if (route === '/gestione/login' || !signedIn) return <Login />;
     return <AdminLayout>{adminPage(route, role!)}</AdminLayout>;
   }

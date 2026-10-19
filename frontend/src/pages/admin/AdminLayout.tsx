@@ -1,12 +1,13 @@
 import { CalendarDays, ExternalLink, Images, Inbox, LayoutDashboard, LogOut, Megaphone, Palette, Settings, UtensilsCrossed } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { logout as serverLogout } from '../../api/auth';
 import { Toast } from '../../components/PublicLayout';
 import { Img } from '../../components/ui';
 import { logo } from '../../data/assets';
 import { Link, navigate } from '../../router';
 import { useStore } from '../../store';
 
-// `owner: true` = visibile e accessibile solo al titolare (in produzione: controllo lato server).
+// `owner: true` = visibile solo al titolare. È solo comodità: i permessi veri li controlla il backend su ogni API.
 export const ADMIN_NAV = [
   { to: '/gestione', label: 'Panoramica', icon: LayoutDashboard, owner: false },
   { to: '/gestione/menu', label: 'Menu e prezzi', icon: UtensilsCrossed, owner: false },
@@ -21,7 +22,12 @@ export const ADMIN_NAV = [
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { dispatch, requests, role } = useStore();
   const fresh = requests.filter((r) => r.status === 'nuova').length;
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await serverLogout();
+    } catch {
+      // Anche se il server non risponde si esce dall'interfaccia; la sessione scade comunque dopo 8 ore.
+    }
     dispatch({ type: 'session', role: null });
     navigate('/gestione/login');
   };
@@ -31,7 +37,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         Vai al contenuto
       </a>
       <div className="demo-bar demo-bar--admin" role="note">
-        <span><strong>Area gestori dimostrativa</strong><span className="demo-bar__more"> · nessuna autenticazione reale, le modifiche restano solo in questa sessione</span></span>
+        <span><strong>Area gestori</strong><span className="demo-bar__more"> · accesso reale, contenuti ancora dimostrativi: le modifiche restano solo in questa sessione</span></span>
       </div>
       <div className="admin__shell">
         <aside className="admin__side">

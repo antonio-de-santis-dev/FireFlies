@@ -1,31 +1,59 @@
 import { ArrowLeft, CircleAlert, Eye, EyeOff, LockKeyhole } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { login, uiRole } from '../../api/auth';
+import { ApiError } from '../../api/client';
 import { Img } from '../../components/ui';
 import { logo, photos } from '../../data/assets';
 import { Link, navigate, usePageMeta } from '../../router';
-import { useStore, type Role } from '../../store';
+import { useStore } from '../../store';
+
+/** Messaggio da mostrare per un errore del backend. Email inesistente e password sbagliata danno lo stesso testo. */
+function loginMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.code === 'INVALID_CREDENTIALS') return 'Email o password non corretti.';
+    if (error.code === 'RATE_LIMITED' || error.code === 'NETWORK') return error.message;
+  }
+  return 'Accesso non riuscito. Riprova tra poco.';
+}
 
 export function Login() {
   usePageMeta('Accesso gestori');
-  const { dispatch } = useStore();
+  const { dispatch, authNotice } = useStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
-  const [role, setRole] = useState<Role>('titolare');
+  const [busy, setBusy] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [failure, setFailure] = useState<string | null>(null);
+  const failureRef = useRef<HTMLParagraphElement>(null);
 
-  const submit = (e: FormEvent) => {
+  useEffect(() => {
+    if (failure) failureRef.current?.focus();
+  }, [failure]);
+
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     const next: typeof errors = {};
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) next.email = "Inserisci un'email valida, es. gestore@esempio.it.";
-    if (password.length < 4) next.password = 'Inserisci la password (in demo bastano 4 caratteri qualsiasi).';
+    if (!password) next.password = 'Inserisci la password.';
     setErrors(next);
+    setFailure(null);
     if (Object.keys(next).length) {
       document.getElementById(next.email ? 'login-email' : 'login-password')?.focus();
       return;
     }
-    dispatch({ type: 'session', role });
-    navigate('/gestione');
+    setBusy(true);
+    try {
+      const user = await login(email.trim(), password);
+      setPassword('');
+      dispatch({ type: 'session', role: uiRole(user.role), user: { displayName: user.displayName, email: user.email } });
+      navigate('/gestione');
+    } catch (error) {
+      setFailure(loginMessage(error));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -39,9 +67,14 @@ export function Login() {
         <h1>Area gestori</h1>
         <p className="login__demo" role="note">
           <LockKeyhole size={18} aria-hidden="true" />
-          <span><strong>Accesso dimostrativo.</strong> Nessuna verifica reale: qualsiasi email valida e una password di almeno 4 caratteri aprono la demo. Non usare credenziali vere.</span>
+          <span><strong>Accesso riservato.</strong> Entra con l'account che ti ha dato il titolare: il ruolo (titolare o staff) è legato all'account.</span>
         </p>
-        <form noValidate onSubmit={submit} className="login__form">
+        <form noValidate onSubmit={submit} className="login__form" aria-busy={busy}>
+          {(failure ?? authNotice) && (
+            <p className="error" role="alert" tabIndex={-1} ref={failureRef} id="login-failure">
+              <CircleAlert size={16} aria-hidden="true" />{failure ?? authNotice}
+            </p>
+          )}
           <div className="field">
             <label htmlFor="login-email">Email</label>
             {errors.email && <p className="error" id="login-email-err"><CircleAlert size={16} aria-hidden="true" />{errors.email}</p>}
@@ -61,25 +94,9 @@ export function Login() {
               </button>
             </div>
           </div>
-          <fieldset className="field">
-            <legend>Entra come</legend>
-            <div className="role-pick">
-              <label className={`role-pick__opt${role === 'titolare' ? ' is-selected' : ''}`}>
-                <input type="radio" name="role" checked={role === 'titolare'} onChange={() => setRole('titolare')} />
-                <span><strong>Titolare</strong><small>Tutto, compresi personalizzazione del sito, orari e contatti</small></span>
-              </label>
-              <label className={`role-pick__opt${role === 'staff' ? ' is-selected' : ''}`}>
-                <input type="radio" name="role" checked={role === 'staff'} onChange={() => setRole('staff')} />
-                <span><strong>Staff</strong><small>Menu, eventi, richieste, foto e avvisi</small></span>
-              </label>
-            </div>
-          </fieldset>
-          <button type="submit" className="btn btn--action">Entra nella demo</button>
-          <button type="button" className="btn btn--quiet" onClick={() => { setEmail('gestore@esempio.it'); setPassword('demo'); setErrors({}); }}>
-            Compila con dati demo
-          </button>
+          <button type="submit" className="btn btn--action" disabled={busy}>{busy ? 'Accesso in corso…' : 'Accedi'}</button>
         </form>
-        <p className="small muted">In produzione: password con hash, blocco dopo tentativi ripetuti, ruoli verificati dal server.</p>
+        <p className="small muted">Dopo 5 tentativi sbagliati l'accesso si blocca per 15 minuti. Password dimenticata? Chiedi al titolare di impostarne una nuova.</p>
       </main>
     </div>
   );

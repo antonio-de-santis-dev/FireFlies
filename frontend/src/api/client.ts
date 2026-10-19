@@ -1,0 +1,83 @@
+// Client HTTP verso il backend (/api/v1, stessa origine: in sviluppo tramite il proxy di Vite).
+// Sessione in cookie HttpOnly gestito dal browser; token CSRF letto dal cookie XSRF-TOKEN e rimandato nell'header.
+
+const BASE = '/api/v1';
+const CSRF_COOKIE = 'XSRF-TOKEN';
+const CSRF_HEADER = 'X-XSRF-TOKEN';
+
+export type Problem = {
+  status: number;
+  code: string;
+  title?: string;
+  detail?: string;
+  errors?: { field: string; code: string; message: string }[];
+};
+
+/** Errore dell'API con il codice stabile del backend (API_CONTRACT §1). status 0 = server non raggiungibile. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+    readonly problem?: Problem,
+  ) {
+    super(message);
+  }
+}
+
+function readCookie(name: string): string | undefined {
+  const entry = document.cookie.split('; ').find((c) => c.startsWith(`${name}=`));
+  return entry ? decodeURIComponent(entry.slice(name.length + 1)) : undefined;
+}
+
+async function ensureCsrf(force = false) {
+  if (!force && readCookie(CSRF_COOKIE)) return;
+  await fetch(`${BASE}/auth/csrf`, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+}
+
+async function request<T>(method: string, path: string, body?: unknown, retryCsrf = true): Promise<T> {
+  const write = method !== 'GET';
+  const headers: Record<string, string> = { Accept: 'application/json, application/problem+json' };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+  let response: Response;
+  try {
+    if (write) {
+      await ensureCsrf();
+      headers[CSRF_HEADER] = readCookie(CSRF_COOKIE) ?? '';
+    }
+    response = await fetch(`${BASE}${path}`, {
+      method,
+      credentials: 'same-origin',
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(0, 'NETWORK', 'Il server non risponde. Controlla la connessione e riprova.');
+  }
+
+  if (response.status === 204) return undefined as T;
+  const isJson = (response.headers.get('content-type') ?? '').includes('json');
+  const data = isJson ? await response.json() : null;
+
+  if (!response.ok) {
+    const problem = data as Problem | null;
+    // Token CSRF ruotato (es. dopo un nuovo login in un'altra scheda): se ne chiede uno nuovo e si riprova una volta.
+    if (response.status === 403 && problem?.code === 'CSRF_INVALID' && retryCsrf) {
+      await ensureCsrf(true);
+      return request<T>(method, path, body, false);
+    }
+    throw new ApiError(
+      response.status,
+      problem?.code ?? `HTTP_${response.status}`,
+      problem?.detail ?? 'Si è verificato un errore imprevisto. Riprova tra poco.',
+      problem ?? undefined,
+    );
+  }
+  return data as T;
+}
+
+export const api = {
+  get: <T>(path: string) => request<T>('GET', path),
+  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+};

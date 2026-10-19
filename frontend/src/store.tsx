@@ -1,5 +1,5 @@
-// Stato del prototipo: solo in memoria (nessun localStorage, nessun invio di rete).
-// Le modifiche fatte nell'area gestori si vedono sul sito pubblico fino al ricaricamento.
+// Stato dell'app. L'accesso dei gestori è reale (sessione sul backend, FASE 3); i contenuti sono ancora in memoria:
+// le modifiche fatte nell'area gestori si vedono sul sito pubblico fino al ricaricamento (API dalla FASE 4).
 import { createContext, useCallback, useContext, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { photos, type Asset } from './data/assets';
 import { defaultContent, seedAnnouncements, seedMedia, type Announcement, type MediaItem, type SiteContent } from './data/content';
@@ -18,7 +18,10 @@ type State = {
   content: SiteContent;
   media: MediaItem[];
   announcements: Announcement[];
-  role: Role | null; // null = non autenticato (demo)
+  role: Role | null; // null = non autenticato; il ruolo arriva dal backend, mai da una scelta nel login
+  user: { displayName: string; email: string } | null;
+  authChecked: boolean; // la sessione è stata verificata con il backend almeno una volta
+  authNotice: string | null; // messaggio per la pagina di accesso (es. sessione scaduta)
   mapConsent: boolean; // il visitatore ha scelto di caricare la mappa in questa sessione
 };
 
@@ -35,7 +38,7 @@ type Action =
   | { type: 'media/move'; id: string; dir: -1 | 1 }
   | { type: 'announcement/save'; item: Announcement }
   | { type: 'announcement/remove'; id: string }
-  | { type: 'session'; role: Role | null }
+  | { type: 'session'; role: Role | null; user?: { displayName: string; email: string } | null; notice?: string | null }
   | { type: 'map/consent' };
 
 const upsert = <T extends { id: string }>(list: T[], item: T) =>
@@ -74,7 +77,7 @@ function reducer(state: State, action: Action): State {
     case 'announcement/remove':
       return { ...state, announcements: state.announcements.filter((a) => a.id !== action.id) };
     case 'session':
-      return { ...state, role: action.role };
+      return { ...state, role: action.role, user: action.user ?? null, authChecked: true, authNotice: action.notice ?? null };
     case 'map/consent':
       return { ...state, mapConsent: true };
   }
@@ -107,6 +110,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     media: seedMedia,
     announcements: seedAnnouncements,
     role: null,
+    user: null,
+    authChecked: false,
+    authNotice: null,
     mapConsent: false,
   });
   const [toast, setToast] = useState<string | null>(null);

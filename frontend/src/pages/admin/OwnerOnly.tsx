@@ -1,7 +1,7 @@
 import { LockKeyhole } from 'lucide-react';
 import { Link, usePageMeta } from '../../router';
 
-/** Mostrata allo staff che apre una pagina del titolare. In produzione il server risponde 403. */
+/** Mostrata allo staff che apre una pagina del titolare. Le API del titolare rispondono comunque 403 allo staff. */
 export function OwnerOnly() {
   usePageMeta('Riservato al titolare');
   return (
