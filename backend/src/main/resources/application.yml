@@ -16,11 +16,27 @@ spring:
   mvc:
     problemdetails:
       enabled: false # errori gestiti da it.fireflies.common.GlobalExceptionHandler
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true # campi non previsti (es. un "role" nel login) → 400
+  session:
+    timeout: 8h # inattività massima dei gestori (P-27)
+    jdbc:
+      initialize-schema: never # tabelle create da Flyway (V8)
+      cleanup-cron: "0 */5 * * * *"
 
 server:
   error:
     include-stacktrace: never
     include-message: never
+  servlet:
+    session:
+      cookie:
+        name: FF_SESSION
+        http-only: true
+        same-site: lax
+        secure: true # sovrascritto a false solo nei profili locali in HTTP
+        path: /
 
 management:
   endpoints:
@@ -34,6 +50,12 @@ management:
         enabled: true
 
 fireflies:
+  security:
+    login:
+      max-failures-per-account: 5
+      max-failures-per-ip: 20
+      window: 15m
+      lock-duration: 15m
   notifications:
     sms:
       provider: fake

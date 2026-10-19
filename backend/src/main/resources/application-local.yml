@@ -9,3 +9,10 @@ spring:
 logging:
   level:
     it.fireflies: DEBUG
+
+# Sviluppo in HTTP su localhost: il cookie di sessione non può essere Secure. In prod resta Secure (application.yml).
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
