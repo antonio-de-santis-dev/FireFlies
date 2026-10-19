@@ -1,0 +1,1465 @@
+[
+ {
+  "width": 360,
+  "route": "/",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Mostra foto 1 di 5: Calice decorato con ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "31 ottobre 2026: DJ set al Fire (esempio",
+    "w": 41,
+    "h": 41,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/eventi/domeniche-del-fire",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/galleria",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/locale",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/contatti",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/menu/tagliere",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/richieste",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/foto",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/comunicazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/sito",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/impostazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Mostra foto 1 di 5: Calice decorato con ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "31 ottobre 2026: DJ set al Fire (esempio",
+    "w": 43,
+    "h": 43,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/eventi/domeniche-del-fire",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/galleria",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/locale",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/contatti",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/menu/tagliere",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/richieste",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/foto",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/comunicazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/sito",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/impostazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Mostra foto 1 di 5: Calice decorato con ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/eventi/domeniche-del-fire",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/galleria",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/locale",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/contatti",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Menu",
+    "w": 43,
+    "h": 44,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/menu/tagliere",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/richieste",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/foto",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/comunicazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/sito",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/impostazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Mostra foto 1 di 5: Calice decorato con ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/eventi/domeniche-del-fire",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/galleria",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/locale",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/contatti",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/menu/tagliere",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/richieste",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/foto",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/comunicazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/sito",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/impostazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Mostra foto 1 di 5: Calice decorato con ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/eventi/domeniche-del-fire",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/galleria",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/locale",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/contatti",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/menu/tagliere",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/richieste",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/foto",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/comunicazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/sito",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/impostazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Mostra foto 1 di 5: Calice decorato con ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/eventi/domeniche-del-fire",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/galleria",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/locale",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/contatti",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/menu/tagliere",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/richieste",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/foto",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/comunicazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/sito",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/impostazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Mostra foto 1 di 5: Calice decorato con ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
+    "w": 32,
+    "h": 32,
+    "inline": false,
+    "type": "button"
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/eventi/domeniche-del-fire",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/galleria",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/locale",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/contatti",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/menu",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/menu/tagliere",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/eventi",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/eventi/dj-set-esempio",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/richieste",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/foto",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/comunicazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/sito",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/impostazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [],
+  "under24": []
+ }
+]

@@ -1,0 +1,37 @@
+{
+  "name": "fireflies-design",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "FireFlies Aperitif — prototipo navigabile (mockup, non produzione)",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit -p . && vite build",
+    "build:static": "tsc --noEmit -p . && vite build --mode static",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit -p .",
+    "test": "playwright test tests/navigation.spec.ts",
+    "screenshots": "playwright test tests/screenshots.spec.ts && node tests/frames.mjs && node tests/overview.mjs",
+    "qa": "playwright test tests/qa.spec.ts tests/a11y.spec.ts",
+    "demo": "playwright test tests/demo.spec.ts",
+    "verifica": "npm run typecheck && npm test && npm run qa"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/manrope": "^5.3.0",
+    "lucide-react": "^0.454.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.56.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "sharp": "^0.33.5",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vite-plugin-singlefile": "^2.0.3"
+  }
+}

@@ -1,0 +1,94 @@
+/* FireFlies — token di design (vedi docs/DESIGN-SYSTEM.md) */
+:root {
+  /* Brand — NON modificare */
+  --ff-gold: #c5a069;
+  --ff-fuchsia: #e41a70;
+
+  /* Supporto */
+  --ff-ink-950: #101010;
+  --ff-ink-900: #1a1a1a;
+  --ff-ink-800: #242424;
+  --ff-ink-700: #333333;
+  --ff-ivory: #f5f0e8;
+  --ff-ivory-200: #e9e1d4;
+  --ff-muted: #a8a196;
+  --ff-muted-ink: #5e574e;
+  --ff-gold-ink: #7a5c2e;
+  --ff-fuchsia-300: #ff5c9d;
+  --ff-fuchsia-700: #c2105d;
+  --ff-green-900: #13241c;
+
+  /* Semantici */
+  --ff-success: #3ddc97;
+  --ff-warning: #ffb547;
+  --ff-danger: #ff6b6b;
+  --ff-info: #8fa9ff;
+
+  /* Ruoli (tema sera, default) */
+  --bg: var(--ff-ink-950);
+  --surface: var(--ff-ink-900);
+  --surface-2: var(--ff-ink-800);
+  --line: var(--ff-ink-700);
+  --text: var(--ff-ivory);
+  --text-muted: var(--ff-muted);
+  --accent: var(--ff-gold);
+  --action: var(--ff-fuchsia);
+  --action-hover: var(--ff-fuchsia-700);
+  --link: var(--ff-fuchsia-300);
+  --focus: var(--ff-gold);
+
+  /* Tipografia */
+  --font-display: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-text: 'Manrope Variable', ui-sans-serif, system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+  --fs-hero: clamp(2.75rem, 1.6rem + 5.6vw, 7rem);
+  --fs-h1: clamp(2.25rem, 1.5rem + 3.6vw, 4.5rem);
+  --fs-h2: clamp(1.75rem, 1.3rem + 2vw, 3rem);
+  --fs-h3: clamp(1.25rem, 1.15rem + 0.45vw, 1.625rem);
+  --fs-body: clamp(1rem, 0.96rem + 0.2vw, 1.125rem);
+  --fs-small: clamp(0.875rem, 0.86rem + 0.06vw, 0.9375rem);
+
+  /* Spazi */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --space-10: 140px;
+  --gutter: clamp(16px, 4vw, 48px);
+  --section: clamp(64px, 4rem + 5vw, 140px);
+  --container: 1360px;
+
+  /* Forma */
+  --radius-0: 0;
+  --radius-1: 6px;
+  --radius-2: 14px;
+  --radius-pill: 999px;
+  --shadow-float: 0 24px 60px -12px rgb(0 0 0 / 0.55);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-press: 120ms;
+  --dur-ui: 200ms;
+  --dur-dialog: 260ms;
+  --dur-reveal: 640ms;
+
+  --header-h: 72px;
+}
+
+/* Tema giorno: si applica a sezioni con campo avorio */
+.theme-day {
+  --bg: var(--ff-ivory);
+  --surface: var(--ff-ivory-200);
+  --surface-2: #ddd3c3;
+  --line: #cbbfac;
+  --text: var(--ff-ink-950);
+  --text-muted: var(--ff-muted-ink);
+  --accent: var(--ff-gold-ink);
+  --link: var(--ff-fuchsia-700);
+  --focus: var(--ff-gold-ink);
+}
