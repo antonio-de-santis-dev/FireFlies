@@ -1,0 +1,158 @@
+package it.fireflies.capacity;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import it.fireflies.capacity.CapacityExceptions.CapacityBelowConfirmedException;
+import it.fireflies.capacity.CapacityExceptions.CapacityExceededException;
+import it.fireflies.capacity.CapacityExceptions.EventBlocksSlotException;
+import it.fireflies.capacity.CapacityExceptions.SlotConflict;
+import it.fireflies.capacity.CapacitySlotStore.SlotRow;
+import it.fireflies.capacity.CapacitySlotStore.ZoneRow;
+import it.fireflies.common.ApiException;
+
+/**
+ * Registro di occupazione (BOOKING_RULES §3). Ogni metodo partecipa alla transazione del chiamante
+ * ({@code MANDATORY}): l'occupazione dei posti e il cambio di stato della prenotazione si salvano insieme o per niente.
+ *
+ * <p>Procedura: lock condiviso della zona → creazione dei quanti mancanti → lock dei quanti in ordine di orario →
+ * controllo → aggiornamento. Il vincolo {@code ck_slot_not_overbooked} resta come ultima difesa.
+ */
+@Service
+public class CapacityLedger {
+
+    private final CapacitySlotStore store;
+    private final SlotCapacityPolicy capacityPolicy;
+
+    CapacityLedger(CapacitySlotStore store, SlotCapacityPolicy capacityPolicy) {
+        this.store = store;
+        this.capacityPolicy = capacityPolicy;
+    }
+
+    /** Occupa i posti di una prenotazione confermata. Errori: {@code CAPACITY_EXCEEDED}, {@code EVENT_BLOCKS_SLOT}. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void occupy(Occupancy occupancy) {
+        apply(List.of(), List.of(occupancy));
+    }
+
+    /** Libera i posti (annullamento, oppure i soli quanti futuri per uscita anticipata e no-show). */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void release(Occupancy occupancy) {
+        apply(List.of(occupancy), List.of());
+    }
+
+    /**
+     * Modifica di una prenotazione confermata (orario, durata, persone, zona): libera il vecchio intervallo e occupa
+     * il nuovo nella stessa operazione, controllando solo la differenza netta. Se il nuovo non sta, nulla cambia.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void change(Occupancy before, Occupancy after) {
+        apply(List.of(before), List.of(after));
+    }
+
+    /**
+     * Cambia la capienza fisica di una zona dai quanti che iniziano da {@code from} in poi.
+     * Se in qualche quanto ci sono più persone confermate della nuova capienza → {@code CAPACITY_BELOW_CONFIRMED}:
+     * nessuna prenotazione viene toccata (BOOKING_RULES §3.5).
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void changePhysicalCapacity(UUID zoneId, int newCapacity, Instant from) {
+        if (newCapacity < 0 || newCapacity > 1000) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "VALIDATION_FAILED", "Capienza non valida",
+                    "La capienza deve essere tra 0 e 1000 persone.", Map.of("physicalCapacity", newCapacity));
+        }
+        store.lockZoneForUpdate(zoneId).orElseThrow(() -> CapacityExceptions.zoneNotFound(zoneId));
+        Instant firstQuantum = floorToQuantum(from);
+
+        List<SlotConflict> conflicts = new ArrayList<>();
+        Map<Instant, Integer> newCapacities = new TreeMap<>();
+        for (SlotRow slot : store.lockSlotsFrom(zoneId, firstQuantum)) {
+            int capacity = capacityPolicy.capacityFor(zoneId, newCapacity, slot.slotStart());
+            if (slot.occupiedCovers() > capacity) {
+                conflicts.add(new SlotConflict(slot.slotStart(), slot.occupiedCovers(), capacity));
+            }
+            newCapacities.put(slot.slotStart(), capacity);
+        }
+        if (!conflicts.isEmpty()) {
+            throw new CapacityBelowConfirmedException(zoneId, conflicts);
+        }
+        store.updatePhysicalCapacity(zoneId, newCapacity);
+        if (!newCapacities.isEmpty()) {
+            store.updateCapacities(zoneId, newCapacities);
+        }
+    }
+
+    private void apply(List<Occupancy> removed, List<Occupancy> added) {
+        SortedMap<UUID, SortedMap<Instant, Integer>> deltas = netDeltas(removed, added);
+        for (Map.Entry<UUID, SortedMap<Instant, Integer>> zone : deltas.entrySet()) {
+            applyToZone(zone.getKey(), zone.getValue());
+        }
+    }
+
+    private void applyToZone(UUID zoneId, SortedMap<Instant, Integer> deltas) {
+        ZoneRow zone = store.lockZoneShared(zoneId).orElseThrow(() -> CapacityExceptions.zoneNotFound(zoneId));
+        List<Instant> growing = deltas.entrySet().stream().filter(e -> e.getValue() > 0).map(Map.Entry::getKey).toList();
+        if (!growing.isEmpty()) {
+            if (!zone.active()) {
+                throw CapacityExceptions.zoneInactive(zoneId);
+            }
+            store.insertMissingSlots(zoneId, growing,
+                    q -> capacityPolicy.capacityFor(zoneId, zone.physicalCapacity(), q));
+        }
+
+        Instant from = deltas.firstKey();
+        Instant to = deltas.lastKey().plus(OccupancyInterval.QUANTUM);
+        Map<Instant, SlotRow> locked = store.lockSlots(zoneId, from, to).stream()
+                .collect(Collectors.toMap(SlotRow::slotStart, Function.identity()));
+
+        for (Map.Entry<Instant, Integer> entry : deltas.entrySet()) {
+            Instant quantum = entry.getKey();
+            int delta = entry.getValue();
+            SlotRow slot = locked.get(quantum);
+            if (delta > 0) {
+                if (slot.exclusiveEventId() != null) {
+                    throw new EventBlocksSlotException(zoneId, quantum, slot.exclusiveEventId());
+                }
+                if (slot.occupiedCovers() + delta > slot.capacityCovers()) {
+                    throw new CapacityExceededException(zoneId, quantum, slot.capacityCovers(), slot.occupiedCovers(), delta);
+                }
+            } else if (slot == null || slot.occupiedCovers() + delta < 0) {
+                throw new IllegalStateException("Registro di occupazione incoerente: rilascio di " + (-delta)
+                        + " persone dal quanto " + quantum + " della zona " + zoneId);
+            }
+        }
+        store.addOccupied(zoneId, deltas);
+    }
+
+    /** Somma per zona e quanto: −persone per ciò che si libera, +persone per ciò che si occupa; le differenze nulle spariscono. */
+    static SortedMap<UUID, SortedMap<Instant, Integer>> netDeltas(List<Occupancy> removed, List<Occupancy> added) {
+        SortedMap<UUID, SortedMap<Instant, Integer>> deltas = new TreeMap<>();
+        removed.forEach(o -> accumulate(deltas, o, -o.covers()));
+        added.forEach(o -> accumulate(deltas, o, o.covers()));
+        deltas.values().forEach(byQuantum -> byQuantum.values().removeIf(d -> d == 0));
+        deltas.values().removeIf(Map::isEmpty);
+        return deltas;
+    }
+
+    private static void accumulate(SortedMap<UUID, SortedMap<Instant, Integer>> deltas, Occupancy o, int amount) {
+        SortedMap<Instant, Integer> byQuantum = deltas.computeIfAbsent(o.zoneId(), z -> new TreeMap<>());
+        o.interval().quanta().forEach(q -> byQuantum.merge(q, amount, Integer::sum));
+    }
+
+    static Instant floorToQuantum(Instant instant) {
+        long seconds = OccupancyInterval.QUANTUM.toSeconds();
+        return Instant.ofEpochSecond(Math.floorDiv(instant.getEpochSecond(), seconds) * seconds);
+    }
+}
