@@ -63,7 +63,13 @@ Playwright che modificano dati li ripristinano alla fine (`tests/baseline.ts`) e
    disattivato (corpo intero firmato).
 
 ### CI
-⏳ in attesa dei risultati sull'ultimo commit.
+| Workflow | Commit | Run | Esito |
+|---|---|---|---|
+| frontend (`npm ci`, Playwright Chromium, `npm run verifica` con backend e PostgreSQL reali) | `0b1a065` (ultimo commit) | 39280557623 | ✅ success |
+| frontend | `6406858` (ultima correzione di codice dei test) | 39280092627 | ✅ success |
+| backend (`./mvnw -B verify`) | `3e80851` (ultimo push con codice backend: `ac9c5a3`) | 39279505939 | ✅ success |
+
+I commit successivi a `3e80851` non toccano `backend/`, quindi il workflow backend (filtrato per percorso) non riparte.
 
 ---
 

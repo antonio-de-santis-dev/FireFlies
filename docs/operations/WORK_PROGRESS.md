@@ -1,7 +1,7 @@
 # Avanzamento del lavoro — checkpoint di recupero
 
 > Regola: MASTER_PLAN §19. Aggiornato durante il lavoro, non solo a fine sessione.
-> Ultimo aggiornamento: 19/10/2026, FASE 4 completata localmente, in attesa della CI.
+> Ultimo aggiornamento: 19/10/2026, FASE 4 completata, CI verde: in attesa di approvazione.
 
 ## Fase e branch
 - **FASE 4 — Menu, contenuti e gestione delle immagini** (autorizzata dal committente).
@@ -18,22 +18,20 @@
 - Scansione segreti: 0 segnalazioni (controprova positiva).
 
 ## Attività da completare
-1. Attendere l'esito della CI GitHub (backend e frontend) sull'ultimo commit con codice e registrarlo in TEST_REPORT.
-2. Poi **stop** in attesa dell'approvazione del committente (la FASE 5 non va iniziata).
+- Nessuna per la FASE 4. **Stop** in attesa dell'approvazione del committente; la FASE 5 non va iniziata.
+- Da approvare: T-26 (upload attraverso il backend, revisione ADR-0004) e la proposta della sezione «Account» (FASE4_REPORT §7).
 
 ## File modificati non committati
-- nessuno dopo il commit di chiusura
+- nessuno
 
-## Test
-| Suite | Ultimo esito |
+## Test e CI
+| Suite | Esito |
 |---|---|
-| Backend unità (66) | ✅ |
-| Backend integrazione (222) | ✅ |
-| Playwright completo (59) | ✅ 59/59 (dopo la correzione del test della testata) |
+| Backend unità (66) + integrazione (222) | ✅ locale e CI (run 39279505939) |
+| Playwright completo (59) | ✅ locale e CI sull'ultimo commit (run 39280557623) |
 
 ## Errori da risolvere
-- Nessuno. Il test intermittente della testata del menu è stato analizzato e corretto (TEST_REPORT, difetto 4).
+- Nessuno.
 
 ## Prossima azione esatta
-`gh run list --repo antonio-de-santis-dev/FireFlies --branch fase-4/menu-media`: quando backend e frontend sono
-completati, scrivere l'esito in TEST_REPORT §CI, committare e fermarsi.
+Attendere l'approvazione della FASE 4. Dopo l'approvazione: creare `fase-5/prenotazioni` da `fase-4/menu-media`.
