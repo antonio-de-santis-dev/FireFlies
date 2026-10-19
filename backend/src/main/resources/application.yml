@@ -1,0 +1,41 @@
+# Configurazione comune a tutti i profili. Nessun segreto: credenziali solo da variabili d'ambiente.
+spring:
+  application:
+    name: fireflies-backend
+  profiles:
+    # Senza profilo esplicito si parte in sviluppo locale; in produzione SPRING_PROFILES_ACTIVE=prod.
+    default: local
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 10000 # millisecondi
+  flyway:
+    locations: classpath:db/migration
+    validate-on-migrate: true
+    clean-disabled: true
+  mvc:
+    problemdetails:
+      enabled: false # errori gestiti da it.fireflies.common.GlobalExceptionHandler
+
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+
+fireflies:
+  notifications:
+    sms:
+      provider: fake
+    email:
+      provider: fake

@@ -1,0 +1,11 @@
+# Sviluppo locale con il PostgreSQL di infra/compose.yaml.
+# La password non ha valore predefinito: va impostata in infra/.env (vedi infra/.env.example).
+spring:
+  datasource:
+    url: ${FIREFLIES_DB_URL:jdbc:postgresql://localhost:5432/fireflies}
+    username: ${FIREFLIES_DB_USER:fireflies}
+    password: ${FIREFLIES_DB_PASSWORD}
+
+logging:
+  level:
+    it.fireflies: DEBUG

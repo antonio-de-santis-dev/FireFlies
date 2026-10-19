@@ -1,0 +1,10 @@
+# Test di integrazione: il datasource arriva da Testcontainers (@ServiceConnection), mai da file.
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 24 # i test di concorrenza aprono molte transazioni insieme
+
+logging:
+  level:
+    it.fireflies: INFO
+    org.testcontainers: WARN

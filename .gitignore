@@ -1,0 +1,20 @@
+# Segreti locali
+.env
+*.env
+!.env.example
+
+# Build Java
+backend/target/
+*.class
+*.log
+
+# IDE e sistema
+.idea/
+.vscode/
+*.iml
+.DS_Store
+
+# Frontend (per quando verrà aggiunto)
+node_modules/
+dist/
+test-results/
