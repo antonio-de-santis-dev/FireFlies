@@ -16,3 +16,13 @@ server:
     session:
       cookie:
         secure: false
+
+fireflies:
+  media:
+    filesystem:
+      root: ${FIREFLIES_MEDIA_DIR:./data/media} # ignorata da git
+  # Contenuti DIMOSTRATIVI al primo avvio su database vuoto (menu con prezzi «demo», foto del mockup).
+  # Il database viene marcato come demo: con il profilo prod l'avvio si rifiuta (DemoDataGuard).
+  demo:
+    seed: ${FIREFLIES_DEMO_SEED:true}
+    assets-dir: ${FIREFLIES_DEMO_ASSETS_DIR:../frontend/public/assets/fireflies}

@@ -5,6 +5,7 @@
 
 # Build Java
 backend/target/
+backend/data/
 *.class
 *.log
 

@@ -19,6 +19,12 @@ spring:
   jackson:
     deserialization:
       fail-on-unknown-properties: true # campi non previsti (es. un "role" nel login) → 400
+      accept-float-as-int: false # un prezzo 6.5 in priceCents è un errore (400), non 6 centesimi
+  servlet:
+    multipart:
+      max-file-size: 5MB      # stesso limite di ImageProcessor e del vincolo ck_media_bytes
+      max-request-size: 6MB
+      file-size-threshold: 1MB
   session:
     timeout: 8h # inattività massima dei gestori (P-27)
     jdbc:
@@ -26,6 +32,8 @@ spring:
       cleanup-cron: "0 */5 * * * *"
 
 server:
+  tomcat:
+    max-swallow-size: 8MB # oltre il limite si risponde 413 invece di chiudere la connessione
   error:
     include-stacktrace: never
     include-message: never
@@ -56,6 +64,16 @@ fireflies:
       max-failures-per-ip: 20
       window: 15m
       lock-duration: 15m
+  media:
+    # filesystem = cartella locale (solo sviluppo e test); s3 = Cloudflare R2 / MinIO (credenziali solo da variabili)
+    storage: ${FIREFLIES_MEDIA_STORAGE:filesystem}
+    public-base-url: ${FIREFLIES_MEDIA_PUBLIC_URL:/media}
+    s3:
+      endpoint: ${FIREFLIES_S3_ENDPOINT:}
+      region: ${FIREFLIES_S3_REGION:auto}
+      bucket: ${FIREFLIES_S3_BUCKET:}
+      access-key-id: ${FIREFLIES_S3_ACCESS_KEY_ID:}
+      secret-access-key: ${FIREFLIES_S3_SECRET_ACCESS_KEY:}
   notifications:
     sms:
       provider: fake

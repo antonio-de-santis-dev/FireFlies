@@ -15,3 +15,9 @@ server:
     session:
       cookie:
         secure: false
+
+fireflies:
+  media:
+    storage: filesystem
+    filesystem:
+      root: ${java.io.tmpdir}/fireflies-test-media/${random.uuid}

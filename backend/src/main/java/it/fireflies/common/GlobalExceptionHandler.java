@@ -18,6 +18,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
@@ -99,6 +100,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemDetail problem = Problems.of(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST",
                 "Richiesta non leggibile", "Il corpo della richiesta non è un JSON valido per questa operazione.");
         return ResponseEntity.badRequest().headers(headers).body(problem);
+    }
+
+    /** Upload oltre il limite di Spring ({@code spring.servlet.multipart.*}): stesso messaggio del controllo applicativo. */
+    @Override
+    protected ResponseEntity<Object> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex,
+            HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ProblemDetail problem = Problems.of(HttpStatus.CONTENT_TOO_LARGE, "MEDIA_TOO_LARGE", "Foto troppo pesante",
+                "La foto pesa più di 5 MB: riducila (o esportala in JPG) e riprova.");
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).headers(headers).body(problem);
     }
 
     /** Gli errori standard di Spring MVC ricevono comunque {@code code} e {@code type} coerenti. */
