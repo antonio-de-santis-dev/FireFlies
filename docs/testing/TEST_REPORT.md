@@ -12,6 +12,8 @@
 | Frontend Playwright con backend e DB reali (funzionali 27 + accesso 10 + QA 9 + axe 2) | `cd frontend && npm run verifica` | 48 | ✅ 48/48 |
 | **Totale** | | **282** | ✅ |
 
+Gli stessi comandi girano anche in CI su GitHub Actions (`ubuntu-24.04`): workflow `backend` e `frontend` **verdi** sul branch `fase-3/autenticazione`.
+
 **Nessuna regressione**: i 190 test della FASE 2 sono tutti presenti e verdi. Due attese sono cambiate per effetto voluto della sicurezza
 e sono dichiarate qui: `ApplicationIT.endpointActuatorNonPubbliciChiusi` ora si aspetta `401` invece di `404` (gli endpoint actuator
 non pubblici sono chiusi dalla sicurezza prima ancora di cercarli) e `MigrationIT` si aspetta 8 migrazioni invece di 7 (V8: sessioni).

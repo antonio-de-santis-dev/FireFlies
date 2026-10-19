@@ -132,7 +132,7 @@ Dettaglio per verifica obbligatoria: [TEST_REPORT](../testing/TEST_REPORT.md).
 | L-5 | Build statica apribile con doppio clic | solo sito pubblico; per l'area gestori serve il backend (indicato nella pagina se il server non risponde) |
 | L-6 | IP del client dietro proxy | in `prod` si usano le intestazioni `X-Forwarded-*` del proxy (`forward-headers-strategy: framework`); da configurare con l'hosting (FASE 8) |
 | L-7 | Durata della sessione 8 h, blocco 5 tentativi / 15 min | valori proposti (P-21, P-27) e già attivi: **confermare** |
-| L-8 | CI frontend | aggiunta; il primo run su GitHub va controllato dopo il push (consuma minuti se la repository è privata) |
+| L-8 | CI su GitHub Actions | **verde** su `fase-3/autenticazione`: backend 234 test in ~1 min 15 s, frontend 48 test end-to-end con backend e PostgreSQL reali in ~4 min 10 s (run 39267771250). Consuma minuti del piano se la repository è privata |
 | L-9 | Screenshot e video del mockup | gli script sono aggiornati al login reale ma **non rigenerati** in questa fase (non richiesto) |
 
 ## 7. Prossima fase (non avviata)
