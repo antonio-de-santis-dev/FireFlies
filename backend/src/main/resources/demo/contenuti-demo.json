@@ -1,0 +1,520 @@
+{
+  "media": [
+    {
+      "key": "bartenderShaker",
+      "file": "foto/bartender-shaker-insegna.webp",
+      "alt": "Bartender versa un cocktail dallo shaker sotto l'insegna FireFlies",
+      "inGallery": true
+    },
+    {
+      "key": "tagliere",
+      "file": "foto/tagliere-aperitivo.webp",
+      "alt": "Tagliere da aperitivo con panini, focaccia, crudo e verdure",
+      "inGallery": true
+    },
+    {
+      "key": "banconeClienti",
+      "file": "foto/bancone-clienti-insegna.webp",
+      "alt": "Clienti al bancone sotto l'insegna dorata FIREFLIES, bottigliera illuminata di blu",
+      "inGallery": true
+    },
+    {
+      "key": "caliceLamponi",
+      "file": "foto/calice-lamponi-menta.webp",
+      "alt": "Calice decorato con drink chiaro, lamponi e menta fresca sul bancone",
+      "inGallery": true
+    },
+    {
+      "key": "djNotte",
+      "file": "foto/dj-notte-esterno.webp",
+      "alt": "DJ set di sera davanti al locale tra luci colorate e fumo",
+      "inGallery": true
+    },
+    {
+      "key": "ospiteCrostino",
+      "file": "foto/ospite-crostino.webp",
+      "alt": "Ospite con capelli blu assaggia un crostino con mortadella e pistacchio",
+      "inGallery": true
+    },
+    {
+      "key": "insegnaFermati",
+      "file": "foto/insegna-fermati.webp",
+      "alt": "Due ragazzi al tavolo sotto la scritta «Fermati. La giornata può aspettare. Il tuo momento no.»",
+      "inGallery": true
+    },
+    {
+      "key": "cocktailRosso",
+      "file": "foto/cocktail-rosso-bitter.webp",
+      "alt": "Cocktail rosso versato in una coppa tra bottiglie di bitter e vermouth",
+      "inGallery": true
+    },
+    {
+      "key": "tavolataFesta",
+      "file": "foto/tavolata-festa.webp",
+      "alt": "Tavolata di amici che festeggiano con le braccia alzate",
+      "inGallery": true
+    },
+    {
+      "key": "cappuccino",
+      "file": "foto/cappuccino-bancone.webp",
+      "alt": "Cappuccino in tazza Caffè Moreno con cornetto sul bancone",
+      "inGallery": true
+    },
+    {
+      "key": "djParete",
+      "file": "foto/dj-parete-lucciola.webp",
+      "alt": "DJ alla consolle davanti alla parete verde con la lucciola dorata",
+      "inGallery": true
+    },
+    {
+      "key": "longDrinkBlu",
+      "file": "foto/long-drink-blu.webp",
+      "alt": "Long drink azzurro con rosmarino e ciotola di stuzzichini accanto a una lampada",
+      "inGallery": true
+    },
+    {
+      "key": "tavoloInterni",
+      "file": "foto/tavolo-tagliere-interni.webp",
+      "alt": "Ragazza al tavolo con tagliere e birra, parete a listelli di legno e parete verde",
+      "inGallery": true
+    },
+    {
+      "key": "crostiniMani",
+      "file": "foto/crostini-mani.webp",
+      "alt": "Mani tatuate che prendono un crostino con cavolo viola, accanto a crostino con mortadella",
+      "inGallery": true
+    },
+    {
+      "key": "bartenderBraccia",
+      "file": "foto/bartender-braccia-alzate.webp",
+      "alt": "Bartender con la maglia FireFlies alza le braccia dietro il bancone in luce blu",
+      "inGallery": true
+    },
+    {
+      "key": "servizioTagliere",
+      "file": "foto/servizio-tagliere-bancone.webp",
+      "alt": "Un ragazzo dello staff porge un tagliere a un cliente al bancone",
+      "inGallery": true
+    },
+    {
+      "key": "furgoneCompleanno",
+      "file": "foto/furgone-compleanno-fireflies.webp",
+      "alt": "Furgone d’epoca di sera con lo striscione «Buon compleanno FireFlies»",
+      "inGallery": true
+    },
+    {
+      "key": "cocktailAmbrato",
+      "file": "foto/cocktail-ambrato-finger.webp",
+      "alt": "Cocktail ambrato in tumbler cesellato con finger food sul bancone",
+      "inGallery": true
+    },
+    {
+      "key": "amiciMaglia",
+      "file": "foto/amici-maglia-fireflies.webp",
+      "alt": "Due amici in posa durante una serata, uno con la maglia FireFlies",
+      "inGallery": true
+    },
+    {
+      "key": "birraRustici",
+      "file": "foto/birra-rustici.webp",
+      "alt": "Birra versata in un bicchiere accanto a due rustici dorati",
+      "inGallery": true
+    },
+    {
+      "key": "microfono",
+      "file": "foto/microfono-ingresso.webp",
+      "alt": "Ragazzi al microfono all'ingresso durante un evento",
+      "inGallery": true
+    },
+    {
+      "key": "tumblerLamponi",
+      "file": "foto/tumbler-lamponi-alto.webp",
+      "alt": "Bicchiere con ghiaccio, spiedino di lamponi e menta visto dall'alto",
+      "inGallery": true
+    },
+    {
+      "key": "djCappello",
+      "file": "foto/dj-cappello-consolle.webp",
+      "alt": "DJ con cappellino alla consolle davanti alla lucciola dorata",
+      "inGallery": true
+    },
+    {
+      "key": "bartenderTagliere",
+      "file": "foto/bartender-prepara-tagliere.webp",
+      "alt": "Bartender con occhiali scuri che completa un tagliere davanti alla bottigliera",
+      "inGallery": true
+    },
+    {
+      "key": "consolle",
+      "file": "foto/consolle-dettaglio.webp",
+      "alt": "Mano sulla consolle Pioneer DJ illuminata",
+      "inGallery": true
+    },
+    {
+      "key": "djSet",
+      "file": "foto/dj-set-ingresso.webp",
+      "alt": "Due ragazzi alla consolle per un DJ set all'ingresso del locale, sotto l'insegna FireFlies",
+      "inGallery": true
+    },
+    {
+      "key": "titolare-gialloFronte",
+      "file": "titolari/titolare-giallo-fronte.webp",
+      "alt": "Titolare con maglia gialla FireFlies e occhiali da sole",
+      "inGallery": false
+    },
+    {
+      "key": "titolare-gialloRetro",
+      "file": "titolari/titolare-giallo-retro.webp",
+      "alt": "Retro della maglia gialla: «Il mio gruppo sanguigno è A-PERITIVO»",
+      "inGallery": false
+    },
+    {
+      "key": "titolare-arancioFronte",
+      "file": "titolari/titolare-arancio-fronte.webp",
+      "alt": "Titolare con maglia arancione FireFlies, braccia aperte e sorriso",
+      "inGallery": false
+    },
+    {
+      "key": "titolare-arancioRetro",
+      "file": "titolari/titolare-arancio-retro.webp",
+      "alt": "Retro della maglia arancione: «Dammi un buon mojito per restare»",
+      "inGallery": false
+    },
+    {
+      "key": "titolare-verdeFronte",
+      "file": "titolari/titolare-verde-fronte.webp",
+      "alt": "Titolare con maglia verde FireFlies che indica sorridendo",
+      "inGallery": false
+    },
+    {
+      "key": "titolare-verdeRetro",
+      "file": "titolari/titolare-verde-retro.webp",
+      "alt": "Retro della maglia verde con la lucciola e una frase scherzosa",
+      "inGallery": false
+    }
+  ],
+  "categories": [
+    {
+      "slug": "colazione",
+      "name": "Colazione",
+      "hint": "Caffetteria e dolce del mattino"
+    },
+    {
+      "slug": "aperitivi",
+      "name": "Aperitivi",
+      "hint": "Taglieri e crostini da condividere"
+    },
+    {
+      "slug": "food",
+      "name": "Food",
+      "hint": "Salato da forno e qualcosa al volo"
+    },
+    {
+      "slug": "cocktail",
+      "name": "Cocktail",
+      "hint": "Dal bancone, con lo shaker"
+    },
+    {
+      "slug": "analcolici",
+      "name": "Analcolici",
+      "hint": "Per chi guida o preferisce così"
+    },
+    {
+      "slug": "birre",
+      "name": "Birre",
+      "hint": "Alla spina o in bottiglia"
+    }
+  ],
+  "items": [
+    {
+      "category": "colazione",
+      "name": "Cappuccino",
+      "description": "Espresso e latte montato, servito al bancone. In foto la tazza Caffè Moreno.",
+      "ingredients": [
+        "Caffè espresso",
+        "Latte"
+      ],
+      "demoPriceCents": 150,
+      "photo": "cappuccino",
+      "visible": true
+    },
+    {
+      "category": "colazione",
+      "name": "Cornetto",
+      "description": "Il compagno del cappuccino. Farciture disponibili da confermare.",
+      "ingredients": [],
+      "demoPriceCents": 130,
+      "photo": null,
+      "visible": true
+    },
+    {
+      "category": "colazione",
+      "name": "Caffè espresso",
+      "description": "Il rito del mattino, anche in versione macchiato o al ginseng se previsto.",
+      "ingredients": [
+        "Caffè"
+      ],
+      "demoPriceCents": 110,
+      "photo": null,
+      "visible": true
+    },
+    {
+      "category": "aperitivi",
+      "name": "Tagliere FireFlies",
+      "description": "Panini mignon, focaccia, crudo, verdure e sfizi da condividere al tavolo.",
+      "ingredients": [
+        "Panini mignon",
+        "Focaccia",
+        "Prosciutto crudo",
+        "Verdure",
+        "Formaggi"
+      ],
+      "demoPriceCents": 1400,
+      "photo": "tagliere",
+      "visible": true
+    },
+    {
+      "category": "aperitivi",
+      "name": "Crostino mortadella e pistacchio",
+      "description": "Pane ai cereali, crema morbida, mortadella e granella di pistacchio.",
+      "ingredients": [
+        "Pane ai cereali",
+        "Crema di formaggio",
+        "Mortadella",
+        "Pistacchio"
+      ],
+      "demoPriceCents": 300,
+      "photo": "ospiteCrostino",
+      "visible": true
+    },
+    {
+      "category": "aperitivi",
+      "name": "Crostino al cavolo viola",
+      "description": "Crema bianca, cavolo viola e una riduzione scura. Ricetta da confermare.",
+      "ingredients": [
+        "Pane",
+        "Crema di formaggio",
+        "Cavolo viola"
+      ],
+      "demoPriceCents": 300,
+      "photo": "crostiniMani",
+      "visible": true
+    },
+    {
+      "category": "food",
+      "name": "Rustico",
+      "description": "Sfoglia dorata dal forno, da accompagnare a una birra fresca.",
+      "ingredients": [
+        "Pasta sfoglia"
+      ],
+      "demoPriceCents": 200,
+      "photo": "birraRustici",
+      "visible": true
+    },
+    {
+      "category": "food",
+      "name": "Panini mignon",
+      "description": "Piccoli, farciti al momento: gli stessi che finiscono sul tagliere dell'aperitivo.",
+      "ingredients": [
+        "Pane al latte",
+        "Salumi",
+        "Verdure"
+      ],
+      "demoPriceCents": 600,
+      "photo": "bartenderTagliere",
+      "visible": true
+    },
+    {
+      "category": "cocktail",
+      "name": "Calice lamponi e menta",
+      "description": "Drink chiaro e frizzante con spiedino di lamponi e menta fresca.",
+      "ingredients": [
+        "Lamponi",
+        "Menta fresca",
+        "Ghiaccio"
+      ],
+      "demoPriceCents": 800,
+      "photo": "caliceLamponi",
+      "visible": true
+    },
+    {
+      "category": "cocktail",
+      "name": "Rosso al bitter",
+      "description": "Un classico rosso, amaro e profumato, servito in coppa. In foto bitter e vermouth.",
+      "ingredients": [
+        "Bitter",
+        "Vermouth rosso",
+        "Scorza di arancia"
+      ],
+      "demoPriceCents": 800,
+      "photo": "cocktailRosso",
+      "visible": true
+    },
+    {
+      "category": "cocktail",
+      "name": "Long drink blu",
+      "description": "Azzurro, alto, con rametto di rosmarino e bordo zuccherato.",
+      "ingredients": [
+        "Rosmarino",
+        "Ghiaccio"
+      ],
+      "demoPriceCents": 800,
+      "photo": "longDrinkBlu",
+      "visible": true
+    },
+    {
+      "category": "cocktail",
+      "name": "Sour ambrato",
+      "description": "Ambrato, con schiuma morbida e decorazione croccante in superficie.",
+      "ingredients": [
+        "Ghiaccio"
+      ],
+      "demoPriceCents": 900,
+      "photo": "cocktailAmbrato",
+      "visible": true
+    },
+    {
+      "category": "analcolici",
+      "name": "Analcolico della casa",
+      "description": "Fresco, colorato e senza alcol: la ricetta la decide il bartender.",
+      "ingredients": [],
+      "demoPriceCents": 500,
+      "photo": null,
+      "visible": true
+    },
+    {
+      "category": "analcolici",
+      "name": "Spremuta",
+      "description": "Disponibilità stagionale da confermare.",
+      "ingredients": [
+        "Agrumi"
+      ],
+      "demoPriceCents": 350,
+      "photo": null,
+      "visible": false
+    },
+    {
+      "category": "birre",
+      "name": "Birra",
+      "description": "Versata al momento. Etichette e formati da confermare con il locale.",
+      "ingredients": [
+        "Birra"
+      ],
+      "demoPriceCents": 450,
+      "photo": "birraRustici",
+      "visible": true
+    }
+  ],
+  "content": {
+    "heroClaim": "Dal primo caffè all'ultimo brindisi.",
+    "heroLead": "Colazioni al bancone, aperitivi abbondanti, cocktail e serate con DJ set. A Martano, nel cuore del Salento.",
+    "heroPhoto": "bartenderShaker",
+    "storyTitle": "Perché «FireFlies»",
+    "storyText": "Qui va il racconto vero: chi ha aperto il locale, quando, perché la lucciola. Non inventiamo date né nomi dei proprietari: questo spazio è pensato per 3–4 frasi in prima persona, con il tono ironico dei social.",
+    "owners": [
+      {
+        "name": "Nome da inserire",
+        "roleLabel": "Titolare",
+        "description": "Due o tre righe su chi è, cosa fa al Fire e cosa lo fa ridere. Da scrivere con lui: non inventiamo biografie.",
+        "motto": "Il mio gruppo sanguigno è A‑PERITIVO.",
+        "color": "giallo",
+        "front": "titolare-gialloFronte",
+        "back": "titolare-gialloRetro"
+      },
+      {
+        "name": "Nome da inserire",
+        "roleLabel": "Titolare",
+        "description": "Il suo posto preferito nel locale, il drink che consiglia, il momento della giornata in cui lo trovi.",
+        "motto": "Dammi un buon mojito per restare.",
+        "color": "arancio",
+        "front": "titolare-arancioFronte",
+        "back": "titolare-arancioRetro"
+      },
+      {
+        "name": "Nome da inserire",
+        "roleLabel": "Titolare",
+        "description": "Come è nata l’idea di FireFlies e cosa non deve mai mancare al bancone.",
+        "motto": "",
+        "color": "verde",
+        "front": "titolare-verdeFronte",
+        "back": "titolare-verdeRetro"
+      }
+    ],
+    "staff": [
+      {
+        "name": "Nome da inserire",
+        "roleLabel": "Al bancone dei cocktail",
+        "photo": "bartenderShaker"
+      },
+      {
+        "name": "Nome da inserire",
+        "roleLabel": "Taglieri e aperitivo",
+        "photo": "bartenderTagliere"
+      },
+      {
+        "name": "Nome da inserire",
+        "roleLabel": "Le serate al bancone",
+        "photo": "bartenderBraccia"
+      }
+    ],
+    "menuHero": {
+      "photos": [
+        "caliceLamponi",
+        "tagliere",
+        "cocktailRosso",
+        "tavoloInterni",
+        "cappuccino"
+      ],
+      "intervalSec": 60
+    }
+  },
+  "hours": [
+    {
+      "isoDay": 1,
+      "opensAt": "07:00",
+      "closesAt": "23:00"
+    },
+    {
+      "isoDay": 2,
+      "opensAt": "07:00",
+      "closesAt": "23:00"
+    },
+    {
+      "isoDay": 3,
+      "opensAt": null,
+      "closesAt": null
+    },
+    {
+      "isoDay": 4,
+      "opensAt": "07:00",
+      "closesAt": "23:00"
+    },
+    {
+      "isoDay": 5,
+      "opensAt": "07:00",
+      "closesAt": "23:00"
+    },
+    {
+      "isoDay": 6,
+      "opensAt": "07:00",
+      "closesAt": "23:00"
+    },
+    {
+      "isoDay": 7,
+      "opensAt": "07:00",
+      "closesAt": "23:00"
+    }
+  ],
+  "announcements": [
+    {
+      "text": "Avviso d'esempio del titolare: chiusure, serate e novità.",
+      "tone": "INFO",
+      "active": true
+    },
+    {
+      "text": "Esempio: chiusi per ferie dal 3 al 10 novembre.",
+      "tone": "IMPORTANT",
+      "active": false
+    }
+  ]
+}

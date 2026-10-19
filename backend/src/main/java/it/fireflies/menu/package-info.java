@@ -1,2 +1,2 @@
-/** Menu: categorie, voci, prezzi in centesimi, allergeni UE. Implementazione in FASE 4. */
+/** Menu: categorie, voci, prezzi in centesimi, allergeni UE verificati dai gestori, lettura pubblica con ETag. */
 package it.fireflies.menu;

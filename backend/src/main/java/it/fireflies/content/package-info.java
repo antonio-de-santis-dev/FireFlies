@@ -1,2 +1,2 @@
-/** Contenuti del sito: impostazioni, orari pubblici, sezioni, titolari, staff, hero, avvisi. Implementazione in FASE 4. */
+/** Contenuti del sito: testi della home e della storia, titolari, staff, testata del menu, orari e contatti, avvisi. */
 package it.fireflies.content;
