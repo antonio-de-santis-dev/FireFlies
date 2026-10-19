@@ -1,6 +1,6 @@
 # DECISION LOG — FireFlies Aperitif backend
 
-> Aggiornato: 19/10/2026 · Fase: **2, backend foundation** · Report: [FASE2_REPORT](FASE2_REPORT.md) · FASE 1 approvata ([FASE1_FINAL_REVIEW](FASE1_FINAL_REVIEW.md)).
+> Aggiornato: 19/10/2026 · Fase: **3, autenticazione** · Report: [FASE3_REPORT](FASE3_REPORT.md) · FASE 2 approvata ([FASE2_REPORT](FASE2_REPORT.md)).
 > Legenda: **C** = consolidata dal committente · **A** = approvata dal master plan · **P** = proposta, **attende la tua approvazione** · **Q** = dato da chiedere ai titolari · ~~barrato~~ = superata.
 > Precedenza in caso di contrasto: decisioni consolidate > master plan > mockup > documenti precedenti.
 
@@ -29,6 +29,11 @@
 | C-19 | Blocco predefinito per tavoli con posti insufficienti; eccezione motivata **riservata al titolare** (ex P-08) | 19/10 |
 | C-20 | Gestione degli esiti incerti delle notifiche e nessun invio SMS reale confermati (ex P-34, P-37) | 19/10 |
 | C-21 | **Strategia Git obbligatoria**: un branch per fase derivato dal precedente approvato, nessun merge automatico, `main` intoccabile senza autorizzazione, nessun force-push (MASTER_PLAN §18, sezione 1-bis) | 19/10 |
+| C-22 | **FASE 2 approvata**; FASE 3 autorizzata (autenticazione e sicurezza dei gestori) | 19/10 |
+| C-23 | Spring Security + sessioni server-side con **Spring Session JDBC** su PostgreSQL, cookie HttpOnly/Secure in HTTPS/SameSite, CSRF, hash robusto, ruoli OWNER/STAFF | 19/10 |
+| C-24 | Il ruolo **non si sceglie al login**: lo assegna il backend dall'account | 19/10 |
+| C-25 | Primo OWNER creato con una **procedura amministrativa**; nessuna credenziale fissa nel codice | 19/10 |
+| C-26 | Area gestori non pubblicizzata con link, ma protetta dal backend | 19/10 |
 
 ## 1-bis. Strategia Git (C-21, regola definitiva)
 
@@ -37,8 +42,8 @@
 | `main` | — | solo README iniziale; non si modifica senza autorizzazione |
 | `fase-0/audit` | `main` | completato e approvato |
 | `fase-1/progettazione` | `fase-0/audit` | completato e approvato |
-| `fase-2/backend-foundation` | `fase-1/progettazione` | in revisione (questa fase) |
-| `fase-3/autenticazione` | `fase-2/backend-foundation` | da creare dopo approvazione |
+| `fase-2/backend-foundation` | `fase-1/progettazione` | completato e approvato |
+| `fase-3/autenticazione` | `fase-2/backend-foundation` | in revisione (questa fase) |
 | `fase-4/menu-media` | `fase-3/autenticazione` | — |
 | `fase-5/prenotazioni` | `fase-4/menu-media` | — |
 | `fase-6/eventi-capienza`, `fase-7/notifiche`, `fase-8/hardening-deploy` | fase precedente | nomi proposti |
@@ -72,6 +77,24 @@ Regole: verificare stato e branch prima di iniziare; branch precedente completo 
 | T-09 | Dati iniziali: zona «Locale» **spenta con capienza 0**, prenotazioni web **spente**, template notifiche **inattivi**, nessun utente, indirizzo confermato | nessun dato inventato attivo |
 | T-10 | Nessun provider reale: `SmsGateway`/`EmailGateway` solo `Fake`; avvio bloccato se si configura altro (in `local`/`test` sempre, in `prod` finché non esiste l'adattatore approvato) | C-06, C-20 |
 | T-11 | CI minima GitHub Actions (`./mvnw verify` su Ubuntu con Docker) sui branch `fase-*` | test di integrazione ripetibili fuori da questo container |
+
+## 2-ter. Decisioni tecniche applicate in FASE 3
+
+| ID | Decisione | Motivo / verifica |
+|---|---|---|
+| T-12 | Login JSON (`POST /api/v1/auth/login`) gestito da un servizio, non dal form login di Spring | risposte problem+json, limitazione tentativi e audit nello stesso punto |
+| T-13 | Sessione in PostgreSQL (Spring Session JDBC 4.1.1), cookie `FF_SESSION`, timeout **8 h** di inattività, pulizia ogni 5 min; schema copiato dalla libreria nella migrazione **V8** | sopravvive ai riavvii, nessun Redis (P-15, P-27) |
+| T-14 | Il «principal» in sessione è l'**id** dell'account: cambio di ruolo, disattivazione e reset password **chiudono tutte le sessioni** dell'account | il ruolo in sessione non può restare più ampio di quello sul DB |
+| T-15 | CSRF «SPA» di Spring Security 7 (`csrf.spa()`): cookie `XSRF-TOKEN` leggibile + header `X-XSRF-TOKEN`; obbligatorio anche per login e logout; token e id di sessione rigenerati al login | anti login-CSRF e session fixation |
+| T-16 | Password: bcrypt costo 12 con prefisso `{bcrypt}` (Argon2id possibile senza migrazione); minimo 12 caratteri, massimo 72 byte, non ripetitiva, senza il nome dell'email | P-16; bcrypt ignora i byte oltre il 72° |
+| T-17 | Limite tentativi: 5 per email (anche inesistente) e 20 per IP in 15 min → `429` + `Retry-After`; blocco dell'account anche su DB (`locked_until`) | nessuna enumerazione degli account; il blocco resiste ai riavvii (P-21) |
+| T-18 | `GET /auth/session` sempre `200` con `authenticated` e `reason: SESSION_EXPIRED` | il frontend sa se mostrare il login senza errori 401 in console |
+| T-19 | Regole URL (`/api/v1/admin/users/**` OWNER, `/api/v1/admin/**` STAFF+, tutto il resto chiuso) **più** `@PreAuthorize` sui controller | difesa in profondità; percorsi sconosciuti → 401/403, non 404 |
+| T-20 | Audit: accessi riusciti/falliti/bloccati, blocco account, logout, accesso negato, cambio/reset password, creazione e modifica account, primo titolare; mai password né email tentate | C-26, privacy |
+| T-21 | Primo titolare: comando `java -jar … --fireflies.bootstrap.create-owner=true` con password chiesta nel terminale o da `FIREFLIES_BOOTSTRAP_PASSWORD`; rifiutata se passata come argomento; lock consultivo PostgreSQL contro esecuzioni parallele | C-25 |
+| T-22 | Gestione account via API per il titolare (`/api/v1/admin/users`); **ultimo titolare attivo non rimovibile** | minimo indispensabile per assegnare i ruoli in modo sicuro; la schermata arriva più avanti |
+| T-23 | Mockup copiato in `frontend/` senza modifiche (commit separato), poi solo: client API, login reale, verifica della sessione, logout reale, testi della pagina di accesso e della barra dell'area gestori | C-08, P-28 |
+| T-24 | Test Playwright contro backend e PostgreSQL **reali** (`frontend/scripts/e2e.mjs`), credenziali casuali a ogni esecuzione; CI frontend su GitHub Actions | nessuna credenziale nei test |
 
 ## 3. Proposte — stato dopo l'approvazione della FASE 1
 

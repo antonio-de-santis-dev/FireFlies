@@ -4,7 +4,7 @@ info:
   license:
     name: Proprietario — uso riservato
     identifier: LicenseRef-Proprietary
-  version: 1.0.0-draft.2
+  version: 1.0.0-draft.3
   summary: Contratto V1 dei flussi principali (prenotazioni, autenticazione). Bozza FASE 1, non implementata.
   description: |
     Bozza di progettazione. Gli altri endpoint (menu, media, contenuti, configurazione) sono elencati in
@@ -81,10 +81,10 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [headerName, token]
+                required: [headerName, cookieName]
                 properties:
                   headerName: { type: string, const: X-XSRF-TOKEN }
-                  token: { type: string }
+                  cookieName: { type: string, const: XSRF-TOKEN }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /auth/login:
@@ -116,6 +116,25 @@ paths:
                   user: { $ref: '#/components/schemas/CurrentUser' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/session:
+    get:
+      tags: [auth]
+      operationId: getSession
+      summary: Stato della sessione (sempre 200)
+      responses:
+        '200':
+          description: Autenticato oppure no; reason SESSION_EXPIRED se la sessione presentata non è più valida
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authenticated]
+                properties:
+                  authenticated: { type: boolean }
+                  user: { oneOf: [ { $ref: '#/components/schemas/CurrentUser' }, { type: 'null' } ] }
+                  reason: { type: [string, 'null'], enum: [SESSION_EXPIRED, null] }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /auth/logout:
@@ -652,8 +671,9 @@ components:
 
     CurrentUser:
       type: object
-      required: [id, displayName, role]
+      required: [id, email, displayName, role]
       properties:
         id: { type: string, format: uuid }
+        email: { type: string, format: email }
         displayName: { type: string }
         role: { type: string, enum: [OWNER, STAFF] }

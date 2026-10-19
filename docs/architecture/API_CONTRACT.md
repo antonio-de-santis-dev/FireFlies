@@ -101,17 +101,29 @@ Header: `Idempotency-Key: 3a9e5d0c-…` (UUID, obbligatorio).
 ```
 Ripetizione con stessa chiave e stessi dati → `200` con lo stesso corpo. Errori: `400 IDEMPOTENCY_KEY_REQUIRED`, `409 DUPLICATE_REQUEST`, `422 …` (vedi tabella), `429`.
 
-## 3. Autenticazione
+## 3. Autenticazione (implementata in FASE 3)
+
+| Metodo e percorso | Accesso | Descrizione |
+|---|---|---|
+| `GET /auth/csrf` | pubblico | imposta il cookie `XSRF-TOKEN` (leggibile dal frontend) e restituisce `{ headerName: "X-XSRF-TOKEN", cookieName: "XSRF-TOKEN" }`; il valore del cookie va rimandato nell'header in ogni scrittura |
+| `POST /auth/login` | pubblico + CSRF | `{ email, password }` → `200 { user: { id, email, displayName, role } }` e cookie `FF_SESSION`. Campi in più (es. `role`) → `400 MALFORMED_REQUEST`. Errori: `401 INVALID_CREDENTIALS` (stesso testo per email inesistente, password errata, account disattivato), `429 RATE_LIMITED` con `Retry-After`, `403 CSRF_INVALID` |
+| `GET /auth/session` | pubblico | sempre `200`: `{ authenticated, user, reason }`; `reason = "SESSION_EXPIRED"` se il browser presentava una sessione scaduta o chiusa (usato dal frontend senza generare errori in console) |
+| `GET /auth/me` | autenticato | `200 { id, email, displayName, role }`; altrimenti `401 UNAUTHENTICATED` o `401 SESSION_EXPIRED` |
+| `POST /auth/logout` | CSRF | `204`; sessione cancellata dal database, cookie eliminato |
+| `POST /auth/password` | autenticato + CSRF | `{ currentPassword, newPassword }` → `204`; chiude le altre sessioni dell'account. Errori: `422 CURRENT_PASSWORD_WRONG`, `422 WEAK_PASSWORD` |
+
+**Regole**: il ruolo non si sceglie mai al login, viene dall'account. Nuovo id di sessione e nuovo token CSRF a ogni login (anti session fixation). Sessione scaduta dopo 8 ore di inattività. 5 tentativi falliti per email (anche inesistente) o 20 per IP in 15 minuti → blocco di 15 minuti; l'account resta bloccato anche dopo un riavvio (colonna `locked_until`). Password: almeno 12 caratteri, massimo 72 byte, non ripetitiva, senza il nome dell'email; hash bcrypt costo 12.
+
+### Gestione degli account (solo OWNER)
 
 | Metodo e percorso | Descrizione |
 |---|---|
-| `GET /auth/csrf` | imposta il cookie `XSRF-TOKEN` e restituisce `{ headerName, token }` |
-| `POST /auth/login` | `{ email, password }` → `200 { user: { id, displayName, role } }`; errori `401 INVALID_CREDENTIALS` (generico), `429 RATE_LIMITED` |
-| `POST /auth/logout` | `204`, sessione invalidata |
-| `GET /auth/me` | `200 { id, displayName, role }` oppure `401` |
-| `POST /auth/password` | cambio password autenticato `{ currentPassword, newPassword }` → `204` |
+| `GET /admin/users` | elenco `{ id, email, displayName, role, active, lastLoginAt, lockedUntil, version }` (mai hash) |
+| `POST /admin/users` | `{ email, displayName, role, password }` → `201`. Errori: `409 EMAIL_TAKEN`, `422 WEAK_PASSWORD`, `400` ruolo inesistente |
+| `PATCH /admin/users/{id}` | `{ version, displayName?, role?, active? }`; cambio di ruolo o stato → **tutte le sessioni dell'account chiuse**. Errori: `409 VERSION_CONFLICT`, `409 LAST_OWNER` (deve restare almeno un titolare attivo) |
+| `POST /admin/users/{id}/password` | `{ newPassword }` → `204`; sblocca l'account e chiude le sue sessioni |
 
-Login: dopo 5 errori per account → blocco 15 minuti; limite anche per IP. Rigenerazione dell'id di sessione al login (anti session fixation). Sessione: scadenza per inattività 8 h (P-27). Reset password: OWNER reimposta quella dello STAFF; reset self-service via email solo quando il provider email è attivo (FASE 7).
+STAFF su questi endpoint → `403 FORBIDDEN` (registrato nell'audit come `ACCESS_DENIED`). Il primo titolare non si crea via API: procedura amministrativa (LOCAL_SETUP §3).
 
 ## 4. Area gestori — prenotazioni
 

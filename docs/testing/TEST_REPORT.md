@@ -1,4 +1,55 @@
-# Report dei test — FASE 2 (backend foundation)
+# Report dei test — backend e frontend
+
+> Aggiornato in **FASE 3** (autenticazione) il 19/10/2026. In fondo resta il report della FASE 2.
+> Ambiente: OpenJDK 21.0.12, Maven 3.9.11, Node 22, Playwright 1.56.1 (Chromium), Docker 29.8.2, PostgreSQL **17.11**.
+
+## FASE 3 — Riepilogo
+
+| Suite | Comando | Test | Esito |
+|---|---|---|---|
+| Backend unità e slice | `cd backend && ./mvnw -B clean verify` | 40 | ✅ 40/40 |
+| Backend integrazione, sicurezza, concorrenza (PostgreSQL reale) | stesso comando | 194 | ✅ 194/194 |
+| Frontend Playwright con backend e DB reali (funzionali 27 + accesso 10 + QA 9 + axe 2) | `cd frontend && npm run verifica` | 48 | ✅ 48/48 |
+| **Totale** | | **282** | ✅ |
+
+**Nessuna regressione**: i 190 test della FASE 2 sono tutti presenti e verdi. Due attese sono cambiate per effetto voluto della sicurezza
+e sono dichiarate qui: `ApplicationIT.endpointActuatorNonPubbliciChiusi` ora si aspetta `401` invece di `404` (gli endpoint actuator
+non pubblici sono chiusi dalla sicurezza prima ancora di cercarli) e `MigrationIT` si aspetta 8 migrazioni invece di 7 (V8: sessioni).
+I 38 test del mockup (27 funzionali + 9 QA + 2 axe) girano ora contro il backend reale: cambiati solo i passi di accesso
+(email e password vere al posto della scelta del ruolo).
+
+### Verifiche obbligatorie della FASE 3
+
+| Verifica | Test | Esito |
+|---|---|---|
+| Credenziali corrette e scorrette | `AuthenticationIT` (corrette, maiuscole/spazi, password errata = email inesistente = account disattivato), `auth.spec` «credenziali sbagliate» | ✅ |
+| Sessioni scadute | `AuthenticationIT.sessioneScadutaPerInattivita` (9 h di inattività → `401 SESSION_EXPIRED`), `timeoutDellaSessioneDiOttoOre`, `auth.spec` «sessione scaduta» (ritorno all'accesso con avviso) | ✅ |
+| Logout | `AuthenticationIT.logoutChiudeLaSessione…` (anche un cookie rubato non vale più, sessione cancellata dal DB), `auth.spec` «esci» | ✅ |
+| CSRF | login senza token / con token falso → `403 CSRF_INVALID`; scritture autenticate senza token → `403`; token rinnovato dopo il login; `auth.spec` richiesta dal browser senza header → `403` | ✅ |
+| Accesso anonimo agli endpoint riservati | `/auth/me`, `/admin/users`, `/admin/menu`, percorsi sconosciuti → `401`; `auth.spec` pagina riservata → login, API → `401` | ✅ |
+| Ruoli OWNER e STAFF | `UserAdministrationIT` (staff `403` + audit `ACCESS_DENIED`, titolare `200`; staff autorizzato sull'area gestori ma non su quella del titolare), `auth.spec` titolare/staff, anche chiamando le API aggirando la UI | ✅ |
+| Tentativi ripetuti | 5 errori → `429` con `Retry-After` anche con password giusta; blocco persistente dopo un riavvio; sblocco a scadenza; email inesistente limitata allo stesso modo; limite per IP (20); `LoginAttemptLimiterTest`; `auth.spec` «troppi tentativi» | ✅ |
+| Creazione del primo OWNER | `OwnerBootstrapIT` (una sola volta, dati non validi, due procedure in parallelo → un solo titolare, procedura da riga di comando con variabile d'ambiente, password come argomento rifiutata) + prova manuale **interattiva** in un terminale (password non visibile, uscita 0) | ✅ |
+| Impedimento dell'assegnazione arbitraria dei ruoli | login con campo `role` → `400`; nessuna scelta di ruolo nella pagina (`auth.spec`); staff che prova a promuoversi o a creare un titolare → `403`; ruolo cambiato dal titolare → sessioni dell'account chiuse | ✅ |
+| Nessuna regressione dei 190 test precedenti | vedi sopra | ✅ |
+
+### Altre verifiche di sicurezza
+- Password salvate come `{bcrypt}$2a$12$…`; nessun hash nelle risposte; né password né email tentate nell'audit.
+- Id di sessione imposto da un attaccante non adottato (session fixation).
+- Cookie `FF_SESSION` `HttpOnly`, `SameSite=Lax`, non leggibile da JavaScript (verificato anche nel browser).
+- Intestazioni `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Content-Security-Policy` con `frame-ancestors 'none'`, `Cache-Control: no-store`.
+- Ultimo titolare non rimovibile; versione vecchia → `409`; reset e cambio password chiudono le sessioni.
+- Scansione segreti (secretlint) e prova reale del flusso locale documentato (procedura interattiva, backend, `npm run dev`, login attraverso il proxy di Vite).
+
+### Difetto trovato dai test end-to-end e corretto
+La procedura del primo titolare rifiutava anche la variabile d'ambiente `FIREFLIES_BOOTSTRAP_PASSWORD`: Spring la espone anche come
+proprietà `fireflies.bootstrap.password`, che il controllo «niente password negli argomenti» bloccava. Il test Java non lo vedeva perché
+simulava la variabile con una proprietà di sistema. Corretto il controllo (solo argomenti della riga di comando) e il test, che ora usa
+una vera sorgente di variabili d'ambiente.
+
+---
+
+# Report FASE 2 (storico)
 
 > Eseguito il **19/10/2026** nel container di sviluppo: OpenJDK 21.0.12, Maven 3.9.11 (wrapper), Docker 29.8.2, PostgreSQL **17.11** (`postgres:17-alpine@sha256:b0f9560a…`) avviato da Testcontainers 2.0.5.
 > Comando: `cd backend && ./mvnw -B clean verify` → **BUILD SUCCESS** in 39 s. Tutti i numeri qui sotto vengono da quella esecuzione.
