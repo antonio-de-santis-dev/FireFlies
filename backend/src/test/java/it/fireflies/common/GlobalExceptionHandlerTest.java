@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.ServerErrorMessage;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Contratto degli errori (API_CONTRACT §1): problem+json, codice stabile, nessun dettaglio interno. */
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.ProbeController.class)
+@AutoConfigureMockMvc(addFilters = false) // qui si verifica solo la traduzione degli errori, non la sicurezza
 @Import({GlobalExceptionHandlerTest.ProbeController.class, GlobalExceptionHandler.class})
 class GlobalExceptionHandlerTest {
 

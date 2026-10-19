@@ -42,8 +42,8 @@ class ApplicationIT extends PostgresIntegrationTest {
 
     @Test
     void endpointActuatorNonPubbliciChiusi() throws Exception {
-        mvc.perform(get("/actuator/env")).andExpect(status().isNotFound());
-        mvc.perform(get("/actuator/beans")).andExpect(status().isNotFound());
+        mvc.perform(get("/actuator/env")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/actuator/beans")).andExpect(status().isUnauthorized());
     }
 
     @Test

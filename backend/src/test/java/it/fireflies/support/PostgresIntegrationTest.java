@@ -8,11 +8,13 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import it.fireflies.security.LoginAttemptLimiter;
+
 /**
  * Base dei test di integrazione: applicazione completa, profilo {@code test}, migrazioni Flyway applicate
  * su PostgreSQL 17 reale. Dopo ogni test i dati operativi vengono svuotati e la riconciliazione deve risultare pulita.
  */
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Import({PostgresTestcontainer.class, Reconciliation.class, BookingFixtures.class})
 public abstract class PostgresIntegrationTest {
@@ -29,6 +31,9 @@ public abstract class PostgresIntegrationTest {
     @Autowired
     protected BookingFixtures fixtures;
 
+    @Autowired
+    protected LoginAttemptLimiter loginLimiter;
+
     @AfterEach
     void verifyInvariantsAndClean() {
         try {
@@ -41,7 +46,10 @@ public abstract class PostgresIntegrationTest {
                     """).update();
             jdbc.sql("DELETE FROM capacity_zones WHERE name <> 'Locale'").update();
             jdbc.sql("DELETE FROM media_assets").update();
+            jdbc.sql("TRUNCATE spring_session CASCADE").update();
+            jdbc.sql("DELETE FROM audit_logs").update();
             jdbc.sql("DELETE FROM app_users").update();
+            loginLimiter.clear();
         }
     }
 }
