@@ -78,7 +78,7 @@ Una sola transazione PostgreSQL (`READ COMMITTED`):
 8. assegnazione facoltativa dei tavoli (vincolo di esclusione, §8), storico, audit, outbox → commit.
 
 Il vincolo `CHECK (occupied_covers <= capacity_covers)` resta come **ultima difesa** anche contro bug applicativi.
-Ordine globale dei lock, uguale in ogni operazione: **evento → zona → quanti (per zona, poi orario) → prenotazione/tavoli**.
+Ordine globale dei lock, uguale in ogni operazione (aggiornato in FASE 2, DECISION_LOG T-05): **prenotazione → evento → zona → quanti (per zona, poi orario) → righe dei tavoli in ordine di id → assegnazioni**. Un'operazione che tocca più prenotazioni (es. annullamento di un evento) le blocca in ordine di id.
 
 Verificato su PostgreSQL 17 (spike 2): 60 conferme parallele con orari e durate casuali su capienza 10 → presenza massima 10, registro identico al ricalcolo, 0 deadlock.
 
@@ -153,6 +153,7 @@ Senza zone fisicamente separate e configurate, **non esiste** un modo per avere 
 - Zone, aree e tavoli li configura l'OWNER. La V1 funziona anche senza tavoli.
 - Il gestore **può** assegnare uno o più tavoli a una prenotazione **CONFIRMED** (anche nella stessa richiesta di conferma). I tavoli devono appartenere alla zona della prenotazione. **Mai automaticamente.**
 - Intervallo del tavolo = `[starts_at, occupied_until)`. Tavoli adiacenti nel tempo ammessi; sovrapposti → `409 TABLE_CONFLICT` (vincolo di esclusione, anche con due gestori in contemporanea).
+- Prima di assegnare si bloccano le **righe dei tavoli in ordine di id** (`FOR NO KEY UPDATE`): senza questo passo due assegnazioni concorrenti possono andare in deadlock (verificato in FASE 2; il vincolo impedisce comunque la doppia assegnazione).
 - **Posti insufficienti**: se la somma dei posti massimi dei tavoli è minore delle persone → **blocco predefinito `422 SEATS_BELOW_PARTY_SIZE`**.
   - **Eccezione** solo per l'**OWNER**, esplicita: `overrideSeats: true` + motivo obbligatorio (es. «aggiungiamo uno sgabello»). Viene salvata sull'assegnazione e registrata nell'**audit** (`TABLE_SEATS_OVERRIDE`).
   - STAFF che chiede l'eccezione → `403`.

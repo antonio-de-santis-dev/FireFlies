@@ -136,7 +136,7 @@ flowchart TD
 
 - Nessun ciclo. Il controllo «un evento si sovrappone a prenotazioni ordinarie?» serve a `event` ma i dati stanno in `reservation`: `event` dichiara l'interfaccia `OrdinaryBookingConflicts` e `reservation` la implementa (inversione della dipendenza).
 - `notification` non conosce `reservation`: riceve un comando di accodamento con un payload minimo già pronto.
-- `capacity` è l'unico modulo che scrive `capacity_slots`. Le sue operazioni prendono i lock sempre nello stesso ordine: **riga evento → riga zona → quanti per zona e orario → prenotazione/tavoli**. `dining` lo chiama per i cambi di capienza delle fasce, `event` per quota ed esclusività.
+- `capacity` è l'unico modulo che scrive `capacity_slots`. Le sue operazioni prendono i lock sempre nello stesso ordine: **prenotazione → riga evento → riga zona → quanti per zona e orario → righe dei tavoli in ordine di id → assegnazioni** (DECISION_LOG T-05). `dining` lo chiama per i cambi di capienza delle fasce, `event` per quota ed esclusività.
 - `security` fornisce l'autenticazione tramite Spring Security; i moduli leggono l'utente corrente da `common.CurrentActor`.
 
 ### Responsabilità e proprietà dei dati

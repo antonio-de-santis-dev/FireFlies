@@ -23,7 +23,7 @@
 
 ```json
 {
-  "type": "https://fireflies.example/problems/capacity-exceeded",
+  "type": "urn:fireflies:problem:capacity-exceeded",
   "title": "Posti esauriti",
   "status": 409,
   "code": "CAPACITY_EXCEEDED",
@@ -33,7 +33,7 @@
   "context": { "zoneId": "5d0a…", "firstFullSlot": "2026-10-24T20:00:00+02:00", "capacityCovers": 40, "occupiedCovers": 38, "remainingCovers": 2 }
 }
 ```
-Per errori di validazione `errors` contiene `{ "field": "guestCount", "code": "MAX", "message": "Al massimo 12 persone dal sito." }`. I messaggi sono in italiano e pronti per la UI; `code` è stabile per il codice frontend. (`fireflies.example` è un segnaposto: il dominio reale si decide in FASE 8.)
+Per errori di validazione `errors` contiene `{ "field": "guestCount", "code": "MAX", "message": "Al massimo 12 persone dal sito." }`. I messaggi sono in italiano e pronti per la UI; `code` è stabile per il codice frontend. Il campo `type` è un URN stabile `urn:fireflies:problem:<codice>` (DECISION_LOG T-07), indipendente dal dominio.
 
 ### Codici HTTP
 
