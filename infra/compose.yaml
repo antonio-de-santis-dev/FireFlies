@@ -1,0 +1,26 @@
+# Sviluppo locale: solo PostgreSQL. Il backend si avvia con ./mvnw spring-boot:run (vedi docs/operations/LOCAL_SETUP.md).
+# Credenziali da infra/.env (copia di .env.example, mai committato).
+name: fireflies
+
+services:
+  postgres:
+    # Stessa immagine, fissata per digest, usata dai test di integrazione (PostgresTestcontainer).
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_DB: ${FIREFLIES_DB_NAME:-fireflies}
+      POSTGRES_USER: ${FIREFLIES_DB_USER:-fireflies}
+      POSTGRES_PASSWORD: ${FIREFLIES_DB_PASSWORD:?Imposta FIREFLIES_DB_PASSWORD in infra/.env}
+      TZ: UTC
+    ports:
+      - "127.0.0.1:${FIREFLIES_DB_PORT:-5432}:5432" # solo locale, mai esposto in rete
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
