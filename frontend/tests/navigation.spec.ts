@@ -405,9 +405,10 @@ test.describe('Revisione 19/10', () => {
     await expect(hero.getByRole('heading', { level: 1 })).toHaveText('Il menu');
     const activeAlt = () => hero.locator('.menu-hero__img.is-active').getAttribute('src');
     const first = await activeAlt();
-    await page.clock.runFor(59_000);
+    // il tempo simulato scorre anche durante il caricamento dei contenuti dal backend: margine di qualche secondo
+    await page.clock.runFor(55_000);
     expect(await activeAlt()).toBe(first);
-    await page.clock.runFor(2_000);
+    await page.clock.runFor(10_000);
     expect(await activeAlt()).not.toBe(first);
     const second = await activeAlt();
     await hero.getByRole('button', { name: /Metti in pausa/ }).click();
