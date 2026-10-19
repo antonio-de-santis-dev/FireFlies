@@ -189,7 +189,7 @@ test.describe('Area gestori', () => {
   test('senza accesso si viene portati al login; errori di compilazione', async ({ page }) => {
     await go(page, '/gestione/richieste');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Area gestori');
-    await page.getByRole('button', { name: 'Entra nella demo' }).click();
+    await page.getByRole('button', { name: 'Accedi' }).click();
     await expect(page.getByText("Inserisci un'email valida")).toBeVisible();
     await expect(page.getByLabel('Email')).toBeFocused();
   });
@@ -463,7 +463,7 @@ test.describe('Revisione 19/10', () => {
     }
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator('.login__media')).toBeHidden();
-    await expect(page.getByRole('button', { name: 'Entra nella demo' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Accedi' })).toBeVisible();
   });
 
   test('richieste: «confermata» mostra l’SMS simulato (telefono) o l’assenza di SMS (email)', async ({ page }) => {

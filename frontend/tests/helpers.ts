@@ -20,11 +20,22 @@ export async function go(page: Page, route: string) {
   await page.waitForLoadState('networkidle');
 }
 
+/** Credenziali generate a ogni esecuzione da scripts/e2e.mjs (backend reale): mai scritte nel codice. */
+export function credentials(role: 'Titolare' | 'Staff') {
+  const prefix = role === 'Titolare' ? 'E2E_OWNER' : 'E2E_STAFF';
+  const email = process.env[`${prefix}_EMAIL`];
+  const password = process.env[`${prefix}_PASSWORD`];
+  if (!email || !password) throw new Error('Credenziali e2e mancanti: avvia i test con «npm test» (scripts/e2e.mjs).');
+  return { email, password };
+}
+
+/** Accesso reale: il ruolo dipende dall'account, non da una scelta nella pagina. */
 export async function signIn(page: Page, role: 'Titolare' | 'Staff' = 'Titolare') {
+  const { email, password } = credentials(role);
   await go(page, '/gestione/login');
-  await page.getByRole('button', { name: 'Compila con dati demo' }).click();
-  await page.getByRole('radio', { name: new RegExp(role) }).check();
-  await page.getByRole('button', { name: 'Entra nella demo' }).click();
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByRole('button', { name: 'Accedi' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Ecco la giornata/ })).toBeVisible();
 }
 

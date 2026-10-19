@@ -2,7 +2,7 @@
 // Output: ../mockup-grafici/{desktop,mobile}/ + INDEX.md con la corrispondenza screenshot ↔ vista/stato.
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { brokenImages, go, loadAllImages, signIn, stubGoogleMaps, watchProblems } from './helpers';
+import { brokenImages, credentials, go, loadAllImages, signIn, stubGoogleMaps, watchProblems } from './helpers';
 
 const OUT = '../mockup-grafici';
 const index: { file: string; route: string; viewport: string; state: string }[] = [];
@@ -123,8 +123,8 @@ test.describe('desktop', () => {
     const problems = watchProblems(page);
     await go(page, '/gestione/login');
     await loadAllImages(page);
-    await page.getByRole('button', { name: 'Compila con dati demo' }).click();
-    await shot(page, 'desktop', '21-login-gestori.png', '/gestione/login', 'Login dimostrativo con scelta del ruolo');
+    await page.getByLabel('Email').fill(credentials('Titolare').email); // la password non compare negli screenshot
+    await shot(page, 'desktop', '21-login-gestori.png', '/gestione/login', 'Accesso gestori: email e password, ruolo assegnato dal backend');
     await signIn(page);
     await shot(page, 'desktop', '22-dashboard.png', '/gestione', 'Dashboard del titolare (dati fittizi)', true);
     await go(page, '/gestione/menu');

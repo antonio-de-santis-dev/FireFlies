@@ -2,7 +2,7 @@
 // Output: ../demo/<demo>.webm e ../demo/<demo>/NN-passo.png
 import { test, type Browser, type Page } from '@playwright/test';
 import { mkdirSync, renameSync, rmSync } from 'node:fs';
-import { stubGoogleMaps } from './helpers';
+import { stubGoogleMaps, credentials } from './helpers';
 
 const OUT = '../demo';
 
@@ -118,9 +118,11 @@ test('Demo 3 — area gestori', async ({ browser }) => {
   await record(browser, '03-demo-area-gestori', { width: 1440, height: 900 }, false, async (page, step) => {
     await page.goto('/#/gestione/login');
     await page.waitForLoadState('networkidle');
-    await page.getByRole('button', { name: 'Compila con dati demo' }).click();
+    const { email, password } = credentials('Titolare');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password', { exact: true }).fill(password);
     await step('login');
-    await page.getByRole('button', { name: 'Entra nella demo' }).click();
+    await page.getByRole('button', { name: 'Accedi' }).click();
     await step('dashboard');
     const nav = page.getByRole('navigation', { name: 'Area gestori' });
     await nav.getByRole('link', { name: 'Menu e prezzi' }).click();
