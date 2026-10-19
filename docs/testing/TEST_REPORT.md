@@ -49,6 +49,6 @@ Dopo **ogni** test di integrazione gira la riconciliazione (TEST_STRATEGY §3.4)
 - **Spike SQL** delle FASI 1 (`docs/architecture/evidence/`) ora coperti da test Java sul codice reale.
 
 ## 5. Limiti
-- La CI GitHub Actions (`.github/workflows/backend.yml`) è configurata ma il primo run avverrà dopo il push: esito da controllare su GitHub.
+- La CI GitHub Actions (`.github/workflows/backend.yml`) ha eseguito la stessa suite su `ubuntu-24.04` dopo il push: **verde** (run 39241713834, job `verify` in 1 min 9 s). I test non dipendono quindi da questo container.
 - I test di concorrenza riducono ma non eliminano la probabilità di gare rarissime non osservate: per questo restano i vincoli dichiarativi del database.
 - Non ci sono ancora endpoint applicativi: i test API completi (permessi, CSRF, rate limit) arrivano con la FASE 3.

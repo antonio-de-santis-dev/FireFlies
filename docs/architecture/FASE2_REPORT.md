@@ -80,7 +80,7 @@ Nota: la skill `java-spring-review` documenta fino a Boot 3.x; le differenze di 
 | `BOOKING_RULES.md`, `SYSTEM_CONTEXT.md`, `ADR/0002`, `API_CONTRACT.md` | aggiornati: ordine dei lock con i tavoli, `type` URN |
 
 ## 3. Risultati dei test
-`cd backend && ./mvnw -B clean verify` → **BUILD SUCCESS**: **30** test unitari + **160** di integrazione/concorrenza su PostgreSQL 17 reale = **190, tutti superati**, 0 saltati. Dettaglio per classe e per verifica obbligatoria in [TEST_REPORT](../testing/TEST_REPORT.md).
+In locale e in CI (GitHub Actions, run 39241713834, verde) `cd backend && ./mvnw -B clean verify` → **BUILD SUCCESS**: **30** test unitari + **160** di integrazione/concorrenza su PostgreSQL 17 reale = **190, tutti superati**, 0 saltati. Dettaglio per classe e per verifica obbligatoria in [TEST_REPORT](../testing/TEST_REPORT.md).
 
 ## 4. Comandi per avviare backend e database in locale
 ```bash
