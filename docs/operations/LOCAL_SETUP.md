@@ -1,6 +1,6 @@
-# Avvio locale — database, backend, frontend e primo titolare
+# Avvio locale — database, backend, frontend, foto e primo titolare
 
-> Aggiornato in FASE 3 · 19/10/2026. Tutti i comandi sono stati eseguiti davvero nel container di sviluppo
+> Aggiornato in FASE 4 · 19/10/2026. Tutti i comandi sono stati eseguiti davvero nel container di sviluppo
 > (Linux, Java 21, Node 22, Docker 29, Compose v5).
 
 ## Requisiti
@@ -24,10 +24,20 @@ cd backend
 set -a && . ../infra/.env && set +a    # esporta FIREFLIES_DB_* nella shell
 ./mvnw spring-boot:run                 # profilo "local", porta 8080
 ```
-All'avvio Flyway applica le migrazioni (`Successfully applied 8 migrations` su un database nuovo).
+All'avvio Flyway applica le migrazioni (`Successfully applied 9 migrations` su un database nuovo).
+Al **primo** avvio su un database vuoto il backend carica anche i **contenuti dimostrativi** del mockup
+(menu con prezzi «demo», foto del locale, titolari, avvisi d'esempio): ~15 secondi, nel log
+`Contenuti DEMO caricati (32 foto, 15 voci di menu)`. Vedi §8.
 ```bash
-curl http://localhost:8080/actuator/health     # {"groups":["liveness","readiness"],"status":"UP"}
+curl http://localhost:8080/actuator/health            # {"groups":["liveness","readiness"],"status":"UP"}
+curl http://localhost:8080/actuator/health/readiness  # UP solo dopo il caricamento dei contenuti demo
+curl http://localhost:8080/api/v1/public/menu         # menu pubblico (JSON)
 ```
+
+### Foto in sviluppo
+Le foto caricate (e quelle demo) finiscono in `backend/data/media/` (ignorata da git): il backend le verifica, le
+ridimensiona in tre varianti (480, 960, 1600 px), toglie i dati EXIF/GPS e le serve su `http://localhost:8080/media/…`.
+Per usare un'altra cartella: `FIREFLIES_MEDIA_DIR=/percorso`. Nel database ci sono solo metadati e chiavi, mai i byte.
 
 ## 3. Primo titolare (procedura amministrativa, una volta sola)
 Il primo account OWNER non si crea dal sito né dall'API: si crea dalla macchina che ha accesso al database.
@@ -50,41 +60,70 @@ Il programma chiede la password due volte (non compare a schermo), crea l'accoun
 - **Senza terminale interattivo** (script, CI): imposta la variabile d'ambiente `FIREFLIES_BOOTSTRAP_PASSWORD` prima del comando.
   **Non** passare la password come argomento (`--fireflies.bootstrap.password=…`): resterebbe nella cronologia della shell, e la procedura si rifiuta.
 - In produzione: stesso comando con `--spring.profiles.active=prod` e le variabili `FIREFLIES_DB_*` del server.
-- Gli altri account (staff o altri titolari) li crea il titolare dall'API `POST /api/v1/admin/users`; la schermata relativa arriverà con le fasi successive.
+- Gli altri account (staff o altri titolari) li crea il titolare dall'API `POST /api/v1/admin/users`; la schermata «Account» è proposta in FASE4_REPORT §7 (da approvare).
 
 ## 4. Frontend
 ```bash
 cd frontend
 npm ci
-npm run dev        # http://localhost:5173 — /api e /actuator inoltrati al backend su :8080
+npm run dev        # http://localhost:5173 — /api, /actuator e /media inoltrati al backend su :8080
 ```
 Area gestori: `http://localhost:5173/#/gestione/login` (non è collegata dal sito pubblico). Accedi con l'account del passo 3.
 Per un backend su un'altra porta: `FIREFLIES_BACKEND_URL=http://localhost:9090 npm run dev`.
 
-`npm run build:static` produce una pagina apribile con doppio clic: contiene solo il sito pubblico, perché l'area gestori ha bisogno del backend.
+Il sito pubblico legge menu, testi, foto, orari e avvisi dal backend: se il backend è spento compare «Il sito non
+riesce a caricare i contenuti» con il pulsante **Riprova**.
+
+`npm run build:static` produce una pagina apribile con doppio clic: contiene solo il sito pubblico **con i dati
+dimostrativi del mockup** (nessuna chiamata al backend); l'area gestori ha bisogno del backend. La build normale
+(`npm run build`) non contiene i dati demo.
 
 ## 5. Test
 ```bash
 cd backend
-./mvnw test        # 40 test unitari e di slice, senza Docker
-./mvnw verify      # + 194 test di integrazione, sicurezza e concorrenza su PostgreSQL 17 reale (Testcontainers)
+./mvnw test        # 66 test unitari e di slice, senza Docker (foto, storage S3 simulato, configurazione)
+./mvnw verify      # + 222 test di integrazione, sicurezza, concorrenza e riavvio su PostgreSQL 17 reale (Testcontainers)
 
 cd ../frontend
-npm run verifica   # typecheck + 48 test Playwright (funzionali, accesso, QA 7 viewport, axe) con backend e DB reali
+npm run verifica   # typecheck + test Playwright (funzionali, accesso, contenuti, QA 7 viewport, axe) con backend e DB reali
 ```
 `npm run verifica` usa `scripts/e2e.mjs`: avvia un PostgreSQL separato (progetto Compose `fireflies-e2e`, porta 55432),
-compila e avvia il backend sulla porta 18080, crea il titolare con la procedura del passo 3 e uno staff via API con
-password **casuali generate a ogni esecuzione**, esegue Playwright e alla fine cancella database e volume.
-Non tocca il database di sviluppo del passo 1.
+compila e avvia il backend sulla porta 18080 con i contenuti demo e una cartella foto temporanea, crea il titolare con
+la procedura del passo 3 e uno staff via API con password **casuali generate a ogni esecuzione**, esegue Playwright e
+alla fine cancella database, volume e foto. Non tocca il database di sviluppo del passo 1.
+I test che modificano menu, foto o testi riportano i dati com'erano alla fine (`tests/baseline.ts`).
 
 ## 6. Profili
-| Profilo | Uso | Database | Cookie di sessione | Notifiche |
-|---|---|---|---|---|
-| `local` (predefinito) | sviluppo | `FIREFLIES_DB_URL/USER/PASSWORD` (password obbligatoria) | `FF_SESSION`, HttpOnly, SameSite=Lax, **non** Secure (HTTP su localhost) | solo finte |
-| `test` | test automatici | Testcontainers | come `local` | solo finte; un provider reale blocca l'avvio |
-| `prod` | produzione (FASE 8) | solo variabili d'ambiente | HttpOnly, SameSite=Lax, **Secure** (solo HTTPS) | solo finte finché non si approva un provider |
+| Profilo | Uso | Database | Cookie di sessione | Notifiche | Foto | Dati demo |
+|---|---|---|---|---|---|---|
+| `local` (predefinito) | sviluppo | `FIREFLIES_DB_URL/USER/PASSWORD` (password obbligatoria) | `FF_SESSION`, HttpOnly, SameSite=Lax, **non** Secure (HTTP su localhost) | solo finte | cartella `backend/data/media` | caricati su DB vuoto (`FIREFLIES_DEMO_SEED=false` per non caricarli) |
+| `test` | test automatici | Testcontainers | come `local` | solo finte; un provider reale blocca l'avvio | cartella temporanea | mai |
+| `prod` | produzione (FASE 8) | solo variabili d'ambiente | HttpOnly, SameSite=Lax, **Secure** (solo HTTPS) | solo finte finché non si approva un provider | solo S3/R2 (`FIREFLIES_S3_*`); la cartella locale blocca l'avvio | **vietati**: l'avvio si ferma se presenti |
 
-## 7. Spegnere e ripulire
+## 7. Storage S3 / Cloudflare R2 (facoltativo in sviluppo, obbligatorio in produzione)
+Nessun account cloud è stato creato in questa fase. Per provare lo storage S3 serve un bucket (R2, oppure MinIO in locale)
+e le variabili d'ambiente — mai nei file del repository:
+```bash
+export FIREFLIES_MEDIA_STORAGE=s3
+export FIREFLIES_S3_ENDPOINT=https://<id-account>.r2.cloudflarestorage.com   # MinIO: http://localhost:9000
+export FIREFLIES_S3_BUCKET=<nome-bucket>
+export FIREFLIES_S3_ACCESS_KEY_ID=<chiave>        # dal pannello R2 → «Manage API tokens»
+export FIREFLIES_S3_SECRET_ACCESS_KEY=<segreto>
+export FIREFLIES_MEDIA_PUBLIC_URL=https://<dominio-pubblico-del-bucket>
+```
+Se una variabile manca l'avvio si ferma con il nome della variabile da impostare. Il caricamento passa dal backend
+(nessuna regola CORS da configurare sul bucket). Le varianti hanno `Cache-Control: public, max-age=31536000, immutable`.
+
+## 8. Dati dimostrativi
+- Esistono solo con il profilo `local`, solo su database vuoto: menu del mockup con **prezzi dimostrativi** (etichetta
+  «demo» sul sito, colonna `demo_price_cents`, mai `price_cents`), allergeni «da dichiarare», foto del locale, avvisi d'esempio.
+- Il database viene marcato con `site_settings.demo_content = true`. Con il profilo `prod` l'applicazione **non parte**
+  se il segnale è presente o se si imposta `FIREFLIES_DEMO_SEED=true`.
+- Per ricominciare da zero in sviluppo: `docker compose down -v` (§9) e cancellare `backend/data/media`.
+- Un database demo non va mai copiato in produzione: si parte da un database nuovo e i contenuti veri li inseriscono i
+  titolari dall'area gestori.
+
+## 9. Spegnere e ripulire
 ```bash
 # backend e frontend: Ctrl+C nelle rispettive shell
 cd infra
@@ -102,4 +141,9 @@ docker compose down -v        # ferma e CANCELLA i dati locali (anche gli accoun
 | Login: «Il server non risponde» | backend spento o su un'altra porta (vedi `FIREFLIES_BACKEND_URL`) |
 | Login: «Troppi tentativi» | 5 errori in 15 minuti per quell'email (o 20 dallo stesso IP): attendi o fai reimpostare la password dal titolare |
 | Porta 5432 occupata | imposta `FIREFLIES_DB_PORT` e `FIREFLIES_DB_URL` in `infra/.env` |
+| «Il sito non riesce a caricare i contenuti» | backend spento o ancora in avvio (al primo avvio carica i dati demo per ~15 s): **Riprova** |
+| Foto rifiutata: «non è una foto JPG, PNG o WebP» | il tipo si riconosce dal contenuto, non dal nome: le foto HEIC dell'iPhone vanno esportate in JPG |
+| Foto: «Archivio foto non raggiungibile» | storage S3 irraggiungibile o credenziali errate: nulla è stato salvato, riprova |
+| `Il database di produzione contiene dati DIMOSTRATIVI` | si sta avviando `prod` su un database di sviluppo: usa un database nuovo (§8) |
+| `In produzione le foto vanno su uno storage S3-compatibile` | in `prod` imposta `FIREFLIES_MEDIA_STORAGE=s3` e le variabili `FIREFLIES_S3_*` (§7) |
 | `429 Too Many Requests` da Docker Hub | limite di download anonimi: riprova più tardi o `docker login` |

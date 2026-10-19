@@ -4,11 +4,11 @@ info:
   license:
     name: Proprietario — uso riservato
     identifier: LicenseRef-Proprietary
-  version: 1.0.0-draft.3
-  summary: Contratto V1 dei flussi principali (prenotazioni, autenticazione). Bozza FASE 1, non implementata.
+  version: 1.0.0-draft.4
+  summary: Contratto V1. Implementati autenticazione (FASE 3), menu, foto, contenuti e avvisi (FASE 4); prenotazioni in bozza.
   description: |
-    Bozza di progettazione. Gli altri endpoint (menu, media, contenuti, configurazione) sono elencati in
-    API_CONTRACT.md e verranno aggiunti qui modulo per modulo nelle fasi successive.
+    Autenticazione, menu, foto, contenuti del sito e avvisi sono implementati e verificati dai test.
+    Le prenotazioni restano bozza di progettazione fino alla FASE 5; gli altri endpoint sono in API_CONTRACT.md.
     Orari locali in Europe/Rome. Errori in application/problem+json.
 servers:
   - url: /api/v1
@@ -19,6 +19,12 @@ tags:
     description: Accesso dei gestori
   - name: admin-reservations
     description: Gestione prenotazioni (STAFF e OWNER)
+  - name: admin-menu
+    description: Menu, prezzi e allergeni (STAFF e OWNER)
+  - name: admin-media
+    description: Libreria foto (STAFF e OWNER)
+  - name: admin-content
+    description: Testi, titolari, staff, testata del menu, orari e contatti (solo OWNER); avvisi (STAFF e OWNER)
 security: []
 
 paths:
@@ -162,6 +168,387 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CurrentUser' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /public/site:
+    get:
+      tags: [public]
+      operationId: getPublicSite
+      summary: Contenuti del sito pubblico (impostazioni, orari, testi, titolari e staff visibili, avvisi attivi)
+      responses:
+        '200':
+          description: Sito pubblico (ETag, Cache-Control public max-age=60)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings, content, announcements, demoContent]
+                properties:
+                  settings: { $ref: '#/components/schemas/SiteSettings' }
+                  content: { $ref: '#/components/schemas/SiteContent' }
+                  announcements: { type: array, items: { $ref: '#/components/schemas/Announcement' } }
+                  demoContent: { type: boolean, description: true solo con dati dimostrativi (sviluppo locale) }
+        '304': { description: Invariato (If-None-Match) }
+        '406': { description: Formato richiesto non disponibile (Accept) }
+
+  /public/menu:
+    get:
+      tags: [public]
+      operationId: getPublicMenu
+      summary: Menu pubblico (solo categorie e voci visibili)
+      responses:
+        '200':
+          description: Menu (ETag, Cache-Control public max-age=60)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [categories, allergens]
+                properties:
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      required: [slug, name, items]
+                      properties:
+                        slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$' }
+                        name: { type: string }
+                        hint: { type: [string, 'null'] }
+                        items: { type: array, items: { $ref: '#/components/schemas/MenuItem' } }
+                  allergens: { type: array, items: { $ref: '#/components/schemas/Allergen' } }
+        '304': { description: Invariato (If-None-Match) }
+        '406': { description: Formato richiesto non disponibile (Accept) }
+
+  /public/gallery:
+    get:
+      tags: [public]
+      operationId: getPublicGallery
+      summary: Foto della galleria nell'ordine scelto dai gestori
+      responses:
+        '200':
+          description: Galleria (ETag, Cache-Control public max-age=300)
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/MediaRef' } }
+        '406': { description: Formato richiesto non disponibile (Accept) }
+
+  /admin/menu:
+    get:
+      tags: [admin-menu]
+      operationId: getAdminMenu
+      summary: Menu completo per i gestori (anche voci e categorie nascoste)
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Menu
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [categories, items, allergens]
+                properties:
+                  categories: { type: array, items: { $ref: '#/components/schemas/MenuCategory' } }
+                  items: { type: array, items: { $ref: '#/components/schemas/MenuItem' } }
+                  allergens: { type: array, items: { $ref: '#/components/schemas/Allergen' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /admin/menu/categories:
+    post:
+      tags: [admin-menu]
+      operationId: createMenuCategory
+      summary: Nuova categoria (slug dal nome se assente)
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MenuCategoryRequest' } } }
+      responses:
+        '201': { description: Creata, content: { application/json: { schema: { $ref: '#/components/schemas/MenuCategory' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/menu/categories/{id}:
+    parameters: [ { $ref: '#/components/parameters/ResourceId' } ]
+    put:
+      tags: [admin-menu]
+      operationId: updateMenuCategory
+      summary: Modifica una categoria (lo slug resta se non indicato)
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MenuCategoryRequest' } } }
+      responses:
+        '200': { description: Aggiornata, content: { application/json: { schema: { $ref: '#/components/schemas/MenuCategory' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [admin-menu]
+      operationId: deleteMenuCategory
+      summary: Elimina una categoria vuota
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      responses:
+        '204': { description: Eliminata }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /admin/menu/items:
+    post:
+      tags: [admin-menu]
+      operationId: createMenuItem
+      summary: Nuova voce del menu
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MenuItemRequest' } } }
+      responses:
+        '201': { description: Creata, content: { application/json: { schema: { $ref: '#/components/schemas/MenuItem' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/menu/items/{id}:
+    parameters: [ { $ref: '#/components/parameters/ResourceId' } ]
+    put:
+      tags: [admin-menu]
+      operationId: updateMenuItem
+      summary: Modifica una voce (version obbligatoria)
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/MenuItemRequest' } } }
+      responses:
+        '200': { description: Aggiornata, content: { application/json: { schema: { $ref: '#/components/schemas/MenuItem' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [admin-menu]
+      operationId: deleteMenuItem
+      summary: Elimina una voce
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      responses:
+        '204': { description: Eliminata }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/menu/items/{id}/visibility:
+    parameters: [ { $ref: '#/components/parameters/ResourceId' } ]
+    patch:
+      tags: [admin-menu]
+      operationId: setMenuItemVisibility
+      summary: Mostra o nasconde una voce sul sito
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, visible]
+              properties:
+                version: { type: integer }
+                visible: { type: boolean }
+      responses:
+        '200': { description: Aggiornata, content: { application/json: { schema: { $ref: '#/components/schemas/MenuItem' } } } }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /admin/media:
+    get:
+      tags: [admin-media]
+      operationId: getMediaLibrary
+      summary: Libreria foto con usi
+      security: [{ session: [] }]
+      responses:
+        '200': { description: Libreria, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/MediaAsset' } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [admin-media]
+      operationId: uploadMedia
+      summary: Carica una foto (verificata e ricodificata dal backend, max 5 MB)
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, altText]
+              properties:
+                file: { type: string, format: binary, description: 'JPEG, PNG o WebP' }
+                altText: { type: string, minLength: 5, maxLength: 250 }
+                credit: { type: string, maxLength: 120 }
+      responses:
+        '201': { description: Pronta, content: { application/json: { schema: { $ref: '#/components/schemas/MediaAsset' } } } }
+        '413': { description: Oltre 5 MB (MEDIA_TOO_LARGE), content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '503': { description: 'Storage non raggiungibile (SERVICE_UNAVAILABLE, Retry-After)', content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } } }
+
+  /admin/media/order:
+    put:
+      tags: [admin-media]
+      operationId: reorderMedia
+      summary: Ordine della libreria e della galleria
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mediaIds]
+              properties:
+                mediaIds: { type: array, maxItems: 2000, items: { type: string, format: uuid } }
+      responses:
+        '200': { description: Libreria riordinata, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/MediaAsset' } } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/media/{id}:
+    parameters: [ { $ref: '#/components/parameters/ResourceId' } ]
+    patch:
+      tags: [admin-media]
+      operationId: updateMedia
+      summary: Testo alternativo, crediti, presenza in galleria
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                altText: { type: string, minLength: 5, maxLength: 250 }
+                credit: { type: string, maxLength: 120 }
+                inGallery: { type: boolean }
+      responses:
+        '200': { description: Aggiornata, content: { application/json: { schema: { $ref: '#/components/schemas/MediaAsset' } } } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+    delete:
+      tags: [admin-media]
+      operationId: deleteMedia
+      summary: Elimina una foto non usata
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      responses:
+        '204': { description: Eliminata (i file nello storage vengono cancellati dopo il commit) }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /admin/media/{id}/file:
+    parameters: [ { $ref: '#/components/parameters/ResourceId' } ]
+    put:
+      tags: [admin-media]
+      operationId: replaceMediaFile
+      summary: Sostituisce il file mantenendo id, testo alternativo e usi
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        '200': { description: Sostituita, content: { application/json: { schema: { $ref: '#/components/schemas/MediaAsset' } } } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/site-content:
+    get:
+      tags: [admin-content]
+      operationId: getSiteContent
+      summary: Testi, sezioni, titolari, staff e testata del menu (solo OWNER)
+      security: [{ session: [] }]
+      responses:
+        '200': { description: Contenuti, content: { application/json: { schema: { $ref: '#/components/schemas/SiteContent' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [admin-content]
+      operationId: updateSiteContent
+      summary: Salva e pubblica tutti i contenuti insieme (solo OWNER)
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/SiteContentRequest' } } }
+      responses:
+        '200': { description: Pubblicati, content: { application/json: { schema: { $ref: '#/components/schemas/SiteContent' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/site-settings:
+    get:
+      tags: [admin-content]
+      operationId: getSiteSettings
+      summary: Indirizzo, contatti, mappa e orari (solo OWNER)
+      security: [{ session: [] }]
+      responses:
+        '200': { description: Impostazioni, content: { application/json: { schema: { $ref: '#/components/schemas/SiteSettings' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [admin-content]
+      operationId: updateSiteSettings
+      summary: Salva impostazioni e orari dei 7 giorni (solo OWNER)
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/SiteSettings' } } }
+      responses:
+        '200': { description: Salvate, content: { application/json: { schema: { $ref: '#/components/schemas/SiteSettings' } } } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/announcements:
+    get:
+      tags: [admin-content]
+      operationId: getAnnouncements
+      summary: Avvisi (anche nascosti e scaduti)
+      security: [{ session: [] }]
+      responses:
+        '200': { description: Avvisi, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Announcement' } } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [admin-content]
+      operationId: createAnnouncement
+      summary: Nuovo avviso
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementRequest' } } }
+      responses:
+        '201': { description: Creato, content: { application/json: { schema: { $ref: '#/components/schemas/Announcement' } } } }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/announcements/{id}:
+    parameters: [ { $ref: '#/components/parameters/ResourceId' } ]
+    put:
+      tags: [admin-content]
+      operationId: updateAnnouncement
+      summary: Modifica, mostra o nasconde un avviso
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/AnnouncementRequest' } } }
+      responses:
+        '200': { description: Aggiornato, content: { application/json: { schema: { $ref: '#/components/schemas/Announcement' } } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [admin-content]
+      operationId: deleteAnnouncement
+      summary: Elimina un avviso
+      security: [{ session: [] }]
+      parameters: [ { $ref: '#/components/parameters/CsrfHeader' } ]
+      responses:
+        '204': { description: Eliminato }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /admin/reservations:
     get:
@@ -389,6 +776,11 @@ components:
       required: true
       schema: { type: string }
     ReservationId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ResourceId:
       name: id
       in: path
       required: true
@@ -677,3 +1069,238 @@ components:
         email: { type: string, format: email }
         displayName: { type: string }
         role: { type: string, enum: [OWNER, STAFF] }
+
+    MediaRef:
+      type: object
+      required: [id, alt, width, height, src, srcset]
+      properties:
+        id: { type: string, format: uuid }
+        alt: { type: string }
+        width: { type: integer }
+        height: { type: integer }
+        src: { type: string, description: variante da 960 px o la più grande disponibile }
+        srcset: { type: string, example: '/media/…/w480.jpg 480w, /media/…/w960.jpg 960w' }
+    MediaAsset:
+      allOf:
+        - $ref: '#/components/schemas/MediaRef'
+        - type: object
+          required: [inGallery, variants, usages]
+          properties:
+            credit: { type: [string, 'null'] }
+            originalMimeType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+            originalBytes: { type: integer }
+            inGallery: { type: boolean }
+            galleryOrder: { type: [integer, 'null'] }
+            variants:
+              type: array
+              items:
+                type: object
+                properties:
+                  size: { type: string, enum: [W480, W960, W1600] }
+                  width: { type: integer }
+                  height: { type: integer }
+                  mimeType: { type: string, enum: [image/jpeg, image/png] }
+                  bytes: { type: integer }
+                  url: { type: string }
+            usages:
+              type: array
+              items:
+                type: object
+                properties:
+                  type: { type: string, example: MENU_ITEM }
+                  label: { type: string, example: 'menu «Tagliere FireFlies»' }
+            createdAt: { type: string, format: date-time }
+    Allergen:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string, enum: [GLUTEN, CRUSTACEANS, EGGS, FISH, PEANUTS, SOYBEANS, MILK, NUTS, CELERY, MUSTARD, SESAME, SULPHITES, LUPIN, MOLLUSCS] }
+        name: { type: string, example: Glutine }
+    MenuCategory:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string, maxLength: 40 }
+        hint: { type: [string, 'null'], maxLength: 80 }
+        sortOrder: { type: integer }
+        visible: { type: boolean }
+        itemCount: { type: integer }
+    MenuCategoryRequest:
+      type: object
+      required: [name, visible]
+      additionalProperties: false
+      properties:
+        slug: { type: string, pattern: '^[a-z0-9]+(-[a-z0-9]+)*$', maxLength: 40 }
+        name: { type: string, minLength: 1, maxLength: 40 }
+        hint: { type: string, maxLength: 80 }
+        visible: { type: boolean }
+    MenuItem:
+      type: object
+      required: [id, name, ingredients, priceCents, allergens]
+      properties:
+        id: { type: string, format: uuid }
+        categoryId: { type: string, format: uuid, description: solo area gestori }
+        categorySlug: { type: string, description: solo area gestori }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        ingredients: { type: array, items: { type: string } }
+        priceCents: { type: [integer, 'null'], minimum: 0, maximum: 100000, description: null = «Prezzo da definire» }
+        demoPriceCents: { type: [integer, 'null'], description: prezzo DIMOSTRATIVO (solo dati demo locali) }
+        allergens:
+          type: object
+          required: [declared, codes]
+          properties:
+            declared: { type: boolean, description: false = «da dichiarare» }
+            codes: { type: array, items: { type: string } }
+            verifiedAt: { type: [string, 'null'], format: date-time }
+        photo: { oneOf: [ { $ref: '#/components/schemas/MediaRef' }, { type: 'null' } ] }
+        visible: { type: boolean, description: solo area gestori }
+        version: { type: integer, description: solo area gestori }
+    MenuItemRequest:
+      type: object
+      required: [categoryId, name, allergens, visible]
+      additionalProperties: false
+      properties:
+        version: { type: integer, description: obbligatoria in modifica }
+        categoryId: { type: string, format: uuid }
+        name: { type: string, minLength: 2, maxLength: 80 }
+        description: { type: string, maxLength: 400 }
+        ingredients: { type: array, maxItems: 20, items: { type: string, maxLength: 60, pattern: '^[^,]*$' } }
+        priceCents: { type: [integer, 'null'], minimum: 0, maximum: 100000 }
+        allergens:
+          type: object
+          required: [declared, codes]
+          properties:
+            declared: { type: boolean }
+            codes: { type: array, maxItems: 14, items: { type: string } }
+        photoMediaId: { type: [string, 'null'], format: uuid }
+        visible: { type: boolean }
+    Owner:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        roleLabel: { type: [string, 'null'] }
+        description: { type: [string, 'null'] }
+        motto: { type: [string, 'null'] }
+        color: { type: [string, 'null'], enum: [giallo, arancio, verde, null] }
+        front: { oneOf: [ { $ref: '#/components/schemas/MediaRef' }, { type: 'null' } ] }
+        back: { oneOf: [ { $ref: '#/components/schemas/MediaRef' }, { type: 'null' } ] }
+        visible: { type: boolean }
+    StaffMember:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        roleLabel: { type: [string, 'null'] }
+        photo: { oneOf: [ { $ref: '#/components/schemas/MediaRef' }, { type: 'null' } ] }
+        visible: { type: boolean }
+    SiteContent:
+      type: object
+      properties:
+        version: { type: integer }
+        heroClaim: { type: [string, 'null'] }
+        heroLead: { type: [string, 'null'] }
+        heroPhoto: { oneOf: [ { $ref: '#/components/schemas/MediaRef' }, { type: 'null' } ] }
+        sections: { type: object, additionalProperties: { type: boolean }, example: { momento: true, eventi: false } }
+        storyTitle: { type: [string, 'null'] }
+        storyText: { type: [string, 'null'] }
+        storyConfirmed: { type: boolean }
+        owners: { type: array, items: { $ref: '#/components/schemas/Owner' } }
+        ownersConfirmed: { type: boolean }
+        staff: { type: array, items: { $ref: '#/components/schemas/StaffMember' } }
+        staffConfirmed: { type: boolean }
+        menuHero:
+          type: object
+          properties:
+            photos: { type: array, items: { $ref: '#/components/schemas/MediaRef' } }
+            intervalSec: { type: integer, minimum: 10, maximum: 600 }
+    SiteContentRequest:
+      type: object
+      required: [version, storyConfirmed, ownersConfirmed, staffConfirmed, menuHeroIntervalSec]
+      additionalProperties: false
+      properties:
+        version: { type: integer }
+        heroClaim: { type: string, minLength: 3, maxLength: 120 }
+        heroLead: { type: string, maxLength: 400 }
+        heroMediaId: { type: [string, 'null'], format: uuid }
+        sections: { type: object, additionalProperties: { type: boolean } }
+        storyTitle: { type: string, maxLength: 120 }
+        storyText: { type: string, maxLength: 4000 }
+        storyConfirmed: { type: boolean }
+        owners:
+          type: array
+          maxItems: 6
+          items:
+            type: object
+            required: [name, visible]
+            properties:
+              id: { type: [string, 'null'], format: uuid, description: null = nuovo titolare }
+              name: { type: string, maxLength: 80 }
+              roleLabel: { type: string, maxLength: 80 }
+              description: { type: string, maxLength: 600 }
+              motto: { type: string, maxLength: 160 }
+              color: { type: string, enum: [giallo, arancio, verde] }
+              frontMediaId: { type: [string, 'null'], format: uuid }
+              backMediaId: { type: [string, 'null'], format: uuid }
+              visible: { type: boolean }
+        ownersConfirmed: { type: boolean }
+        staff:
+          type: array
+          maxItems: 12
+          items:
+            type: object
+            required: [name, visible]
+            properties:
+              id: { type: [string, 'null'], format: uuid }
+              name: { type: string, maxLength: 80 }
+              roleLabel: { type: string, maxLength: 80 }
+              mediaId: { type: [string, 'null'], format: uuid }
+              visible: { type: boolean }
+        staffConfirmed: { type: boolean }
+        menuHeroMediaIds: { type: array, maxItems: 10, items: { type: string, format: uuid } }
+        menuHeroIntervalSec: { type: integer, minimum: 10, maximum: 600 }
+    SiteSettings:
+      type: object
+      required: [version, addressConfirmed, hoursConfirmed, hours]
+      properties:
+        version: { type: integer }
+        addressLine: { type: [string, 'null'], minLength: 5, maxLength: 160 }
+        addressConfirmed: { type: boolean }
+        mapQuery: { type: [string, 'null'], maxLength: 200 }
+        mapMode: { type: string, enum: [CONSENT, AUTO] }
+        phone: { type: [string, 'null'], pattern: '^\+?[0-9][0-9 ]{5,18}$' }
+        email: { type: [string, 'null'], format: email }
+        instagramUrl: { type: [string, 'null'], pattern: '^https://(www\.)?instagram\.com/[A-Za-z0-9._]+/?$' }
+        hoursConfirmed: { type: boolean }
+        hours:
+          type: array
+          minItems: 7
+          maxItems: 7
+          items:
+            type: object
+            required: [isoDay, closed]
+            properties:
+              isoDay: { type: integer, minimum: 1, maximum: 7 }
+              closed: { type: boolean }
+              opensAt: { type: [string, 'null'], example: '18:00' }
+              closesAt: { type: [string, 'null'], example: '02:00', description: prima di opensAt = dopo mezzanotte }
+    Announcement:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string }
+        tone: { type: string, enum: [INFO, IMPORTANT] }
+        active: { type: boolean }
+        visibleUntil: { type: [string, 'null'], format: date, description: ultimo giorno di visibilità (ora italiana) }
+        createdAt: { type: string, format: date-time }
+    AnnouncementRequest:
+      type: object
+      required: [text, tone, active]
+      additionalProperties: false
+      properties:
+        text: { type: string, minLength: 5, maxLength: 140 }
+        tone: { type: string, enum: [INFO, IMPORTANT] }
+        active: { type: boolean }
+        visibleUntil: { type: [string, 'null'], format: date }

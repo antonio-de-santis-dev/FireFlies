@@ -43,8 +43,9 @@ Per errori di validazione `errors` contiene `{ "field": "guestCount", "code": "M
 | 401 | non autenticato / credenziali errate (messaggio generico) | `UNAUTHENTICATED`, `INVALID_CREDENTIALS` |
 | 403 | autenticato senza permesso, CSRF mancante/errato | `FORBIDDEN`, `CSRF_INVALID`, `SEATS_OVERRIDE_FORBIDDEN` |
 | 404 | risorsa inesistente o non visibile | `NOT_FOUND` |
-| 409 | conflitto con lo stato attuale | `CAPACITY_EXCEEDED`, `EVENT_BLOCKS_SLOT`, `EVENT_QUOTA_EXCEEDED`, `TABLE_CONFLICT`, `VERSION_CONFLICT`, `INVALID_TRANSITION`, `DUPLICATE_REQUEST`, `EVENT_CONFLICTS`, `EVENT_HAS_CONFIRMED_RESERVATIONS`, `CAPACITY_BELOW_CONFIRMED`, `MEDIA_IN_USE` |
-| 422 | dati ben formati ma non accettabili per le regole | `VALIDATION_FAILED`, `SLOT_NOT_AVAILABLE`, `DAY_CLOSED`, `TOO_EARLY`, `TOO_FAR`, `PARTY_TOO_LARGE`, `EVENT_BLOCKS_SLOT` (dal sito), `FULLY_BOOKED`, `WEB_BOOKING_DISABLED`, `IDEMPOTENCY_KEY_REUSED`, `INVALID_LOCAL_TIME`, `NOT_ALIGNED_15_MIN`, `ZONE_REQUIRED`, `ZONE_NOT_SEPARATE`, `TABLE_OUTSIDE_ZONE`, `SEATS_BELOW_PARTY_SIZE`, `OVERRIDE_REASON_REQUIRED` |
+| 409 | conflitto con lo stato attuale | `CAPACITY_EXCEEDED`, `EVENT_BLOCKS_SLOT`, `EVENT_QUOTA_EXCEEDED`, `TABLE_CONFLICT`, `VERSION_CONFLICT`, `INVALID_TRANSITION`, `DUPLICATE_REQUEST`, `EVENT_CONFLICTS`, `EVENT_HAS_CONFIRMED_RESERVATIONS`, `CAPACITY_BELOW_CONFIRMED`, `MEDIA_IN_USE`, `CATEGORY_SLUG_TAKEN`, `CATEGORY_NOT_EMPTY` |
+| 413 | foto oltre 5 MB | `MEDIA_TOO_LARGE` |
+| 422 | dati ben formati ma non accettabili per le regole | `VALIDATION_FAILED`, `SLOT_NOT_AVAILABLE`, `DAY_CLOSED`, `TOO_EARLY`, `TOO_FAR`, `PARTY_TOO_LARGE`, `EVENT_BLOCKS_SLOT` (dal sito), `FULLY_BOOKED`, `WEB_BOOKING_DISABLED`, `IDEMPOTENCY_KEY_REUSED`, `INVALID_LOCAL_TIME`, `NOT_ALIGNED_15_MIN`, `ZONE_REQUIRED`, `ZONE_NOT_SEPARATE`, `TABLE_OUTSIDE_ZONE`, `SEATS_BELOW_PARTY_SIZE`, `OVERRIDE_REASON_REQUIRED`, `MEDIA_INVALID`, `MEDIA_NOT_FOUND` |
 | 429 | troppe richieste | `RATE_LIMITED` (+ `Retry-After`) |
 | 503 | dipendenza non disponibile (es. storage) | `SERVICE_UNAVAILABLE` |
 
@@ -52,11 +53,15 @@ Per errori di validazione `errors` contiene `{ "field": "guestCount", "code": "M
 
 | Metodo e percorso | Descrizione | Cache |
 |---|---|---|
-| `GET /public/site` | impostazioni pubbliche, orari pubblici + eccezioni, sezioni attive, contenuti home/storia, titolari, staff, avvisi attivi, hero del menu | ETag, 60 s |
-| `GET /public/menu` | categorie e voci visibili, prezzo (`priceCents` o `null`), allergeni (`declared` + elenco), foto con varianti | ETag, 60 s |
+| `GET /public/site` | **(FASE 4)** `{ settings, content, announcements, demoContent }`: indirizzo, contatti, mappa, orari dei 7 giorni (`isoDay`, `closed`, `opensAt`, `closesAt`), sezioni della home, testi home/storia, titolari e staff **visibili**, testata del menu (`menuHero.photos`, `intervalSec`), avvisi attivi non scaduti | ETag, 60 s |
+| `GET /public/menu` | **(FASE 4)** `{ categories: [{ slug, name, hint, items }], allergens }`: solo categorie e voci visibili; voce = `{ id, name, description, ingredients[], priceCents\|null, demoPriceCents\|null, allergens: { declared, codes[], verifiedAt }, photo }` | ETag, 60 s |
 | `GET /public/events?from=&to=` | eventi pubblicati | ETag, 60 s |
 | `GET /public/events/{slug}` | dettaglio evento; `booking: { mode, open }` senza numeri di posti esatti (P-26) | ETag, 60 s |
-| `GET /public/gallery` | foto in galleria con varianti | ETag, 300 s |
+| `GET /public/gallery` | **(FASE 4)** foto in galleria, nell'ordine dei gestori | ETag, 300 s |
+
+Ogni foto (`MediaRef`) è `{ id, alt, width, height, src, srcset }`: `src` è la variante da 960 px (o la più grande
+disponibile), `srcset` elenca tutte le varianti (`… 480w, … 960w, … 1600w`). URL pubblici costruiti da
+`FIREFLIES_MEDIA_PUBLIC_URL` (in sviluppo `/media`, serviti dal backend; in produzione il dominio CDN del bucket).
 | `GET /public/booking-options?date=YYYY-MM-DD[&eventId=][&guests=]` | fasce e slot del giorno con stato: `OPEN`, `FULL`, `CLOSED`, `EVENT`, `TOO_EARLY`; `FULL` = per almeno un quanto della durata standard i posti confermati liberi sono meno delle persone indicate (default 2); regole (max persone, messaggi) | no-store |
 | `POST /public/reservations` | crea una richiesta `PENDING` | no-store |
 
@@ -207,12 +212,11 @@ Uscita anticipata: `{ "version": 5, "status": "COMPLETED" }` prima di `endTime` 
 
 | Area | Endpoint | Ruolo |
 |---|---|---|
-| Menu | `GET/POST /admin/menu/categories`, `PUT/DELETE …/{id}`; `GET/POST /admin/menu/items`, `PUT/DELETE …/{id}`, `PATCH …/{id}/visibility` | STAFF |
-| Media | `POST /admin/media/upload-intents` → `{ mediaId, uploadUrl, method: "PUT", headers, expiresAt }` (URL firmato 5 min, limite 5 MB e content-type); `POST /admin/media/{id}/finalize` `{ altText, credit }` → verifica tipo reale, dimensioni, ricodifica → `READY` o `422 MEDIA_INVALID`; `GET /admin/media`, `PATCH /admin/media/{id}`, `DELETE /admin/media/{id}` (`409 MEDIA_IN_USE` con elenco usi) | STAFF |
-| Galleria | `PUT /admin/gallery` (ordine e presenza) | STAFF |
-| Avvisi | `GET/POST /admin/announcements`, `PUT/DELETE …/{id}` | STAFF |
-| Contenuti sito | `GET/PUT /admin/site-content`, `PUT /admin/site-sections`, `PUT /admin/hero-slides/{page}`, `GET/POST/PUT/DELETE /admin/owners`, `/admin/staff-members` | OWNER |
-| Impostazioni | `GET/PUT /admin/site-settings`, `PUT /admin/opening-hours`, `GET/POST/DELETE /admin/opening-exceptions` | OWNER |
+| Menu **(FASE 4)** | `GET /admin/menu` → `{ categories, items, allergens }` (anche voci e categorie nascoste); `POST /admin/menu/categories` `{ name, hint, slug?, visible }` (slug dal nome se assente; `409 CATEGORY_SLUG_TAKEN`), `PUT …/categories/{id}`, `DELETE …/categories/{id}` (`409 CATEGORY_NOT_EMPTY`), `PUT …/categories/order` `{ categoryIds }`; `POST /admin/menu/items`, `PUT …/items/{id}` (con `version`), `PATCH …/items/{id}/visibility` `{ version, visible }`, `DELETE …/items/{id}`. Voce: `{ categoryId, name, description, ingredients[], priceCents (intero 0…100000 o null), allergens: { declared, codes[] }, photoMediaId, visible }`; codici allergeni UE (`GLUTEN`, `MILK`, …); `codes` non vuoto con `declared: false` → `422`; `6.5` in `priceCents` → `400`; `demoPriceCents` non scrivibile | STAFF |
+| Media **(FASE 4, revisione T-26)** | `GET /admin/media` (libreria con `usages`); `POST /admin/media` multipart `file` + `altText` (5…250 caratteri) + `credit?` → `201` con varianti, `422 MEDIA_INVALID`, `413 MEDIA_TOO_LARGE`, `503 SERVICE_UNAVAILABLE` (storage) + `Retry-After`; `PUT /admin/media/{id}/file` multipart → stesso id, file nuovo; `PATCH /admin/media/{id}` `{ altText?, credit?, inGallery? }`; `PUT /admin/media/order` `{ mediaIds }`; `DELETE /admin/media/{id}` → `204` o `409 MEDIA_IN_USE` con `context.usages[{ type, label }]` | STAFF |
+| Avvisi **(FASE 4)** | `GET/POST /admin/announcements`, `PUT/DELETE …/{id}`; `{ text (5…140), tone: INFO\|IMPORTANT, active, visibleUntil (data, inclusa, ora italiana) }` | STAFF |
+| Contenuti sito **(FASE 4, T-31)** | `GET/PUT /admin/site-content`: un unico documento con `version`, `heroClaim`, `heroLead`, `heroMediaId`, `sections{codice: bool}`, `storyTitle`, `storyText`, `storyConfirmed`, `owners[]` (`id` null = nuovo; mancanti = rimossi), `ownersConfirmed`, `staff[]`, `staffConfirmed`, `menuHeroMediaIds[]` (max 10), `menuHeroIntervalSec` (10…600) | OWNER |
+| Impostazioni **(FASE 4, T-31)** | `GET/PUT /admin/site-settings`: `version`, `addressLine`, `addressConfirmed`, `mapQuery`, `mapMode: CONSENT\|AUTO`, `phone`, `email`, `instagramUrl`, `hoursConfirmed`, `hours[7]` (chiusura prima dell'apertura = dopo mezzanotte). Eccezioni di apertura: fasi successive | OWNER |
 | Notifiche | `GET /admin/notifications?reservationId=&state=`; `POST /admin/notifications/{id}/resend` `{ acknowledgeDuplicateRisk }` solo per `UNCERTAIN`/`FAILED`/`DEAD` (con `UNCERTAIN` l'avviso di possibile doppio invio è obbligatorio, altrimenti `422`); `POST /admin/notifications/{id}/mark-handled` → `SKIPPED (HANDLED_MANUALLY)`; entrambe in audit | STAFF |
 | Template | `GET/PUT /admin/notification-templates/{code}/{channel}` | OWNER |
 | SMS | `PUT /admin/site-settings` campo `smsEnabled` — efficace solo con profilo `prod` e provider configurato (ADR-0005); in `local`/`test` resta sempre `fake` | OWNER |
@@ -227,7 +231,7 @@ Uscita anticipata: `{ "version": 5, "status": "COMPLETED" }` prima di `endTime` 
 | stato `da-contattare` | campo `needsCallback` |
 | `notice` (SMS simulato) | `notifications[]` nella prenotazione (stati `PENDING/SENDING/SENT/DELIVERED/UNCERTAIN/FAILED/DEAD/SKIPPED`) |
 | `menu/save`, `menu/toggle` | `PUT /admin/menu/items/{id}`, `PATCH …/visibility` |
-| `media/add` (blob URL) | `upload-intents` → PUT diretto → `finalize` |
+| `media/add` (blob URL) | `POST /admin/media` multipart (T-26) |
 | `media/remove` bloccato se in uso | `DELETE /admin/media/{id}` → `409 MEDIA_IN_USE` |
 | `settings/save`, `content/save` | `PUT /admin/site-settings`, `PUT /admin/site-content` |
 | `session {role}` | `POST /auth/login` + `GET /auth/me` |

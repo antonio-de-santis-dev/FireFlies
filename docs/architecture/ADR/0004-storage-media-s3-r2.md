@@ -18,3 +18,16 @@
 ## Conseguenze
 - Il bucket R2 richiede una regola CORS per il PUT dal dominio del sito.
 - Ricodifica in Java: lettura WebP con TwelveMonkeys; output JPEG in V1 (WebP/AVIF in uscita dopo, P-17).
+
+## Revisione FASE 4 (19/10/2026) — **proposta, da approvare** (T-26…T-30)
+Durante l'implementazione il flusso di caricamento è stato semplificato, lasciando invariata l'interfaccia `MediaStorage`:
+
+| Aspetto | ADR originale | Implementato in FASE 4 | Perché |
+|---|---|---|---|
+| Caricamento | URL PUT firmato verso il bucket, poi `finalize` | `POST /admin/media` multipart al backend (max 5 MB) | nessun byte non verificato raggiunge lo storage pubblico; niente CORS sul bucket; niente record «pendenti» |
+| Originale | non specificato | **mai conservato**: solo varianti ricodificate | privacy (EXIF/GPS), spazio |
+| Formato varianti | JPEG | JPEG progressivo; **PNG a 256 colori** per le immagini con trasparenza | i titolari scontornati devono restare trasparenti |
+| Pulizia | job orario degli upload non finalizzati | job orario dei file da ricancellare (`media_orphans`) | con l'upload diretto non esistono upload pendenti |
+
+Le colonne `PENDING_UPLOAD`/`upload_expires_at` restano nello schema (V2) e permetterebbero di tornare all'URL firmato
+senza migrazioni, se il volume di caricamenti lo rendesse necessario.
