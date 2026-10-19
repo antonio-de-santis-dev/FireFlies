@@ -45,8 +45,9 @@ class MediaStore {
             UUID uploadedBy, Instant now) {
         jdbc.sql("""
                 INSERT INTO media_assets (id, storage_key, status, mime_type, bytes, width, height, sha256, alt_text,
-                                          credit, uploaded_by, created_at, ready_at)
-                VALUES (?, ?, 'READY', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                          credit, uploaded_by, created_at, ready_at, gallery_order)
+                VALUES (?, ?, 'READY', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        (SELECT coalesce(min(gallery_order), 0) - 1 FROM media_assets)) -- le foto nuove in cima alla libreria
                 """)
                 .params(id, storageKey, image.sourceMimeType(), image.bytes(), image.width(), image.height(),
                         image.sha256(), altText, credit, uploadedBy, utc(now), utc(now))

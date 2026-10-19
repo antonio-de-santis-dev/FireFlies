@@ -1,12 +1,13 @@
 # CI minima del backend: unità + integrazione su PostgreSQL 17 reale (Testcontainers usa il Docker del runner).
+# Anche le foto del mockup in frontend/public/assets: le usa il test del caricatore dei dati demo.
 name: backend
 
 on:
   push:
     branches: ["main", "fase-*/**"]
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "frontend/public/assets/**", ".github/workflows/backend.yml"]
   pull_request:
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "frontend/public/assets/**", ".github/workflows/backend.yml"]
 
 permissions:
   contents: read
