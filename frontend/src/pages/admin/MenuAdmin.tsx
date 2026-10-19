@@ -1,8 +1,10 @@
-import { CircleAlert, ImageOff, Pencil, Plus, Save, Search, SearchX } from 'lucide-react';
+import { CircleAlert, ImageOff, Pencil, Plus, Save, Search, SearchX, Trash2 } from 'lucide-react';
 import { PhotoPicker } from './media';
 import { useMemo, useState, type FormEvent } from 'react';
+import { ApiError, problemField } from '../../api/client';
+import { deleteMenuItem, saveMenuItem, setMenuItemVisibility } from '../../api/content';
 import { ConfirmBadge, Img } from '../../components/ui';
-import { categories, EU_ALLERGENS, formatPrice, type CategoryId, type MenuItem } from '../../data/menu';
+import { formatPrice, type CategoryId, type MenuItem } from '../../data/menu';
 import { Link, navigate, usePageMeta } from '../../router';
 import { useStore } from '../../store';
 import { AdminHead } from './AdminLayout';
@@ -18,8 +20,17 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
 
 export function MenuAdmin() {
   usePageMeta('Gestione menu');
-  const { menu, dispatch, notify, mediaAsset } = useStore();
+  const { menu, categories, allergens, dispatch, notify, mediaAsset } = useStore();
   const [cat, setCat] = useState<CategoryId | 'tutte'>('tutte');
+  const toggle = async (m: MenuItem) => {
+    try {
+      const saved = await setMenuItemVisibility(m, !m.visible, allergens);
+      dispatch({ type: 'menu/save', item: saved });
+      notify(`«${m.name}» ${saved.visible ? 'visibile' : 'nascosta'} sul sito.`);
+    } catch (e) {
+      notify(e instanceof ApiError ? e.message : 'Modifica non salvata: riprova.');
+    }
+  };
   const [q, setQ] = useState('');
   const rows = useMemo(
     () => menu.filter((m) => (cat === 'tutte' || m.category === cat) && m.name.toLowerCase().includes(q.trim().toLowerCase())),
@@ -77,7 +88,7 @@ export function MenuAdmin() {
                   <tr key={m.id} className={m.visible ? undefined : 'is-hidden'}>
                     <td data-label="Voce">
                       <span className="cell-item">
-                        {p ? <Img asset={p} decorative className="cell-item__img" /> : <span className="cell-item__img cell-item__img--none"><ImageOff size={18} aria-hidden="true" /></span>}
+                        {p ? <Img asset={p} decorative className="cell-item__img" sizes="48px" /> : <span className="cell-item__img cell-item__img--none"><ImageOff size={18} aria-hidden="true" /></span>}
                         <strong>{m.name}</strong>
                       </span>
                     </td>
@@ -88,7 +99,7 @@ export function MenuAdmin() {
                       <Switch
                         checked={m.visible}
                         label={m.visible ? 'Visibile' : 'Nascosta'}
-                        onChange={() => { dispatch({ type: 'menu/toggle', id: m.id }); notify(`«${m.name}» ${m.visible ? 'nascosta' : 'visibile'} sul sito (solo demo).`); }}
+                        onChange={() => toggle(m)}
                       />
                     </td>
                     <td>
@@ -107,21 +118,23 @@ export function MenuAdmin() {
   );
 }
 
-const blank = (): MenuItem => ({
-  id: `voce-${Math.random().toString(36).slice(2, 7)}`,
-  name: '', category: 'aperitivi', description: '', ingredients: [], allergens: null, price: null,
-  photo: null, visible: false, source: 'demo',
+const blank = (category: CategoryId): MenuItem => ({
+  id: 'nuova', name: '', category, description: '', ingredients: [], allergens: null, price: null,
+  photo: null, visible: false, source: 'reale',
 });
 
 export function MenuEditor({ id }: { id: string }) {
-  const { menu, dispatch, notify, mediaAsset } = useStore();
+  const { menu, categories, allergens, dispatch, notify, mediaAsset } = useStore();
   const existing = menu.find((m) => m.id === id);
   const isNew = id === 'nuova';
   usePageMeta(isNew ? 'Nuova voce menu' : existing ? `Modifica ${existing.name}` : 'Voce non trovata');
-  const [item, setItem] = useState<MenuItem>(() => existing ?? blank());
+  const [item, setItem] = useState<MenuItem>(() => existing ?? blank(categories[0]?.id ?? ''));
   const [price, setPrice] = useState(existing?.price != null ? existing.price.toFixed(2).replace('.', ',') : '');
   const [declared, setDeclared] = useState(existing?.allergens != null);
   const [errors, setErrors] = useState<{ name?: string; price?: string }>({});
+  const [failure, setFailure] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!existing && !isNew) {
     return (
@@ -136,30 +149,66 @@ export function MenuEditor({ id }: { id: string }) {
   const toggleAllergen = (a: string) =>
     up('allergens', (item.allergens ?? []).includes(a) ? (item.allergens ?? []).filter((x) => x !== a) : [...(item.allergens ?? []), a]);
 
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     const next: typeof errors = {};
     if (item.name.trim().length < 2) next.name = 'Dai un nome alla voce (almeno 2 caratteri).';
     const parsed = price.trim() ? Number(price.replace(',', '.')) : null;
-    if (parsed != null && (Number.isNaN(parsed) || parsed < 0 || parsed > 500)) next.price = 'Scrivi un prezzo in euro, es. 6,50. Lascia vuoto se non è ancora deciso.';
+    if (parsed != null && (Number.isNaN(parsed) || parsed < 0 || parsed > 1000 || !/^\d+([.,]\d{1,2})?$/.test(price.trim()))) {
+      next.price = 'Scrivi un prezzo in euro, es. 6,50. Lascia vuoto se non è ancora deciso.';
+    }
     setErrors(next);
+    setFailure(null);
     if (Object.keys(next).length) {
       document.getElementById(next.name ? 'me-name' : 'me-price')?.focus();
       return;
     }
-    dispatch({ type: 'menu/save', item: { ...item, name: item.name.trim(), price: parsed, allergens: declared ? item.allergens ?? [] : null } });
-    notify('Voce salvata solo in questa sessione demo.');
-    navigate('/gestione/menu');
+    setBusy(true);
+    try {
+      const saved = await saveMenuItem({ ...item, name: item.name.trim(), price: parsed, allergens: declared ? item.allergens ?? [] : null },
+        isNew, categories, allergens);
+      dispatch({ type: 'menu/save', item: saved });
+      notify(isNew ? `«${saved.name}» aggiunta al menu.` : `«${saved.name}» salvata.`);
+      navigate('/gestione/menu');
+    } catch (error) {
+      const field = problemField(error);
+      const message = error instanceof ApiError ? error.message : 'Salvataggio non riuscito: riprova.';
+      if (field === 'name' || field === 'priceCents') {
+        setErrors(field === 'name' ? { name: message } : { price: message });
+        document.getElementById(field === 'name' ? 'me-name' : 'me-price')?.focus();
+      } else {
+        setFailure(message);
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    try {
+      await deleteMenuItem(item.id);
+      dispatch({ type: 'menu/remove', id: item.id });
+      notify(`«${item.name}» eliminata dal menu.`);
+      navigate('/gestione/menu');
+    } catch (error) {
+      setFailure(error instanceof ApiError ? error.message : 'Eliminazione non riuscita: riprova.');
+    }
   };
 
   const preview = mediaAsset(item.photo);
 
   return (
     <form className="editor" noValidate onSubmit={save}>
-      <AdminHead title={isNew ? 'Nuova voce' : `Modifica: ${existing!.name}`} lead="Le modifiche non vengono salvate su un server.">
+      <AdminHead title={isNew ? 'Nuova voce' : `Modifica: ${existing!.name}`} lead="Al salvataggio la voce si aggiorna subito sul sito.">
         <Link to="/gestione/menu" className="btn btn--quiet">Annulla</Link>
-        <button type="submit" className="btn btn--action"><Save size={18} aria-hidden="true" /> Salva</button>
+        <button type="submit" className="btn btn--action" disabled={busy}><Save size={18} aria-hidden="true" /> {busy ? 'Salvataggio…' : 'Salva'}</button>
       </AdminHead>
+      {failure && <p className="error" role="alert"><CircleAlert size={16} aria-hidden="true" /> {failure}</p>}
 
       <div className="editor__grid">
         <div className="panel editor__main">
@@ -203,7 +252,7 @@ export function MenuEditor({ id }: { id: string }) {
             </label>
             {!declared && <ConfirmBadge>Sul sito: «Da dichiarare»</ConfirmBadge>}
             <div className="allergens__grid" aria-disabled={!declared}>
-              {EU_ALLERGENS.map((a) => (
+              {allergens.map(({ name: a }) => (
                 <label key={a} className="check check--sm">
                   <input type="checkbox" disabled={!declared} checked={(item.allergens ?? []).includes(a)} onChange={() => toggleAllergen(a)} />
                   <span>{a}</span>
@@ -217,10 +266,15 @@ export function MenuEditor({ id }: { id: string }) {
           <div className="panel">
             <h2 className="panel__title">Pubblicazione</h2>
             <Switch checked={item.visible} onChange={() => up('visible', !item.visible)} label={item.visible ? 'Visibile sul sito' : 'Nascosta dal sito'} />
+            {!isNew && (
+              <button type="button" className="btn btn--quiet btn--sm editor__delete" onClick={remove}>
+                <Trash2 size={16} aria-hidden="true" /> {confirmDelete ? 'Conferma: elimina la voce' : 'Elimina voce'}
+              </button>
+            )}
           </div>
           <div className="panel">
             <h2 className="panel__title">Foto</h2>
-            {preview ? <Img asset={preview} className="editor__preview" /> : <div className="editor__preview editor__preview--none"><ImageOff aria-hidden="true" /> Nessuna foto: la voce appare come solo testo</div>}
+            {preview ? <Img asset={preview} className="editor__preview" sizes="360px" /> : <div className="editor__preview editor__preview--none"><ImageOff aria-hidden="true" /> Nessuna foto: la voce appare come solo testo</div>}
             <PhotoPicker legend="Scegli o carica una foto" allowNone value={item.photo} onChange={(id) => up('photo', id)} />
           </div>
         </aside>

@@ -8,11 +8,17 @@ type ImgProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src' | 'alt' | 'width
   decorative?: boolean;
 };
 
-/** Immagine con dimensioni intrinseche dichiarate (niente CLS) e lazy loading sotto la piega. */
-export function Img({ asset, eager, decorative, ...rest }: ImgProps) {
+/**
+ * Immagine con dimensioni intrinseche dichiarate (niente CLS) e lazy loading sotto la piega.
+ * Le foto della libreria hanno più larghezze (`srcSet`): con `sizes` il browser scarica solo quella che serve
+ * (un'anteprima da 48 px non scarica mai la foto da 1600 px).
+ */
+export function Img({ asset, eager, decorative, sizes, ...rest }: ImgProps) {
   return (
     <img
       src={asset.src}
+      srcSet={asset.srcSet}
+      sizes={asset.srcSet ? sizes ?? '(min-width: 1024px) 50vw, 100vw' : undefined}
       alt={decorative ? '' : asset.alt}
       width={asset.w}
       height={asset.h}

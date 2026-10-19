@@ -27,7 +27,7 @@ export function MenuHero() {
     <section className="menu-hero" aria-labelledby="menu-title">
       <div className="menu-hero__slides" aria-hidden="true">
         {slides.map((s, i) => (
-          <Img key={s.id} asset={s.asset!} decorative eager={i === 0} className={`menu-hero__img${i === active ? ' is-active' : ''}`} />
+          <Img key={s.id} asset={s.asset!} decorative eager={i === 0} sizes="100vw" className={`menu-hero__img${i === active ? ' is-active' : ''}`} />
         ))}
       </div>
       <div className="container menu-hero__inner">

@@ -1,5 +1,7 @@
-import { ArrowDown, ArrowUp, Eye, Plus, Save, Trash2, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, CircleAlert, Eye, Plus, Save, Trash2, X } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { ApiError, problemField } from '../../api/client';
+import { NEW_ID, saveSiteContent } from '../../api/content';
 import { Img } from '../../components/ui';
 import { homeSectionLabels, type HomeSection, type SiteContent } from '../../data/content';
 import { Link, usePageMeta } from '../../router';
@@ -14,6 +16,8 @@ export function Customize() {
   const { content, dispatch, notify, mediaOr } = useStore();
   const [c, setC] = useState<SiteContent>(content);
   const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const up = <K extends keyof SiteContent>(k: K, v: SiteContent[K]) => setC((x) => ({ ...x, [k]: v }));
   const moveHero = (i: number, d: -1 | 1) => {
     const photos = [...c.menuHero.photos];
@@ -25,24 +29,48 @@ export function Customize() {
   const upStaff = (id: string, patch: Partial<SiteContent['staff'][number]>) =>
     up('staff', c.staff.map((s) => (s.id === id ? { ...s, ...patch } : s)));
 
-  const save = (e: FormEvent) => {
+  const save = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+    setFailure(null);
     if (c.heroClaim.trim().length < 3) {
       setError('La frase principale non può restare vuota.');
       document.getElementById('cu-claim')?.focus();
       return;
     }
     setError(null);
-    dispatch({ type: 'content/save', content: c });
-    notify('Sito aggiornato: le modifiche sono già visibili (solo in questa sessione demo).');
+    const nameless = c.staff.findIndex((s) => !s.name.trim());
+    if (nameless >= 0) {
+      setFailure(`Scrivi il nome della persona ${nameless + 1} dello staff, oppure rimuovila.`);
+      document.getElementById(`st-name-${c.staff[nameless].id}`)?.focus();
+      return;
+    }
+    setBusy(true);
+    try {
+      const saved = await saveSiteContent(c);
+      dispatch({ type: 'content/save', content: saved.content, mediaIndex: saved.mediaIndex });
+      setC(saved.content);
+      notify('Sito aggiornato: le modifiche sono già visibili ai clienti.');
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Salvataggio non riuscito: riprova.';
+      if (problemField(err) === 'heroClaim') {
+        setError(message);
+        document.getElementById('cu-claim')?.focus();
+      } else {
+        setFailure(message);
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <form className="editor" noValidate onSubmit={save}>
       <AdminHead title="Personalizza il sito" lead="Testi, foto e sezioni che vedono i clienti. Riservato al titolare.">
         <Link to="/" className="btn btn--quiet"><Eye size={18} aria-hidden="true" /> Vedi il sito</Link>
-        <button type="submit" className="btn btn--action"><Save size={18} aria-hidden="true" /> Salva e pubblica</button>
+        <button type="submit" className="btn btn--action" disabled={busy}><Save size={18} aria-hidden="true" /> {busy ? 'Pubblicazione…' : 'Salva e pubblica'}</button>
       </AdminHead>
+      {failure && <p className="error" role="alert"><CircleAlert size={16} aria-hidden="true" /> {failure}</p>}
 
       <div className="customize">
         <section className="panel" aria-labelledby="cu-home">
@@ -178,7 +206,7 @@ export function Customize() {
           <div className="panel__head">
             <h2 id="cu-staff" className="panel__title">Lo staff</h2>
             <button type="button" className="btn btn--ghost btn--sm"
-              onClick={() => up('staff', [...c.staff, { id: `s${Date.now()}`, name: '', role: '', photo: c.heroPhoto }])}>
+              onClick={() => up('staff', [...c.staff, { id: `${NEW_ID}${Date.now()}`, name: '', role: '', photo: c.heroPhoto }])}>
               <Plus size={16} aria-hidden="true" /> Aggiungi persona
             </button>
           </div>

@@ -1,12 +1,14 @@
 import { CircleAlert, Megaphone, Plus, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { ApiError } from '../../api/client';
+import { createAnnouncement, deleteAnnouncement, updateAnnouncement } from '../../api/content';
 import type { Announcement } from '../../data/content';
 import { usePageMeta } from '../../router';
 import { useStore } from '../../store';
 import { AdminHead } from './AdminLayout';
 import { Switch } from './MenuAdmin';
 
-const blank = (): Announcement => ({ id: `a${Date.now()}`, text: '', tone: 'info', active: true, until: null });
+const blank = (): Announcement => ({ id: '', text: '', tone: 'info', active: true, until: null });
 
 /** Gestione → Comunicazioni: avvisi in cima al sito (chiusure, serate, novità). */
 export function Announcements() {
@@ -15,17 +17,49 @@ export function Announcements() {
   const [draft, setDraft] = useState<Announcement>(blank);
   const [error, setError] = useState<string | null>(null);
 
-  const publish = (e: FormEvent) => {
+  const [busy, setBusy] = useState(false);
+
+  const publish = async (e: FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     if (draft.text.trim().length < 5) {
       setError('Scrivi il testo dell’avviso (almeno 5 caratteri).');
       document.getElementById('an-text')?.focus();
       return;
     }
     setError(null);
-    dispatch({ type: 'announcement/save', item: { ...draft, text: draft.text.trim() } });
-    notify(draft.active ? 'Avviso pubblicato in cima al sito (solo demo).' : 'Avviso salvato, non ancora visibile.');
-    setDraft(blank());
+    setBusy(true);
+    try {
+      const saved = await createAnnouncement({ ...draft, text: draft.text.trim() });
+      dispatch({ type: 'announcement/save', item: saved });
+      notify(saved.active ? 'Avviso pubblicato in cima al sito.' : 'Avviso salvato, non ancora visibile.');
+      setDraft(blank());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Avviso non salvato: riprova.');
+      document.getElementById('an-text')?.focus();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggle = async (a: Announcement) => {
+    try {
+      const saved = await updateAnnouncement({ ...a, active: !a.active });
+      dispatch({ type: 'announcement/save', item: saved });
+      notify(saved.active ? 'Avviso visibile sul sito.' : 'Avviso nascosto dal sito.');
+    } catch (err) {
+      notify(err instanceof ApiError ? err.message : 'Modifica non salvata: riprova.');
+    }
+  };
+
+  const remove = async (a: Announcement) => {
+    try {
+      await deleteAnnouncement(a.id);
+      dispatch({ type: 'announcement/remove', id: a.id });
+      notify('Avviso eliminato.');
+    } catch (err) {
+      notify(err instanceof ApiError ? err.message : 'Avviso non eliminato: riprova.');
+    }
   };
 
   return (
@@ -57,7 +91,7 @@ export function Announcements() {
         </div>
         <div className="announce-form__foot">
           <Switch checked={draft.active} label={draft.active ? 'Pubblica subito' : 'Salva senza pubblicare'} onChange={() => setDraft({ ...draft, active: !draft.active })} />
-          <button type="submit" className="btn btn--action"><Plus size={18} aria-hidden="true" /> Aggiungi avviso</button>
+          <button type="submit" className="btn btn--action" disabled={busy}><Plus size={18} aria-hidden="true" /> Aggiungi avviso</button>
         </div>
       </form>
 
@@ -73,8 +107,8 @@ export function Announcements() {
                 <p className="small muted">{a.tone === 'importante' ? 'Importante' : 'Informazione'} · {a.until ? `fino al ${a.until.split('-').reverse().join('/')}` : 'senza scadenza'}</p>
               </div>
               <Switch checked={a.active} label={a.active ? 'Visibile' : 'Nascosto'}
-                onChange={() => { dispatch({ type: 'announcement/save', item: { ...a, active: !a.active } }); notify(a.active ? 'Avviso nascosto dal sito.' : 'Avviso visibile sul sito.'); }} />
-              <button type="button" className="btn btn--quiet btn--sm" aria-label={`Elimina avviso: ${a.text}`} onClick={() => dispatch({ type: 'announcement/remove', id: a.id })}>
+                onChange={() => toggle(a)} />
+              <button type="button" className="btn btn--quiet btn--sm" aria-label={`Elimina avviso: ${a.text}`} onClick={() => remove(a)}>
                 <Trash2 size={16} aria-hidden="true" /> Elimina
               </button>
             </li>

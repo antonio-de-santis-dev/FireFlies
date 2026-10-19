@@ -2,7 +2,7 @@ import { ChevronRight, Search, SearchX, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Dialog } from '../../components/Dialog';
 import { ConfirmBadge, DemoBadge, Img } from '../../components/ui';
-import { categories, publicPrice, type CategoryId, type MenuItem } from '../../data/menu';
+import { publicPrice, type CategoryId, type MenuItem } from '../../data/menu';
 import { useDemoLoading } from '../../components/useDemoLoading';
 import { MenuHero } from '../../components/MenuHero';
 import { usePageMeta, usePath } from '../../router';
@@ -11,12 +11,13 @@ import { useStore } from '../../store';
 const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 function ItemDetail({ item, onClose }: { item: MenuItem; onClose: () => void }) {
-  const photo = useStore().mediaAsset(item.photo);
+  const { mediaAsset, categories } = useStore();
+  const photo = mediaAsset(item.photo);
   const cat = categories.find((c) => c.id === item.category);
   return (
     <Dialog title={item.name} onClose={onClose}>
       <div className="item-detail">
-        {photo && <Img asset={photo} eager className="item-detail__img" />}
+        {photo && <Img asset={photo} eager className="item-detail__img" sizes="(min-width: 760px) 360px, 100vw" />}
         <div className="item-detail__body">
           <p className="item-detail__cat">{cat?.label}</p>
           <p>{item.description}</p>
@@ -45,7 +46,8 @@ function ItemDetail({ item, onClose }: { item: MenuItem; onClose: () => void }) 
           <p className="small muted">
             Hai un'allergia o un'intolleranza? Chiedi sempre allo staff prima di ordinare.
           </p>
-          {item.source === 'demo' ? <DemoBadge>Voce segnaposto</DemoBadge> : <DemoBadge>Nome e ricetta da confermare</DemoBadge>}
+          {item.source === 'demo' && <DemoBadge>Voce segnaposto</DemoBadge>}
+          {item.source === 'foto' && <DemoBadge>Nome e ricetta da confermare</DemoBadge>}
         </div>
       </div>
     </Dialog>
@@ -55,7 +57,7 @@ function ItemDetail({ item, onClose }: { item: MenuItem; onClose: () => void }) 
 export function Menu() {
   usePageMeta('Menu');
   const path = usePath();
-  const { menu, mediaAsset } = useStore();
+  const { menu, mediaAsset, categories } = useStore();
   const initialCat = new URLSearchParams(path.split('?')[1] ?? '').get('cat') as CategoryId | null;
   const [cat, setCat] = useState<CategoryId | 'tutti'>(categories.some((c) => c.id === initialCat) ? initialCat! : 'tutti');
   const [query, setQuery] = useState('');
@@ -141,7 +143,7 @@ export function Menu() {
                   return (
                     <li key={item.id}>
                       <button type="button" className={`menu-item${p ? '' : ' menu-item--text'}`} onClick={() => setOpen(item)}>
-                        {p && <Img asset={p} decorative className="menu-item__img" />}
+                        {p && <Img asset={p} decorative className="menu-item__img" sizes="104px" />}
                         <span className="menu-item__body">
                           <span className="menu-item__name">{item.name}</span>
                           <span className="menu-item__desc">{item.description}</span>

@@ -3,7 +3,8 @@
 
 const BASE = './assets/fireflies';
 
-export type Asset = { src: string; alt: string; w: number; h: number };
+/** Immagine con dimensioni intrinseche; `srcSet` per le foto della libreria (varianti 480/960/1600 dal backend). */
+export type Asset = { src: string; alt: string; w: number; h: number; srcSet?: string };
 
 const a = (path: string, w: number, h: number, alt: string): Asset => ({ src: `${BASE}/${path}`, w, h, alt });
 

@@ -448,3 +448,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
   .btn { max-width: 100%; white-space: normal; text-align: center; }
 }
 .field { align-content: start; } /* un campo non si allunga mai per pareggiare la colonna accanto */
+
+/* Attesa dei contenuti dal backend (FASE 4): pochi millisecondi, oppure il messaggio «Riprova». */
+.content-gate { min-height: 100vh; display: grid; place-content: center; justify-items: center; gap: 24px; padding: 24px; text-align: center; }
+.content-gate__logo { width: min(240px, 60vw); height: auto; }
+.content-gate__msg { display: grid; gap: 16px; justify-items: center; max-width: 36ch; }

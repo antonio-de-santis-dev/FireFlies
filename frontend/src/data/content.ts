@@ -5,7 +5,8 @@ export type MediaItem = {
   id: string;
   asset: Asset;
   inGallery: boolean;
-  uploaded: boolean; // true = caricata nella sessione demo (solo in memoria)
+  uploaded: boolean; // true = caricata in questa sessione
+  usages?: string[]; // dove è usata (dal backend), es. «menu «Tagliere»»
 };
 
 // Ordine iniziale della galleria: alterna cibo, drink e persone.
@@ -61,6 +62,7 @@ export type SiteContent = {
   ownersConfirmed: boolean;
   /** Testata della pagina Menu: foto (id libreria) in ordine e intervallo di rotazione. */
   menuHero: { photos: string[]; intervalSec: number };
+  version?: number; // versione sul backend (concorrenza ottimistica)
 };
 
 export const defaultContent: SiteContent = {

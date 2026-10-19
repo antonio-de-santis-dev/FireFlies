@@ -1,6 +1,8 @@
 import { CalendarDays, ExternalLink, Images, Inbox, LayoutDashboard, LogOut, Megaphone, Palette, Settings, UtensilsCrossed } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { logout as serverLogout } from '../../api/auth';
+import { ApiError } from '../../api/client';
+import { loadAdminMenu, loadAnnouncements, loadLibrary, loadSettings, loadSiteContent } from '../../api/content';
 import { Toast } from '../../components/PublicLayout';
 import { Img } from '../../components/ui';
 import { logo } from '../../data/assets';
@@ -19,8 +21,42 @@ export const ADMIN_NAV = [
   { to: '/gestione/impostazioni', label: 'Orari e contatti', icon: Settings, owner: true },
 ];
 
+/**
+ * Dati dell'area gestori dal backend: menu, libreria foto e avvisi per tutti; testi e impostazioni solo per il
+ * titolare (per lo staff il backend risponderebbe 403). Le pagine mostrano i dati appena arrivano.
+ */
+function useAdminData() {
+  const { dispatch, role, settings, notify } = useStore();
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (!role) return;
+    let current = true;
+    const jobs: Promise<unknown>[] = [
+      loadAdminMenu().then((m) => current && dispatch({ type: 'admin/menu', ...m })),
+      loadLibrary().then((items) => current && dispatch({ type: 'media/set', items })),
+      loadAnnouncements().then((items) => current && dispatch({ type: 'announcements/set', items })),
+    ];
+    if (role === 'titolare') {
+      jobs.push(loadSiteContent().then(({ content, mediaIndex }) => current && dispatch({ type: 'content/save', content, mediaIndex })));
+      jobs.push(loadSettings(settings).then((s) => current && dispatch({ type: 'settings/save', settings: s })));
+    }
+    Promise.all(jobs)
+      .catch((e) => {
+        // 401: ci pensa il gestore globale (ritorno all'accesso); il resto lo dice un avviso
+        if (current && !(e instanceof ApiError && e.status === 401)) notify(e instanceof ApiError ? e.message : 'Dati non caricati: ricarica la pagina.');
+      })
+      .finally(() => current && setReady(true));
+    return () => {
+      current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- si ricarica solo quando cambia l'account
+  }, [role]);
+  return ready;
+}
+
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { dispatch, requests, role } = useStore();
+  const ready = useAdminData();
   const fresh = requests.filter((r) => r.status === 'nuova').length;
   const logout = async () => {
     try {
@@ -37,7 +73,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         Vai al contenuto
       </a>
       <div className="demo-bar demo-bar--admin" role="note">
-        <span><strong>Area gestori</strong><span className="demo-bar__more"> · accesso reale, contenuti ancora dimostrativi: le modifiche restano solo in questa sessione</span></span>
+        <span><strong>Area gestori</strong><span className="demo-bar__more"> · menu, foto, testi, orari e avvisi si salvano sul server; eventi e richieste sono ancora dimostrativi</span></span>
       </div>
       <div className="admin__shell">
         <aside className="admin__side">
@@ -65,7 +101,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <button type="button" className="admin__logout" onClick={logout}><LogOut size={18} aria-hidden="true" /> Esci</button>
           </div>
         </aside>
-        <main id="admin-main" className="admin__main" tabIndex={-1}>{children}</main>
+        <main id="admin-main" className="admin__main" tabIndex={-1} aria-busy={!ready}>{ready ? children : <p className="muted">Caricamento dei dati…</p>}</main>
       </div>
       <Toast />
     </div>

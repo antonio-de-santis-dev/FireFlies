@@ -1,4 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
+import { Img } from './components/ui';
+import { logo } from './data/assets';
 import { fetchSession, uiRole } from './api/auth';
 import { PublicLayout } from './components/PublicLayout';
 import { AdminLayout } from './pages/admin/AdminLayout';
@@ -75,10 +77,27 @@ function adminPage(route: string, role: Role): ReactNode {
   return <NotFound admin />;
 }
 
+/** Mentre arrivano i contenuti dal backend (pochi millisecondi) o se il server non risponde. */
+function ContentGate({ failed, retry }: { failed: boolean; retry: () => void }) {
+  return (
+    <main className="content-gate" id="contenuto" aria-busy={!failed}>
+      <Img asset={logo.onDarkSmall} eager className="content-gate__logo" />
+      {failed ? (
+        <div role="alert" className="content-gate__msg">
+          <p>Il sito non riesce a caricare i contenuti in questo momento.</p>
+          <button type="button" className="btn btn--gold" onClick={retry}>Riprova</button>
+        </div>
+      ) : (
+        <p className="content-gate__msg muted">Caricamento…</p>
+      )}
+    </main>
+  );
+}
+
 export function App() {
   const path = usePath();
   const route = path.split('?')[0];
-  const { role, authChecked, dispatch, openBooking } = useStore();
+  const { role, authChecked, dispatch, openBooking, contentStatus, reloadPublic } = useStore();
   const signedIn = role != null;
   useReveal(path);
 
@@ -114,6 +133,28 @@ export function App() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- si ricontrolla a ogni pagina, non a ogni cambio di stato
   }, [isAdmin, route]);
+
+  // Scheda rimasta aperta (es. il giorno dopo): quando torna in primo piano si ricontrolla la sessione,
+  // così chi la riprende vede subito l'accesso invece di compilare un modulo che non potrà salvare.
+  useEffect(() => {
+    if (!isAdmin || !signedIn) return;
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetchSession()
+        .then((session) => {
+          if (session.authenticated) return;
+          dispatch({ type: 'session', role: null, notice: 'La sessione è scaduta o è stata chiusa: accedi di nuovo.' });
+          navigate('/gestione/login');
+        })
+        .catch(() => {});
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [isAdmin, signedIn, dispatch]);
+
+  if (contentStatus !== 'ready' && route !== '/gestione/login') {
+    return <ContentGate failed={contentStatus === 'error'} retry={reloadPublic} />;
+  }
 
   if (isAdmin) {
     if (!authChecked && route !== '/gestione/login') return null; // pochi millisecondi: nessuna pagina riservata prima della verifica

@@ -538,3 +538,7 @@
   .login__panel > .small.muted { display: none; }
   .login__form .btn { min-height: 44px; }
 }
+
+/* FASE 4: eliminazione di una voce (in due passaggi) e azioni sulle foto salvate sul server */
+.editor__delete { margin-top: 16px; }
+.photos__replace { display: inline-flex; }

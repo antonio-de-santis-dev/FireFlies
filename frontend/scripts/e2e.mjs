@@ -5,7 +5,8 @@
 // Uso: node scripts/e2e.mjs [argomenti per playwright test]
 import { execFileSync, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { createWriteStream, mkdirSync } from 'node:fs';
+import { createWriteStream, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,6 +16,8 @@ const backendDir = join(root, 'backend');
 const secret = () => randomBytes(18).toString('base64url');
 
 const BACKEND_PORT = process.env.E2E_BACKEND_PORT ?? '18080';
+// Foto caricate durante i test: cartella temporanea, cancellata alla fine come il database.
+const mediaDir = mkdtempSync(join(tmpdir(), 'fireflies-e2e-media-'));
 const DB_PORT = process.env.E2E_DB_PORT ?? '55432';
 const env = {
   ...process.env,
@@ -24,6 +27,10 @@ const env = {
   FIREFLIES_DB_PORT: DB_PORT,
   FIREFLIES_DB_URL: `jdbc:postgresql://localhost:${DB_PORT}/fireflies_e2e`,
   FIREFLIES_BACKEND_URL: `http://localhost:${BACKEND_PORT}`,
+  // contenuti dimostrativi del mockup caricati dal backend (profilo local) con le foto reali del locale
+  FIREFLIES_MEDIA_DIR: mediaDir,
+  FIREFLIES_DEMO_SEED: 'true',
+  FIREFLIES_DEMO_ASSETS_DIR: join(frontend, 'public', 'assets', 'fireflies'),
   E2E_OWNER_EMAIL: 'titolare.e2e@example.invalid',
   E2E_OWNER_PASSWORD: secret(),
   E2E_STAFF_EMAIL: 'staff.e2e@example.invalid',
@@ -41,6 +48,7 @@ function cleanup() {
   } catch {
     /* già fermo */
   }
+  rmSync(mediaDir, { recursive: true, force: true });
 }
 process.on('SIGINT', () => {
   cleanup();
@@ -105,7 +113,8 @@ try {
   backend = spawn('java', ['-jar', jar, `--server.port=${BACKEND_PORT}`], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   backend.stdout.pipe(log);
   backend.stderr.pipe(log);
-  await waitForHealth(`${env.FIREFLIES_BACKEND_URL}/actuator/health`, 120_000);
+  // «readiness» diventa UP solo dopo il caricamento dei contenuti demo (ApplicationRunner)
+  await waitForHealth(`${env.FIREFLIES_BACKEND_URL}/actuator/health/readiness`, 180_000);
 
   console.log('▶ Il titolare crea lo staff dall\'API');
   const owner = await apiSession(env.FIREFLIES_BACKEND_URL);

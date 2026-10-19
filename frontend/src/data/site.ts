@@ -19,6 +19,7 @@ export type SiteSettings = {
   bookingEnabled: boolean;
   mapQuery: string; // testo cercato su Google Maps (meglio l'indirizzo esatto quando confermato)
   mapMode: 'consenso' | 'automatico'; // consenso = la mappa si carica solo dopo un clic del visitatore
+  version?: number; // versione sul backend (concorrenza ottimistica)
 };
 
 export const defaultSettings: SiteSettings = {

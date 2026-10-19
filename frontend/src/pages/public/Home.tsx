@@ -38,8 +38,8 @@ function Hero() {
       <Fireflies className="hero__fireflies" />
       <div className="container hero__inner">
         <Img asset={logo.onDark} eager className="hero__logo" />
-        <h1 id="hero-title" className="hero__title">{content.heroClaim}</h1>
-        <p className="lead hero__lead">{content.heroLead}</p>
+        <h1 id="hero-title" className="hero__title">{content.heroClaim || settings.name}</h1>
+        {content.heroLead && <p className="lead hero__lead">{content.heroLead}</p>}
         <div className="hero__ctas">
           <Link to="/menu" className="btn btn--primary">
             Scopri il menu <ArrowRight size={20} aria-hidden="true" />
@@ -238,7 +238,7 @@ function GalleryStrip() {
       <ul className="strip__list reveal" aria-label="Foto dal locale, scorri orizzontalmente" tabIndex={0}>
         {strip.map((p) => (
           <li key={p.src}>
-            <Img asset={p} />
+            <Img asset={p} sizes="(min-width: 1640px) 360px, (min-width: 1000px) 22vw, 220px" />
           </li>
         ))}
       </ul>
@@ -283,13 +283,14 @@ function Visit() {
 
 export function Home() {
   usePageMeta('Home');
-  const { sections } = useStore().content;
+  const { content } = useStore();
+  const { sections } = content;
   return (
     <>
       <Hero />
       {sections.momento && <MomentPicker />}
       {sections.trio && <ThreeMoments />}
-      {sections.persone && <People />}
+      {sections.persone && content.owners.length > 0 && <People />}
       {sections.eventi && <EventsTeaser />}
       {sections.striscia && <GalleryStrip />}
       {sections.visita && <Visit />}

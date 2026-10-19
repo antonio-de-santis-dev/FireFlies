@@ -1,9 +1,12 @@
-// Menu DIMOSTRATIVO. Nessun prezzo, ricetta o allergene è stato fornito dal locale:
-// i nomi sono descrittivi di ciò che si vede nelle foto reali e vanno sostituiti con il menu ufficiale.
+// Tipi e formati del menu. Dalla FASE 4 il menu arriva dal backend (GET /api/v1/public/menu).
+// I dati qui sotto sono il menu DIMOSTRATIVO del mockup: li usa solo la build statica (`npm run build:static`);
+// lo stesso contenuto, per lo sviluppo locale, lo carica il backend (profilo local) con prezzi «demo».
+// Nessun prezzo, ricetta o allergene è stato fornito dal locale.
 
-export type CategoryId = 'colazione' | 'aperitivi' | 'food' | 'cocktail' | 'analcolici' | 'birre';
+/** Identificativo stabile della categoria (slug), usato nei link `/menu?cat=`. */
+export type CategoryId = string;
 
-export type Category = { id: CategoryId; label: string; hint: string };
+export type Category = { id: CategoryId; label: string; hint: string; uuid?: string };
 
 export const categories: Category[] = [
   { id: 'colazione', label: 'Colazione', hint: 'Caffetteria e dolce del mattino' },
@@ -31,7 +34,9 @@ export type MenuItem = {
   demoPrice?: number; // prezzo DIMOSTRATIVO, mostrato sempre con l'etichetta «demo»
   photo: string | null; // id nella libreria foto
   visible: boolean;
-  source: 'foto' | 'demo'; // 'foto' = voce suggerita da una foto reale; 'demo' = puro segnaposto
+  // 'reale' = voce inserita dai gestori; 'foto' = voce demo suggerita da una foto reale; 'demo' = puro segnaposto
+  source: 'reale' | 'foto' | 'demo';
+  version?: number; // versione sul backend (concorrenza ottimistica)
 };
 
 export const menuItems: MenuItem[] = [

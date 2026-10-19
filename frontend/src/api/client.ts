@@ -35,10 +35,20 @@ async function ensureCsrf(force = false) {
   await fetch(`${BASE}/auth/csrf`, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
 }
 
+/**
+ * Chiamato quando un'API dell'area gestori risponde 401 (sessione scaduta o chiusa, anche in un'altra scheda):
+ * lo store riporta alla pagina di accesso con un avviso invece di lasciare la pagina in uno stato incoerente.
+ */
+let unauthorizedHandler: ((code: string) => void) | null = null;
+export function onUnauthorized(handler: ((code: string) => void) | null) {
+  unauthorizedHandler = handler;
+}
+
 async function request<T>(method: string, path: string, body?: unknown, retryCsrf = true): Promise<T> {
   const write = method !== 'GET';
+  const form = body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json, application/problem+json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
 
   let response: Response;
   try {
@@ -49,8 +59,11 @@ async function request<T>(method: string, path: string, body?: unknown, retryCsr
     response = await fetch(`${BASE}${path}`, {
       method,
       credentials: 'same-origin',
+      // letture pubbliche: sempre rivalidate con l'ETag (304 senza corpo se nulla è cambiato), così una modifica
+      // dei gestori si vede al primo ricaricamento anche se la risposta precedente era in cache per 60 s
+      cache: path.startsWith('/public/') ? 'no-cache' : 'default',
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : form ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, 'NETWORK', 'Il server non risponde. Controlla la connessione e riprova.');
@@ -67,6 +80,7 @@ async function request<T>(method: string, path: string, body?: unknown, retryCsr
       await ensureCsrf(true);
       return request<T>(method, path, body, false);
     }
+    if (response.status === 401 && path.startsWith('/admin/')) unauthorizedHandler?.(problem?.code ?? 'UNAUTHENTICATED');
     throw new ApiError(
       response.status,
       problem?.code ?? `HTTP_${response.status}`,
@@ -80,4 +94,13 @@ async function request<T>(method: string, path: string, body?: unknown, retryCsr
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+  put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
+  patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
+  del: (path: string) => request<void>('DELETE', path),
+  /** multipart/form-data (foto): il browser imposta da solo il boundary. */
+  upload: <T>(method: 'POST' | 'PUT', path: string, form: FormData) => request<T>(method, path, form),
 };
+
+/** Campo indicato dal backend per un errore di validazione (`context.field`), per evidenziarlo nel modulo. */
+export const problemField = (error: unknown) =>
+  error instanceof ApiError ? ((error.problem as { context?: { field?: string } } | undefined)?.context?.field ?? null) : null;

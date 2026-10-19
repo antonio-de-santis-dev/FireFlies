@@ -23,7 +23,7 @@ export function Locale() {
         </div>
       </section>
 
-      <section className="owners" aria-labelledby="owners-title">
+      {content.owners.length > 0 && <section className="owners" aria-labelledby="owners-title">
         <div className="container">
           <div className="owners__head">
             <h2 id="owners-title">I titolari</h2>
@@ -34,11 +34,11 @@ export function Locale() {
             {content.owners.map((o, i) => <OwnerCard key={o.id} owner={o} reverse={i % 2 === 1} />)}
           </div>
         </div>
-      </section>
+      </section>}
 
       <section className="container story">
         <div className="story__text">
-          <h2>{content.storyTitle}</h2>
+          <h2>{content.storyTitle || 'La nostra storia'}</h2>
           {content.storyText.split(/\n{2,}/).map((p, i) => <p key={i}>{p}</p>)}
           {!content.storyConfirmed && (
             <p className="muted">
@@ -75,7 +75,7 @@ export function Locale() {
         </div>
       </section>
 
-      <section className="container team" aria-labelledby="team-title">
+      {content.staff.length > 0 && <section className="container team" aria-labelledby="team-title">
         <div className="team__head">
           <h2 id="team-title">Lo staff</h2>
           {!content.staffConfirmed && <ConfirmBadge>Nomi e ruoli da fornire</ConfirmBadge>}
@@ -83,14 +83,14 @@ export function Locale() {
         <ul className="team__list">
           {content.staff.map((t) => (
             <li key={t.id}>
-              <Img asset={mediaOr(t.photo)} />
+              <Img asset={mediaOr(t.photo)} sizes="(min-width: 768px) 33vw, 100vw" />
               <p className="team__name">{t.name}</p>
               <p className="muted">{t.role}</p>
             </li>
           ))}
         </ul>
         <p className="small muted">Le foto con persone vanno pubblicate solo con il consenso delle persone ritratte.</p>
-      </section>
+      </section>}
 
       <section className="container closing">
         <h2>Ci vediamo al bancone?</h2>

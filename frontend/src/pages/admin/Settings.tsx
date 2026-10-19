@@ -1,5 +1,7 @@
-import { Save } from 'lucide-react';
+import { CircleAlert, Save } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
+import { ApiError } from '../../api/client';
+import { saveSettings } from '../../api/content';
 import type { SiteSettings } from '../../data/site';
 import { usePageMeta } from '../../router';
 import { useStore } from '../../store';
@@ -14,17 +16,32 @@ export function Settings() {
   const upHour = (i: number, patch: Partial<SiteSettings['hours'][number]>) =>
     up('hours', s.hours.map((h, j) => (j === i ? { ...h, ...patch } : h)));
 
-  const save = (e: FormEvent) => {
+  const [failure, setFailure] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const save = async (e: FormEvent) => {
     e.preventDefault();
-    dispatch({ type: 'settings/save', settings: s });
-    notify('Impostazioni salvate solo in questa sessione demo.');
+    if (busy) return;
+    setFailure(null);
+    setBusy(true);
+    try {
+      const saved = await saveSettings(s);
+      dispatch({ type: 'settings/save', settings: saved });
+      setS(saved);
+      notify('Impostazioni salvate: il sito mostra già i nuovi orari e contatti.');
+    } catch (err) {
+      setFailure(err instanceof ApiError ? err.message : 'Salvataggio non riuscito: riprova.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
     <form className="editor" noValidate onSubmit={save}>
       <AdminHead title="Orari e contatti" lead="Orari, contatti, mappa e richieste tavolo. Riservato al titolare.">
-        <button type="submit" className="btn btn--action"><Save size={18} aria-hidden="true" /> Salva</button>
+        <button type="submit" className="btn btn--action" disabled={busy}><Save size={18} aria-hidden="true" /> {busy ? 'Salvataggio…' : 'Salva'}</button>
       </AdminHead>
+      {failure && <p className="error" role="alert"><CircleAlert size={16} aria-hidden="true" /> {failure}</p>}
 
       <div className="settings">
         <section className="panel" aria-labelledby="set-hours">
@@ -85,6 +102,7 @@ export function Settings() {
             <input id="set-ig" className="input" type="url" value={s.instagram} onChange={(e) => up('instagram', e.target.value)} />
           </div>
           <Switch checked={s.bookingEnabled} onChange={() => up('bookingEnabled', !s.bookingEnabled)} label={s.bookingEnabled ? 'Richieste tavolo attive' : 'Richieste tavolo disattivate'} />
+          <p className="hint">Le richieste tavolo diventano reali con la FASE 5: per ora questo interruttore vale solo in questa scheda.</p>
         </section>
 
         <section className="panel" aria-labelledby="set-map">
