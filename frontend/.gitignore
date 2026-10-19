@@ -3,3 +3,4 @@ dist
 dist-static
 test-results
 playwright-report
+e2e-logs

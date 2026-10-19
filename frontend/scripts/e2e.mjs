@@ -99,8 +99,9 @@ try {
   { env: { ...env, FIREFLIES_BOOTSTRAP_PASSWORD: env.E2E_OWNER_PASSWORD }, stdio: 'inherit' });
 
   console.log('▶ Backend su porta ' + BACKEND_PORT);
-  mkdirSync(join(frontend, 'test-results'), { recursive: true });
-  const log = createWriteStream(join(frontend, 'test-results', 'backend-e2e.log'));
+  // Fuori da test-results/, che Playwright svuota all'avvio.
+  mkdirSync(join(frontend, 'e2e-logs'), { recursive: true });
+  const log = createWriteStream(join(frontend, 'e2e-logs', 'backend.log'));
   backend = spawn('java', ['-jar', jar, `--server.port=${BACKEND_PORT}`], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   backend.stdout.pipe(log);
   backend.stderr.pipe(log);
