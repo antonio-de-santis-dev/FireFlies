@@ -42,8 +42,9 @@ class OwnerBootstrapRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (environment.containsProperty("fireflies.bootstrap.password")
-                || args.containsOption("FIREFLIES_BOOTSTRAP_PASSWORD")) {
+        // Solo gli argomenti: la variabile d'ambiente FIREFLIES_BOOTSTRAP_PASSWORD (ammessa) viene vista da Spring
+        // anche come proprietà «fireflies.bootstrap.password», quindi non si può controllare l'Environment.
+        if (args.containsOption("fireflies.bootstrap.password") || args.containsOption("FIREFLIES_BOOTSTRAP_PASSWORD")) {
             throw new IllegalStateException("Non passare la password come argomento: usa la richiesta interattiva "
                     + "o la variabile d'ambiente FIREFLIES_BOOTSTRAP_PASSWORD.");
         }

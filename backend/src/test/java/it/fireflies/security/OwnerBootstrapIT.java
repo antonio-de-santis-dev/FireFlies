@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import javax.sql.DataSource;
@@ -15,6 +16,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.WebApplicationType;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.env.StandardEnvironment;
+import org.springframework.core.env.SystemEnvironmentPropertySource;
 
 import it.fireflies.FirefliesApplication;
 import it.fireflies.support.Concurrency;
@@ -65,38 +68,31 @@ class OwnerBootstrapIT extends SecurityIntegrationTest {
         assertThat(accounts.list()).hasSize(1);
     }
 
-    /** La procedura vera: applicazione senza web, argomenti da riga di comando, password da variabile. */
+    /** La procedura vera: applicazione senza web, argomenti da riga di comando, password da variabile d'ambiente. */
     @Test
-    void proceduraDaRigaDiComando() {
+    void proceduraDaRigaDiComandoConPasswordNellaVariabileDAmbiente() {
         String password = randomPassword();
-        System.setProperty("FIREFLIES_BOOTSTRAP_PASSWORD", password);
-        try (ConfigurableApplicationContext ignored = run(
+        try (ConfigurableApplicationContext ignored = run(Map.of("FIREFLIES_BOOTSTRAP_PASSWORD", password),
                 "--fireflies.bootstrap.email=titolare@example.invalid", "--fireflies.bootstrap.display-name=Titolare")) {
             assertThat(accounts.list()).singleElement().satisfies(u -> assertThat(u.role()).isEqualTo(Role.OWNER));
-        } finally {
-            System.clearProperty("FIREFLIES_BOOTSTRAP_PASSWORD");
         }
         assertThat(browser().login("titolare@example.invalid", password).status()).isEqualTo(200);
 
-        System.setProperty("FIREFLIES_BOOTSTRAP_PASSWORD", randomPassword());
-        try {
-            assertThatThrownBy(() -> run("--fireflies.bootstrap.email=secondo@example.invalid",
-                    "--fireflies.bootstrap.display-name=Secondo"))
-                    .hasStackTraceContaining("Esiste già un titolare");
-        } finally {
-            System.clearProperty("FIREFLIES_BOOTSTRAP_PASSWORD");
-        }
+        assertThatThrownBy(() -> run(Map.of("FIREFLIES_BOOTSTRAP_PASSWORD", randomPassword()),
+                "--fireflies.bootstrap.email=secondo@example.invalid", "--fireflies.bootstrap.display-name=Secondo"))
+                .hasStackTraceContaining("Esiste già un titolare");
     }
 
     @Test
     void passwordComeArgomentoRifiutata() {
-        assertThatThrownBy(() -> run("--fireflies.bootstrap.email=titolare@example.invalid",
-                "--fireflies.bootstrap.display-name=Titolare", "--FIREFLIES_BOOTSTRAP_PASSWORD=" + randomPassword()))
+        assertThatThrownBy(() -> run(Map.of(), "--fireflies.bootstrap.email=titolare@example.invalid",
+                "--fireflies.bootstrap.display-name=Titolare", "--fireflies.bootstrap.password=" + randomPassword()))
                 .hasStackTraceContaining("Non passare la password come argomento");
         assertThat(accounts.list()).isEmpty();
     }
 
-    private ConfigurableApplicationContext run(String... extra) {
+    /** Avvia l'applicazione come da terminale, con {@code systemEnv} al posto delle variabili d'ambiente vere. */
+    private ConfigurableApplicationContext run(Map<String, Object> systemEnv, String... extra) {
         HikariDataSource hikari = (HikariDataSource) dataSource;
         List<String> args = new java.util.ArrayList<>(List.of(
                 "--spring.profiles.active=test",
@@ -106,7 +102,9 @@ class OwnerBootstrapIT extends SecurityIntegrationTest {
                 "--fireflies.bootstrap.create-owner=true",
                 "--fireflies.bootstrap.exit=false"));
         args.addAll(List.of(extra));
+        StandardEnvironment environment = new StandardEnvironment();
+        environment.getPropertySources().addFirst(new SystemEnvironmentPropertySource("testEnv", systemEnv));
         return new SpringApplicationBuilder(FirefliesApplication.class).web(WebApplicationType.NONE)
-                .run(args.toArray(String[]::new));
+                .environment(environment).run(args.toArray(String[]::new));
     }
 }
