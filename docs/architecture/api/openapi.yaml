@@ -1,0 +1,606 @@
+openapi: 3.1.0
+info:
+  title: FireFlies Aperitif API
+  license:
+    name: Proprietario — uso riservato
+    identifier: LicenseRef-Proprietary
+  version: 1.0.0-draft
+  summary: Contratto V1 dei flussi principali (prenotazioni, autenticazione). Bozza FASE 1, non implementata.
+  description: |
+    Bozza di progettazione. Gli altri endpoint (menu, media, contenuti, configurazione) sono elencati in
+    API_CONTRACT.md e verranno aggiunti qui modulo per modulo nelle fasi successive.
+    Orari locali in Europe/Rome. Errori in application/problem+json.
+servers:
+  - url: /api/v1
+tags:
+  - name: public
+    description: Sito pubblico, senza autenticazione
+  - name: auth
+    description: Accesso dei gestori
+  - name: admin-reservations
+    description: Gestione prenotazioni (STAFF e OWNER)
+security: []
+
+paths:
+  /public/booking-options:
+    get:
+      tags: [public]
+      operationId: getBookingOptions
+      summary: Fasce e slot prenotabili di un giorno
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: eventId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Opzioni del giorno
+          headers:
+            Cache-Control: { schema: { type: string, const: no-store } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingOptions' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /public/reservations:
+    post:
+      tags: [public]
+      operationId: createPublicReservation
+      summary: Invia una richiesta di prenotazione (stato PENDING)
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PublicReservationRequest' }
+      responses:
+        '201':
+          description: Richiesta creata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicReservationReceipt' }
+        '200':
+          description: Ripetizione con la stessa Idempotency-Key e gli stessi dati
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicReservationReceipt' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/csrf:
+    get:
+      tags: [auth]
+      operationId: getCsrfToken
+      summary: Ottiene il token CSRF
+      responses:
+        '200':
+          description: Token CSRF (anche nel cookie XSRF-TOKEN)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [headerName, token]
+                properties:
+                  headerName: { type: string, const: X-XSRF-TOKEN }
+                  token: { type: string }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/login:
+    post:
+      tags: [auth]
+      operationId: login
+      summary: Accesso gestori
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '200':
+          description: Autenticato; imposta il cookie di sessione
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: '#/components/schemas/CurrentUser' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      operationId: logout
+      summary: Uscita
+      security: [{ session: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      responses:
+        '204': { description: Sessione chiusa }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /auth/me:
+    get:
+      tags: [auth]
+      operationId: me
+      summary: Utente corrente
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Utente corrente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CurrentUser' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /admin/reservations:
+    get:
+      tags: [admin-reservations]
+      operationId: listReservations
+      summary: Elenco prenotazioni filtrato
+      security: [{ session: [] }]
+      parameters:
+        - { name: dateFrom, in: query, schema: { type: string, format: date } }
+        - { name: dateTo, in: query, schema: { type: string, format: date } }
+        - { name: status, in: query, schema: { type: array, items: { $ref: '#/components/schemas/ReservationStatus' } }, style: form, explode: false }
+        - { name: source, in: query, schema: { $ref: '#/components/schemas/ReservationSource' } }
+        - { name: eventId, in: query, schema: { type: string, format: uuid } }
+        - { name: needsCallback, in: query, schema: { type: boolean } }
+        - { name: q, in: query, schema: { type: string, maxLength: 80 } }
+        - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+      responses:
+        '200':
+          description: Pagina di prenotazioni
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, page, size, totalItems]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Reservation' } }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalItems: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [admin-reservations]
+      operationId: createManualReservation
+      summary: Inserimento da telefono o email
+      security: [{ session: [] }]
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ManualReservationRequest' }
+      responses:
+        '201':
+          description: Creata (PENDING o CONFIRMED se confirmNow)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reservation' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/reservations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ReservationId'
+    get:
+      tags: [admin-reservations]
+      operationId: getReservation
+      summary: Dettaglio prenotazione
+      security: [{ session: [] }]
+      responses:
+        '200':
+          description: Dettaglio con storico
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReservationDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [admin-reservations]
+      operationId: updateReservation
+      summary: Modifica data, ora, persone, note (ricontrolla capienza e tavoli se CONFIRMED)
+      security: [{ session: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReservationUpdate' }
+      responses:
+        '200':
+          description: Aggiornata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reservation' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/reservations/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/ReservationId'
+    patch:
+      tags: [admin-reservations]
+      operationId: changeReservationStatus
+      summary: Transizione di stato (idempotente)
+      security: [{ session: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StatusChange' }
+      responses:
+        '200':
+          description: Stato cambiato, oppure già nello stato richiesto (nessun effetto)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reservation' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/reservations/{id}/tables:
+    parameters:
+      - $ref: '#/components/parameters/ReservationId'
+    put:
+      tags: [admin-reservations]
+      operationId: assignTables
+      summary: Assegnazione manuale (sostituisce l'elenco)
+      security: [{ session: [] }]
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, tableIds]
+              properties:
+                version: { type: integer }
+                tableIds: { type: array, maxItems: 6, uniqueItems: true, items: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Tavoli aggiornati
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reservation' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/capacity:
+    get:
+      tags: [admin-reservations]
+      operationId: getCapacity
+      summary: Coperti del giorno per fascia ed evento
+      security: [{ session: [] }]
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Situazione coperti del giorno
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [date, buckets]
+                properties:
+                  date: { type: string, format: date }
+                  buckets:
+                    type: array
+                    items:
+                      type: object
+                      required: [kind, label, capacityCovers, confirmedCovers, pendingCovers, remainingCovers]
+                      properties:
+                        kind: { type: string, enum: [SERVICE, EVENT] }
+                        label: { type: string }
+                        windowId: { type: [string, 'null'], format: uuid }
+                        eventId: { type: [string, 'null'], format: uuid }
+                        capacityCovers: { type: integer, minimum: 0 }
+                        confirmedCovers: { type: integer, minimum: 0 }
+                        pendingCovers: { type: integer, minimum: 0 }
+                        remainingCovers: { type: integer, minimum: 0 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: FF_SESSION
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    CsrfHeader:
+      name: X-XSRF-TOKEN
+      in: header
+      required: true
+      schema: { type: string }
+    ReservationId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Richiesta malformata
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Unauthorized:
+      description: Non autenticato
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Forbidden:
+      description: Permesso negato o CSRF non valido
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    NotFound:
+      description: Non trovato
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Conflict:
+      description: Conflitto con lo stato attuale (capienza, tavolo, versione, transizione, duplicato)
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Unprocessable:
+      description: Dati non accettabili per le regole
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    TooManyRequests:
+      description: Limite di frequenza superato
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+
+  schemas:
+    ReservationStatus:
+      type: string
+      enum: [PENDING, CONFIRMED, REJECTED, CANCELLED, COMPLETED, NO_SHOW]
+    ReservationSource:
+      type: string
+      enum: [WEB, PHONE, EMAIL]
+    StatusReason:
+      type: string
+      enum: [EXPIRED, NO_CAPACITY, CUSTOMER_REQUEST, VENUE_DECISION, EVENT_CANCELLED, DUPLICATE, OTHER]
+    LocalTime:
+      type: string
+      pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+    Phone:
+      type: string
+      description: Numero di telefono; il server lo normalizza in E.164 (+39 per numeri italiani senza prefisso).
+      minLength: 6
+      maxLength: 20
+
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        code: { type: string, examples: [CAPACITY_EXCEEDED] }
+        detail: { type: string }
+        instance: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, code, message]
+            properties:
+              field: { type: string }
+              code: { type: string }
+              message: { type: string }
+        context: { type: object, additionalProperties: true }
+
+    BookingOptions:
+      type: object
+      required: [date, webBookingEnabled, maxPartySize, windows]
+      properties:
+        date: { type: string, format: date }
+        webBookingEnabled: { type: boolean }
+        maxPartySize: { type: integer }
+        message: { type: string }
+        windows:
+          type: array
+          items:
+            type: object
+            required: [name, slots]
+            properties:
+              windowId: { type: [string, 'null'], format: uuid }
+              eventId: { type: [string, 'null'], format: uuid }
+              name: { type: string }
+              slots:
+                type: array
+                items:
+                  type: object
+                  required: [time, state]
+                  properties:
+                    time: { $ref: '#/components/schemas/LocalTime' }
+                    state: { type: string, enum: [OPEN, FULL, CLOSED, EVENT, TOO_EARLY] }
+
+    CustomerInput:
+      type: object
+      required: [name, phone]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 80 }
+        phone: { $ref: '#/components/schemas/Phone' }
+        email: { type: [string, 'null'], format: email, maxLength: 254 }
+
+    PublicReservationRequest:
+      type: object
+      required: [date, time, guestCount, customer, privacyNoticeVersion, privacyAcknowledged]
+      additionalProperties: false
+      properties:
+        date: { type: string, format: date }
+        time: { $ref: '#/components/schemas/LocalTime' }
+        guestCount: { type: integer, minimum: 1, maximum: 50 }
+        eventId: { type: [string, 'null'], format: uuid }
+        areaPreferenceId: { type: [string, 'null'], format: uuid }
+        customer: { $ref: '#/components/schemas/CustomerInput' }
+        notes: { type: [string, 'null'], maxLength: 500 }
+        privacyNoticeVersion: { type: string, maxLength: 20 }
+        privacyAcknowledged: { type: boolean, const: true }
+        website: { type: string, maxLength: 0, description: 'Campo trappola anti-bot: deve restare vuoto' }
+
+    PublicReservationReceipt:
+      type: object
+      required: [publicRef, status, date, time, guestCount, message]
+      properties:
+        publicRef: { type: string, examples: [FF-7K3Q9M] }
+        status: { $ref: '#/components/schemas/ReservationStatus' }
+        date: { type: string, format: date }
+        time: { $ref: '#/components/schemas/LocalTime' }
+        guestCount: { type: integer }
+        message: { type: string }
+
+    ManualReservationRequest:
+      type: object
+      required: [source, date, time, guestCount, customer]
+      additionalProperties: false
+      properties:
+        source: { type: string, enum: [PHONE, EMAIL] }
+        date: { type: string, format: date }
+        time: { $ref: '#/components/schemas/LocalTime' }
+        guestCount: { type: integer, minimum: 1, maximum: 50 }
+        eventId: { type: [string, 'null'], format: uuid }
+        customer: { $ref: '#/components/schemas/CustomerInput' }
+        notes: { type: [string, 'null'], maxLength: 500 }
+        internalNote: { type: [string, 'null'], maxLength: 500 }
+        confirmNow: { type: boolean, default: false }
+        tableIds: { type: array, maxItems: 6, uniqueItems: true, items: { type: string, format: uuid } }
+
+    ReservationUpdate:
+      type: object
+      required: [version]
+      additionalProperties: false
+      properties:
+        version: { type: integer }
+        date: { type: string, format: date }
+        time: { $ref: '#/components/schemas/LocalTime' }
+        guestCount: { type: integer, minimum: 1, maximum: 50 }
+        notes: { type: [string, 'null'], maxLength: 500 }
+        internalNote: { type: [string, 'null'], maxLength: 500 }
+        needsCallback: { type: boolean }
+
+    StatusChange:
+      type: object
+      required: [version, status]
+      additionalProperties: false
+      properties:
+        version: { type: integer }
+        status: { type: string, enum: [CONFIRMED, REJECTED, CANCELLED, COMPLETED, NO_SHOW] }
+        reason: { oneOf: [ { $ref: '#/components/schemas/StatusReason' }, { type: 'null' } ] }
+        note: { type: [string, 'null'], maxLength: 300 }
+        tableIds:
+          description: Solo con status CONFIRMED; assegnazione manuale facoltativa nella stessa transazione
+          type: array
+          maxItems: 6
+          uniqueItems: true
+          items: { type: string, format: uuid }
+
+    Reservation:
+      type: object
+      required: [id, publicRef, status, version, source, date, time, endTime, guestCount, customer, needsCallback, tables, notifications, warnings]
+      properties:
+        id: { type: string, format: uuid }
+        publicRef: { type: string }
+        status: { $ref: '#/components/schemas/ReservationStatus' }
+        statusReason: { oneOf: [ { $ref: '#/components/schemas/StatusReason' }, { type: 'null' } ] }
+        version: { type: integer }
+        source: { $ref: '#/components/schemas/ReservationSource' }
+        date: { type: string, format: date }
+        time: { $ref: '#/components/schemas/LocalTime' }
+        endTime: { $ref: '#/components/schemas/LocalTime' }
+        guestCount: { type: integer }
+        customer:
+          type: object
+          required: [name]
+          properties:
+            name: { type: string }
+            phone: { type: [string, 'null'] }
+            email: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        internalNote: { type: [string, 'null'] }
+        needsCallback: { type: boolean }
+        window:
+          type: [object, 'null']
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        event:
+          type: [object, 'null']
+          properties:
+            id: { type: string, format: uuid }
+            title: { type: string }
+        tables:
+          type: array
+          items:
+            type: object
+            required: [id, code, area, maxSeats]
+            properties:
+              id: { type: string, format: uuid }
+              code: { type: string }
+              area: { type: string }
+              maxSeats: { type: integer }
+        notifications:
+          type: array
+          items:
+            type: object
+            required: [channel, state]
+            properties:
+              channel: { type: string, enum: [EMAIL, SMS] }
+              state: { type: string, enum: [PENDING, SENDING, SENT, DELIVERED, FAILED, DEAD, SKIPPED] }
+              reason: { type: [string, 'null'] }
+        warnings:
+          type: array
+          items: { type: string, enum: [OUTSIDE_SLOTS, SHORT_NOTICE, EVENT_OVERLAP, SEATS_BELOW_PARTY_SIZE] }
+        createdAt: { type: string, format: date-time }
+
+    ReservationDetail:
+      allOf:
+        - $ref: '#/components/schemas/Reservation'
+        - type: object
+          required: [history]
+          properties:
+            history:
+              type: array
+              items:
+                type: object
+                required: [toStatus, changedAt]
+                properties:
+                  fromStatus: { oneOf: [ { $ref: '#/components/schemas/ReservationStatus' }, { type: 'null' } ] }
+                  toStatus: { $ref: '#/components/schemas/ReservationStatus' }
+                  reason: { type: [string, 'null'] }
+                  note: { type: [string, 'null'] }
+                  changedBy: { type: [string, 'null'] }
+                  changedAt: { type: string, format: date-time }
+
+    CurrentUser:
+      type: object
+      required: [id, displayName, role]
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        role: { type: string, enum: [OWNER, STAFF] }
