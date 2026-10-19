@@ -412,6 +412,29 @@ Repository: https://github.com/antonio-de-santis-dev/FireFlies. Il branch `main`
 
 A fine fase: commit e push del branch, poi **fermarsi** prima di iniziare la fase successiva e attendere l'approvazione.
 
+## 19 — CONTINUITÀ DEL LAVORO E CREDITI (aggiunta il 19/10/2026, regola permanente per tutte le fasi)
+
+**Interruzione per esaurimento dei crediti o dei limiti della sessione**
+1. Non perdere il lavoro svolto: conservare tutte le modifiche presenti.
+2. Quando possibile, commit e push sul branch della fase corrente (mai merge su `main`, mai force-push).
+3. Non cancellare file, database o modifiche incompiute.
+4. Registrare in `docs/operations/WORK_PROGRESS.md` cosa è completato, quali test sono stati eseguiti (con esito) e cosa manca.
+
+**Ripresa** (automatica se la piattaforma lo consente; mai ripartire da zero)
+1. Verificare il branch attivo.
+2. `git status` e ultimi commit.
+3. Leggere MASTER_PLAN, DECISION_LOG, `WORK_PROGRESS.md` e l'ultimo report di fase.
+4. Identificare i task incompleti.
+5. Recuperare processi e risultati dei test in corso.
+6. Continuare **solo** con attività già autorizzate, senza chiedere di nuovo l'autorizzazione per ciò che era già approvato.
+
+**Checkpoint** — `docs/operations/WORK_PROGRESS.md`, aggiornato periodicamente (non solo a fine sessione), con:
+fase e branch, ultimo commit pubblicato, attività completate e da completare, file modificati non committati,
+test eseguiti/risultati/mancanti, errori da risolvere, prossima azione esatta.
+
+**Limiti** — il ripristino dei crediti non autorizza una nuova fase. A fase completata: commit, push, report finale e
+**stop** in attesa dell'approvazione.
+
 ---
 
 **FINE — attendere approvazione del committente.**
