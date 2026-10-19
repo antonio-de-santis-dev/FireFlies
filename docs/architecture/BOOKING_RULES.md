@@ -1,28 +1,32 @@
 # Regole di prenotazione e capienza — V1
 
-> FASE 1 · 19/10/2026 · Stato: **proposta da approvare**. Le voci marcate **(P-nn)** sono proposte che richiedono il tuo OK (elenco in DECISION_LOG §3).
+> FASE 1 · rev. 2 del 19/10/2026 (revisione finale) · Stato: **proposta da approvare**. Le voci **(P-nn)** richiedono il tuo OK (DECISION_LOG §3).
 > Principio V1: **il cliente chiede, il gestore decide.** Nessuna conferma automatica, nessuna assegnazione automatica di tavoli.
+> Cambiato rispetto alla rev. 1: la capienza non si conta più «per fascia di arrivo» ma **per presenza contemporanea su intervalli di tempo** (§3); eventi e servizio ordinario condividono la stessa capienza fisica (§7); tavoli con posti insufficienti bloccati salvo eccezione del titolare (§8); notifiche at-least-once (§9).
 
 ## 1. Concetti
 
 | Termine | Significato |
 |---|---|
 | **Orari pubblici** | quando il locale è aperto (mostrati sul sito). Non decidono le prenotazioni. |
-| **Fascia prenotabile** (`service_window`) | intervallo di un giorno della settimana in cui si accettano richieste: primo e ultimo orario di arrivo, passo (15/30/60 min), durata standard, **capienza in coperti** decisa dal gestore. Es. «Aperitivo, ven, 18:00–20:30, ogni 30 min, 120 min, 40 coperti». |
-| **Contatore** (`capacity_bucket`) | coperti già **confermati** per una fascia in una data, o per un evento. |
-| **Richiesta** | prenotazione in stato `PENDING`: non consuma coperti. |
-| **Eccezione** | per una data: fascia chiusa o capienza diversa (es. 0 = chiuso, ferie, evento privato). |
-| **Regole generali** (`booking_policy`) | anticipo minimo, giorni massimi in avanti, persone massime dal web, scadenza delle richieste, web on/off. Modalità di conferma: **sempre `MANUAL`** in V1. |
+| **Zona di capienza** (`capacity_zone`) | spazio **fisicamente separato** con una capienza massima di persone presenti contemporaneamente, decisa dal titolare. Predefinito: **una sola zona «Locale»**. Più zone (es. «Sala», «Dehors») solo se fisicamente distinte. Le zone non si sovrappongono: la capienza totale del locale è la somma delle zone. |
+| **Area** | raggruppamento di tavoli (es. «Bancone», «Tavoli alti»). Ogni area appartiene a una zona. Un'area **non** ha capienza propria. |
+| **Fascia prenotabile** (`service_window`) | per zona e giorno della settimana: primo e ultimo orario di arrivo, passo (15/30/60 min), durata standard, e facoltativamente un **limite di presenze contemporanee** più basso della capienza fisica (es. staff ridotto). |
+| **Quanto** | intervallo di 15 minuti allineato (`19:00`, `19:15`, …). Tutti gli orari di prenotazioni ed eventi sono multipli di 15 minuti. |
+| **Registro di occupazione** (`capacity_slots`) | per ogni zona e quanto: capienza effettiva, persone confermate presenti, eventuale evento esclusivo. |
+| **Richiesta** | prenotazione `PENDING`: non occupa posti. |
+| **Eccezione** | per una data: fascia chiusa agli arrivi oppure limite di presenze diverso. |
+| **Regole generali** (`booking_policy`) | anticipo minimo, giorni massimi, persone massime dal web, scadenza delle richieste, web on/off. Modalità di conferma: **sempre `MANUAL`**. |
 
-Valori iniziali **di esempio** (da sostituire con quelli dei titolari, D-03): anticipo minimo 60 min, prenotabile fino a 60 giorni, massimo 12 persone dal web, scadenza 60 min prima dell'arrivo. Finché i titolari non configurano fasce reali, **le prenotazioni web restano disattivate** (`web_booking_enabled = false`).
+Finché i titolari non configurano zona e fasce reali, **le prenotazioni dal sito restano disattivate**. I valori negli esempi sono dimostrativi.
 
 ## 2. State machine
 
 ```mermaid
 stateDiagram-v2
   [*] --> PENDING: cliente (WEB) / gestore (PHONE, EMAIL)
-  [*] --> CONFIRMED: gestore inserisce e conferma subito\n(solo PHONE/EMAIL, con capienza)
-  PENDING --> CONFIRMED: gestore conferma\n[coperti disponibili]
+  [*] --> CONFIRMED: gestore inserisce e conferma subito\n(solo PHONE/EMAIL, con posti)
+  PENDING --> CONFIRMED: gestore conferma\n[posti disponibili]
   PENDING --> REJECTED: gestore rifiuta\no sistema: scadenza (EXPIRED)
   PENDING --> CANCELLED: gestore annulla\n(es. il cliente chiama)
   CONFIRMED --> CANCELLED: gestore annulla\n[prima dell'inizio]
@@ -36,149 +40,157 @@ stateDiagram-v2
   NO_SHOW --> [*]
 ```
 
-### Tabella delle transizioni
-
 | Da → A | Chi | Precondizioni | Effetti nella **stessa transazione** |
 |---|---|---|---|
-| — → PENDING | pubblico (WEB), STAFF/OWNER (PHONE/EMAIL) | validazioni §4; WEB: regole web §5 | crea riga + storico; outbox: email al locale (WEB) e «richiesta ricevuta» al cliente se email presente |
-| — → CONFIRMED | STAFF/OWNER, solo PHONE/EMAIL con `confirmNow` | come sotto | come PENDING→CONFIRMED |
-| PENDING → CONFIRMED | STAFF/OWNER | `version` corrispondente; inizio nel futuro; consumo coperti riuscito (§3) | `confirmed_covers += guest_count`; `capacity_bucket_id`; `confirmed_at`; assegnazione tavoli facoltativa nella stessa richiesta (§8); storico; audit; outbox conferma al cliente |
-| PENDING → REJECTED | STAFF/OWNER; sistema | motivo obbligatorio | storico; outbox «non possiamo confermare» se il cliente ha un recapito utilizzabile |
-| PENDING → CANCELLED | STAFF/OWNER | motivo `CUSTOMER_REQUEST` o `VENUE_DECISION` | storico; nessun messaggio se richiesto dal cliente (P-11) |
-| CONFIRMED → CANCELLED | STAFF/OWNER | prima di `starts_at` | `confirmed_covers -= guest_count`; assegnazioni `active = false`; storico; outbox «annullata» al cliente |
-| CONFIRMED → COMPLETED | STAFF/OWNER | `now ≥ starts_at` | storico (coperti restano consumati) |
-| CONFIRMED → NO_SHOW | STAFF/OWNER | `now ≥ starts_at + 15 min` | storico; assegnazioni `active = false` |
-| NO_SHOW ↔ COMPLETED | solo OWNER | entro 48 h | storico con nota obbligatoria |
+| — → PENDING | pubblico (WEB), STAFF/OWNER (PHONE/EMAIL) | validazioni §4; WEB anche §5 | riga + storico; outbox: email al locale (WEB), ricevuta al cliente se ha email |
+| — → CONFIRMED | STAFF/OWNER, solo PHONE/EMAIL con `confirmNow` | come sotto | come PENDING → CONFIRMED |
+| PENDING → CONFIRMED | STAFF/OWNER | `version` corrispondente; inizio nel futuro; zona determinata; **occupazione riuscita** (§3); per eventi anche quota evento (§7) | occupazione `[starts_at, ends_at)` registrata; `occupied_until = ends_at`; tavoli facoltativi (§8); storico; audit; outbox conferma |
+| PENDING → REJECTED | STAFF/OWNER; sistema | motivo obbligatorio | storico; outbox avviso al cliente |
+| PENDING → CANCELLED | STAFF/OWNER | motivo | storico |
+| CONFIRMED → CANCELLED | STAFF/OWNER | prima di `starts_at` | **rilascio** di tutta l'occupazione e della quota evento; tavoli `active = false`; storico; outbox «annullata»; notifiche di conferma non ancora partite → `SKIPPED (SUPERSEDED)` |
+| CONFIRMED → COMPLETED | STAFF/OWNER | `now ≥ starts_at` | se prima di `ends_at` (clienti andati via prima): rilascio dei quanti futuri, `occupied_until` = quanto successivo; tavoli accorciati |
+| CONFIRMED → NO_SHOW | STAFF/OWNER | `now ≥ starts_at + 15 min` | rilascio dei quanti futuri; tavoli accorciati; quota evento rilasciata |
+| NO_SHOW ↔ COMPLETED | solo OWNER | entro 48 h | solo storico (nessun effetto sui posti, già passati) |
 
-**Idempotenza delle transizioni**: richiedere lo stato in cui la prenotazione è già (es. doppio clic su «Conferma») restituisce `200` con la prenotazione invariata, **senza** nuovo storico né nuova notifica. Qualsiasi transizione non in tabella → `409 INVALID_TRANSITION`. Il client non può mai creare direttamente una prenotazione `CONFIRMED` dall'API pubblica.
+**Idempotenza**: chiedere lo stato già attuale (doppio clic) → `200` invariato, nessuno storico, nessuna notifica. Transizioni non in tabella → `409 INVALID_TRANSITION`. L'API pubblica non può mai creare una prenotazione confermata.
+**Lock ottimistico**: ogni comando del gestore porta `version`; se nel frattempo è cambiata → `409 VERSION_CONFLICT`.
 
-**Lock ottimistico**: ogni comando del gestore porta la `version` letta; se nel frattempo un altro gestore ha modificato la prenotazione → `409 VERSION_CONFLICT` e la UI ricarica.
+## 3. Capienza per presenza contemporanea
 
-## 3. Capienza: regole e controllo atomico
+### 3.1 Regola
+In ogni zona e in ogni quanto: **persone confermate presenti ≤ capienza effettiva del quanto**.
+Una prenotazione è presente nei quanti di `[starts_at, occupied_until)`. Due prenotazioni 19:00–21:00 e 20:00–22:00 contano **entrambe** tra le 20:00 e le 21:00, anche se arrivano in fasce diverse. Questo sostituisce il conteggio «solo nella fascia di arrivo» della rev. 1, che permetteva di superare la capienza reale.
 
-1. Ogni prenotazione ordinaria appartiene a **una** fascia (quella che contiene l'orario di arrivo) e consuma coperti **solo** sul contatore di quella fascia in quella data. Ogni prenotazione per evento consuma sul contatore dell'evento.
-2. Capienza vigente per fascia-giorno = eccezione del giorno se esiste (0 se `CLOSED`), altrimenti `service_windows.capacity_covers`.
-3. **Le richieste `PENDING` non consumano capienza** (master plan). La dashboard mostra comunque: capienza, confermati, coperti in attesa, residui.
-4. Consumo atomico — un'unica istruzione, nessun `COUNT(*)` concorrente:
-   ```sql
-   UPDATE capacity_buckets
-      SET confirmed_covers = confirmed_covers + :n, updated_at = now()
-    WHERE id = :bucket AND confirmed_covers + :n <= capacity_covers
-   RETURNING confirmed_covers;
-   ```
-   0 righe → `409 CAPACITY_EXCEEDED` (con capienza e residui nel corpo dell'errore) e **nessuna modifica**. PostgreSQL serializza gli update sulla stessa riga: verificato con 20 conferme parallele da 2 coperti su capienza 10 → **esattamente 5** riuscite, contatore = 10 (spike).
-5. Rilascio: `confirmed_covers = confirmed_covers - :n` (mai sotto 0, `CHECK`).
-6. **Il gestore cambia la capienza**: la nuova capienza vale per i contatori futuri. Se una data ha già più confermati della nuova capienza → `409 CAPACITY_BELOW_CONFIRMED` con l'elenco delle date in conflitto; **nessuna prenotazione viene annullata automaticamente**. Il gestore decide (annulla manualmente o sceglie un valore più alto).
-7. **Più contatori nella stessa transazione** (es. spostamento di data): si aggiornano in ordine di `id` crescente per evitare deadlock.
-8. **Override del gestore** (P-25): nessuno in V1. Se serve aggiungere 2 persone in più, il gestore alza la capienza di quella data (eccezione `CAPACITY_OVERRIDE`) e l'azione resta nell'audit.
+### 3.2 Capienza effettiva di un quanto
+`min( capienza fisica della zona, limite della fascia che contiene il quanto (o eccezione del giorno) )`.
+Se nessuna fascia contiene il quanto (es. una cena che si prolunga dopo l'ultimo arrivo) vale la capienza fisica della zona.
+
+### 3.3 Conferma: procedura transazionale
+Una sola transazione PostgreSQL (`READ COMMITTED`):
+
+1. lock ottimistico della prenotazione (`version`);
+2. se è per un evento: `SELECT … FOR UPDATE` della riga evento (quota evento, §7);
+3. `SELECT … FOR SHARE` della riga della **zona** (impedisce che un cambio di capienza avvenga a metà, §3.5);
+4. creazione dei quanti mancanti con la capienza effettiva vigente (`INSERT … ON CONFLICT DO NOTHING`);
+5. **lock di tutti i quanti dell'intervallo in ordine** (`ORDER BY slot_start FOR UPDATE`) — l'ordine fisso evita i deadlock tra intervalli sovrapposti;
+6. controllo: nessun quanto bloccato da un evento esclusivo di altri (`409 EVENT_BLOCKS_SLOT`) e `occupied + persone ≤ capienza` in tutti i quanti (`409 CAPACITY_EXCEEDED`, con il primo orario saturo e i posti liberi);
+7. aggiornamento di tutti i quanti (`occupied_covers += persone`) e della prenotazione;
+8. assegnazione facoltativa dei tavoli (vincolo di esclusione, §8), storico, audit, outbox → commit.
+
+Il vincolo `CHECK (occupied_covers <= capacity_covers)` resta come **ultima difesa** anche contro bug applicativi.
+Ordine globale dei lock, uguale in ogni operazione: **evento → zona → quanti (per zona, poi orario) → prenotazione/tavoli**.
+
+Verificato su PostgreSQL 17 (spike 2): 60 conferme parallele con orari e durate casuali su capienza 10 → presenza massima 10, registro identico al ricalcolo, 0 deadlock.
+
+### 3.4 Rilascio e modifiche
+- Annullamento: `occupied_covers -= persone` su tutti i quanti occupati.
+- Uscita anticipata (`COMPLETED` prima della fine) e `NO_SHOW`: rilascio dei soli quanti futuri.
+- Modifica di una confermata (orario, durata, persone, zona): rilascio del vecchio intervallo e occupazione del nuovo **nella stessa transazione**, bloccando l'unione dei quanti in ordine. Se il nuovo non sta → `409` e **nulla cambia**.
+- Clienti che restano oltre l'orario: il gestore **allunga** la durata (modifica), con nuovo controllo dei posti.
+
+### 3.5 Il gestore cambia una capienza
+Riguarda capienza fisica della zona, limite di una fascia, eccezione di una data, capienza di un evento. Solo OWNER (la capienza evento anche STAFF, §10).
+1. `SELECT … FOR UPDATE` della zona (aspetta le conferme in corso, che tengono `FOR SHARE`);
+2. ricalcolo della capienza effettiva dei quanti futuri già esistenti, lock in ordine;
+3. se in qualche quanto `occupied > nuova capienza` → **`409 CAPACITY_BELOW_CONFIRMED`** con l'elenco di orari e prenotazioni coinvolte. **Nessuna prenotazione viene annullata o spostata automaticamente**; il gestore decide;
+4. altrimenti salva configurazione e quanti nella stessa transazione.
+
+Il lock sulla zona serve perché una conferma potrebbe creare quanti nuovi con la capienza vecchia mentre il cambio è in corso: con `FOR SHARE`/`FOR UPDATE` le due operazioni non si accavallano.
+
+### 3.6 Semplificazioni V1 dichiarate (vincoli operativi)
+| Vincolo | Conseguenza pratica |
+|---|---|
+| Granularità 15 minuti; orari e durate multipli di 15 | arrivi alle 19:10 si registrano 19:00 o 19:15 |
+| Durata fissa per prenotazione (standard della fascia, modificabile dal gestore) | i posti si liberano solo se il gestore segna uscita anticipata o no-show |
+| **Clienti senza prenotazione non tracciati** | il titolare deve tenere un margine: limite della fascia **più basso** della capienza fisica (es. fisica 80, prenotabili 50) |
+| Capienza in persone, non in tavoli | i tavoli non aumentano né riducono i posti; servono a organizzare la sala (§8) |
+| Una prenotazione confermata sta in **una sola zona** | gruppi divisi tra sala e dehors = due prenotazioni |
+| Nessuna fascia oltre la mezzanotte; eventi sì | gli eventi notturni usano l'orario reale (es. 22:00–02:00) |
 
 ## 4. Data, ora e fuso
-
-- Il cliente sceglie **data locale + orario di arrivo** tra gli slot proposti (`GET /public/booking-options`). Il server ricalcola tutto: non si fida degli slot inviati.
-- Conversione con `ZoneId.of("Europe/Rome")`: `starts_at = data + ora` locale → `timestamptz`; `ends_at = starts_at + default_duration_minutes` della fascia (o fine evento).
-- **Cambio d'ora**: un orario inesistente (es. 29/03/2026 02:30) è **rifiutato** con `422` — PostgreSQL lo sposterebbe silenziosamente alle 03:30 (verificato nello spike), quindi il controllo è in Java con `ZoneRules.getValidOffsets`. Un orario ambiguo (25/10/2026 02:30) usa l'offset estivo (il primo). In pratica le fasce del locale non toccano quelle ore.
-- `reservation_date` è sempre la data **locale** dell'arrivo.
-- Validazioni comuni: arrivo ≥ adesso + anticipo minimo; data ≤ oggi + giorni massimi; arrivo allineato al passo della fascia e tra primo e ultimo orario; persone 1–50 (web: fino al massimo configurato, oltre → messaggio «per gruppi più grandi chiamaci»).
-- Il gestore (PHONE/EMAIL) può inserire anche orari fuori dagli slot o con anticipo minore: riceve un **avviso**, non un blocco. La capienza resta comunque vincolante.
+- Il cliente sceglie **data locale + orario di arrivo** tra gli slot proposti (`GET /public/booking-options`); il server ricalcola tutto.
+- `ZoneId.of("Europe/Rome")`; `starts_at` = data + ora locale; `ends_at = starts_at + durata`.
+- Orario inesistente al cambio d'ora (es. 29/03/2026 02:30) → `422 INVALID_LOCAL_TIME` (PostgreSQL lo sposterebbe in silenzio: controllo in Java). Orario ambiguo (25/10/2026 02:30) → primo offset (+02:00). Le durate sono calcolate in tempo reale.
+- Validazioni: arrivo ≥ adesso + anticipo minimo; data ≤ oggi + giorni massimi; arrivo allineato al passo e dentro la fascia; persone 1–50 (web: fino al massimo configurato, oltre: «per gruppi più grandi chiamaci»).
+- Il gestore (PHONE/EMAIL) può inserire orari fuori dagli slot o con poco anticipo: **avviso**, non blocco. La capienza resta sempre vincolante.
 
 ## 5. Richieste dal sito (WEB)
+Accettata solo se: web attivo; fascia attiva e non chiusa; nessun evento esclusivo nei quanti richiesti (`422 EVENT_BLOCKS_SLOT`, il sito indirizza all'evento); dati validi; informativa accettata; **controllo preventivo**: in nessun quanto le persone confermate + richieste superano la capienza (`422 FULLY_BOOKED`, «completo, chiamaci»). Il controllo preventivo è solo informativo (senza lock): quello vincolante avviene alla conferma.
 
-Accettata solo se: web attivo; fascia attiva e non chiusa da eccezione; nessun evento «bloccante» sovrapposto (§7); dati validi; informativa privacy accettata; **coperti residui confermati ≥ persone richieste** (P-04: se la fascia è già piena di confermati, il sito risponde «completo, chiamaci» invece di creare richieste destinate al rifiuto).
+Con più zone il cliente può indicare una preferenza; la zona definitiva la sceglie il gestore alla conferma.
 
-Anti-abuso:
-- header **`Idempotency-Key`** obbligatorio (UUID generato dal browser all'apertura del riepilogo); stesso key + stessi dati → stessa risposta; stesso key + dati diversi → `422 IDEMPOTENCY_KEY_REUSED`;
-- duplicato **stesso telefono + stesso orario** ancora attivo → `409 DUPLICATE_REQUEST` (vincolo `ux_res_web_duplicate`);
-- limite di frequenza: 5 richieste/ora per IP e 3/giorno per numero di telefono → `429` con `Retry-After` (P-21);
-- campo trappola invisibile (honeypot): se compilato, risposta generica senza salvare;
-- niente CAPTCHA a puzzle (accessibilità), eventualmente Cloudflare Turnstile in FASE 8.
+Anti-abuso: header `Idempotency-Key` obbligatorio (stessa chiave + stessi dati → stessa risposta; dati diversi → `422 IDEMPOTENCY_KEY_REUSED`); duplicato stesso telefono + stesso orario ancora attivo → `409 DUPLICATE_REQUEST`; rate limit 5/ora per IP e 3/giorno per telefono → `429`; honeypot; niente CAPTCHA a puzzle.
 
-Dati raccolti (minimi): nome, **telefono obbligatorio** (E.164; numeri italiani normalizzati), email facoltativa, note (≤ 500, con avviso «non inserire dati sanitari»), presa visione informativa con versione. (P-10)
+Dati: nome, **telefono obbligatorio** (normalizzato E.164), email facoltativa, note (≤ 500, avviso «non inserire dati sanitari»), presa visione dell'informativa con versione. (Decisione confermata.)
 
 ## 6. Scadenza, annullamento e modifica
+- **Scadenza**: `PENDING` non gestita entro `starts_at − N minuti` (esempio 60) → `REJECTED` motivo `EXPIRED`, job ogni 5 minuti con update condizionale (`WHERE status = 'PENDING'`): se un gestore conferma nello stesso istante, vince uno solo. Avviso al cliente se ha un recapito utilizzabile. La dashboard evidenzia le richieste che scadono entro 2 ore. (P-05)
+- **Annullamento**: solo il gestore in V1, anche su richiesta del cliente (P-09). Non dopo l'inizio: si usa `NO_SHOW` o `COMPLETED`.
+- **Modifica**: PENDING liberamente; CONFIRMED con la procedura §3.4. Ogni modifica di una confermata produce storico, audit e notifica (chiave che include la `version`). Il cliente non modifica da solo in V1.
 
-### Scadenza delle richieste
-- Una richiesta `PENDING` non gestita entro **`starts_at − pending_expiry_minutes_before_start`** (esempio: 60 min prima) passa a `REJECTED` con motivo **`EXPIRED`** tramite job ogni 5 minuti (P-05).
-- Il job usa un update condizionale (`WHERE id = :id AND status = 'PENDING'`), quindi non entra mai in conflitto con una conferma concorrente: vince chi arriva prima, l'altro riceve `409`.
-- Se il cliente ha un recapito utilizzabile, riceve «non siamo riusciti a confermare in tempo, chiamaci».
-- La dashboard evidenzia le richieste che scadono entro 2 ore.
+## 7. Eventi e capienza condivisa
 
-### Annullamento
-- **V1: solo il gestore** annulla (anche su richiesta del cliente arrivata per telefono/email/Instagram). Nessun link di auto-annullamento per il cliente (P-09; possibile V1.1 con link firmato monouso).
-- Annullare una confermata rilascia i coperti e disattiva le assegnazioni tavoli nella stessa transazione.
-- Non si annulla dopo l'inizio: si usa `NO_SHOW` o `COMPLETED`.
+### 7.1 Principio
+**Esiste una sola capienza fisica: il registro di occupazione delle zone.** Le prenotazioni per eventi occupano gli stessi quanti delle prenotazioni ordinarie. La capienza dell'evento è una **quota in più** (posti massimi vendibili per quell'evento), mai un secondo contatore indipendente: una conferma per evento deve superare **entrambi** i controlli (quota evento e registro della zona) nella stessa transazione.
 
-### Modifica
-- **PENDING**: il gestore può cambiare data, ora, persone, note liberamente (nessun coperto coinvolto); validazioni §4.
-- **CONFIRMED**: modifica atomica in un'unica transazione:
-  1. persone in più nella stessa fascia → consumo condizionale del solo **delta**;
-  2. persone in meno → rilascio del delta;
-  3. cambio di data/fascia → rilascio dal vecchio contatore + consumo sul nuovo (ordine per `id`);
-  4. cambio d'orario con tavoli assegnati → aggiornamento degli intervalli `occupied`; se il tavolo è occupato nel nuovo intervallo → `409 TABLE_CONFLICT` e **niente cambia**.
-- Ogni modifica di una confermata produce storico + audit + notifica «prenotazione aggiornata» (`business_event_key` include la `version`, così ogni modifica notifica una sola volta).
-- Il cliente non modifica da solo in V1.
+### 7.2 Regole per tipo di evento
+| Caso | Regola V1 |
+|---|---|
+| **Evento su tutto il locale** (`zone = null`) | occupa tutte le zone nel suo intervallo. Predefinito **esclusivo**: i quanti di tutte le zone sono marcati con l'evento e **nessuna prenotazione ordinaria** (web o manuale) può occuparli. Quota evento ≤ somma delle capienze fisiche. Con più zone, il gestore sceglie la zona di ogni prenotazione evento alla conferma. |
+| **Evento limitato a un'area** | possibile **solo su una zona di capienza fisicamente separata e configurata**. Se il locale ha una sola zona, l'evento è per forza su tutto il locale (`422 ZONE_NOT_SEPARATE` se si prova altrimenti). L'evento esclusivo blocca il servizio ordinario solo in quella zona; le altre zone lavorano normalmente. |
+| **Evento contemporaneo al servizio ordinario nella stessa zona** (non esclusivo, es. DJ set durante l'aperitivo) | consentito perché evento e servizio ordinario **consumano lo stesso registro**: la somma non può superare la capienza fisica. La quota evento limita solo i posti dell'evento; i posti dell'evento non sono garantiti (il servizio ordinario può occuparli prima). Alla pubblicazione il gestore vede un avviso se la quota supera i posti liberi. (P-31) |
 
-## 7. Eventi e conflitti con il servizio ordinario
+Senza zone fisicamente separate e configurate, **non esiste** un modo per avere due capienze indipendenti contemporanee: la contemporaneità non sicura è impossibile per costruzione.
 
-1. Un evento prenotabile ha `booking_mode = REQUEST`, inizio, fine e **capienza in coperti** decisa dal gestore; ha il **suo** contatore. Area: tutto il locale (default) o un'area (P-06, P-07).
-2. Le richieste per l'evento seguono la stessa state machine (PENDING → conferma manuale entro i posti residui dell'evento).
-3. **Blocco del servizio ordinario** (`blocks_ordinary_booking = true`, default): durante l'intervallo dell'evento il sito **non accetta** richieste ordinarie che si sovrappongono, nella stessa area o in tutto il locale; il cliente viene indirizzato all'evento. Il gestore può comunque inserire manualmente una prenotazione ordinaria, con avviso.
-4. **Pubblicare o spostare un evento** che si sovrappone a prenotazioni ordinarie `PENDING`/`CONFIRMED`: l'API risponde `409 EVENT_CONFLICTS` con l'elenco (riferimento, ora, persone, stato, **senza** dati personali). Il gestore può:
-   - confermare la pubblicazione «sapendo dei conflitti» (`acknowledgeConflicts: true`) → le prenotazioni restano valide;
-   - oppure gestirle una per una (annullare, spostare).
-   **Nessuna prenotazione viene annullata o spostata automaticamente.**
-5. **Ridurre la capienza** di un evento sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED`.
-6. **Annullare un evento** con prenotazioni attive: richiede scelta esplicita `cancelReservations: true|false`. Con `true`, ogni prenotazione passa a `CANCELLED` motivo `EVENT_CANCELLED` (con notifica), tutto in una transazione; con `false`, l'evento viene annullato e le prenotazioni restano da gestire (la dashboard le evidenzia).
-7. Se `blocks_ordinary_booking = false` (es. DJ set su un'area mentre il resto del locale lavora normalmente), i due contatori sono indipendenti: il gestore deve aver impostato le capienze in modo che la somma sia sostenibile. Nessun calcolo automatico in V1.
+### 7.3 Pubblicazione e modifiche
+- **Pubblicare un evento esclusivo** (stessa procedura a lock ordinati di §3.3): se nei suoi quanti c'è già occupazione confermata → **`409 EVENT_CONFLICTS`** con l'elenco (riferimento, ora, persone, stato, senza dati personali). Va risolto prima (annullare o spostare quelle prenotazioni): **non c'è forzatura**. Le richieste `PENDING` sovrapposte vengono elencate come avviso: si pubblica con `acknowledgePending: true`, ma quelle richieste non potranno più essere confermate come ordinarie.
+- Una conferma ordinaria e la pubblicazione di un evento esclusivo nello stesso orario sono serializzate dai lock sui quanti: **vince una sola** (verificato: 20 gare, 0 quanti con evento esclusivo e coperti ordinari).
+- **Ridurre la quota evento** sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED`. Aumentarla è sempre possibile (il registro della zona resta il limite).
+- **Cambiare orario, zona o esclusività** di un evento che ha prenotazioni confermate → `409 EVENT_HAS_CONFIRMED_RESERVATIONS` in V1: prima vanno gestite le prenotazioni. Evita spostamenti silenziosi.
+- **Annullare un evento** con prenotazioni attive: scelta esplicita `cancelReservations: true|false` (solo OWNER). Con `true` tutte passano a `CANCELLED` motivo `EVENT_CANCELLED`, posti rilasciati, notifiche accodate, in una transazione. Con `false` l'evento resta visibile come annullato al pubblico e le prenotazioni restano da gestire. In entrambi i casi i quanti esclusivi vengono liberati solo quando non ci sono più prenotazioni dell'evento confermate.
 
 ## 8. Tavoli (manuale e facoltativo)
+- Zone, aree e tavoli li configura l'OWNER. La V1 funziona anche senza tavoli.
+- Il gestore **può** assegnare uno o più tavoli a una prenotazione **CONFIRMED** (anche nella stessa richiesta di conferma). I tavoli devono appartenere alla zona della prenotazione. **Mai automaticamente.**
+- Intervallo del tavolo = `[starts_at, occupied_until)`. Tavoli adiacenti nel tempo ammessi; sovrapposti → `409 TABLE_CONFLICT` (vincolo di esclusione, anche con due gestori in contemporanea).
+- **Posti insufficienti**: se la somma dei posti massimi dei tavoli è minore delle persone → **blocco predefinito `422 SEATS_BELOW_PARTY_SIZE`**.
+  - **Eccezione** solo per l'**OWNER**, esplicita: `overrideSeats: true` + motivo obbligatorio (es. «aggiungiamo uno sgabello»). Viene salvata sull'assegnazione e registrata nell'**audit** (`TABLE_SEATS_OVERRIDE`).
+  - STAFF che chiede l'eccezione → `403`.
+  - L'eccezione riguarda solo i posti del tavolo, **mai** la capienza della zona.
+- Persone meno dei posti minimi del tavolo (es. 2 persone su un tavolo da 8): solo **avviso** `MIN_SEATS_ABOVE_PARTY`.
+- Annullamento, uscita anticipata, no-show, cambio d'orario aggiornano le assegnazioni nella stessa transazione. Sostituzione con `PUT …/tables` (le vecchie diventano `active = false`, storico conservato).
 
-- Aree e tavoli li configura l'OWNER (codice, area, posti min/max). Possono anche non esistere: la V1 funziona solo con i coperti.
-- Il gestore **può** assegnare uno o più tavoli a una prenotazione **CONFIRMED** (anche nella stessa richiesta di conferma). Mai automaticamente.
-- Intervallo occupato = `[starts_at, ends_at)` della prenotazione. Tavoli adiacenti nel tempo (uno finisce 21:30, l'altro inizia 21:30) sono ammessi.
-- Conflitto → `409 TABLE_CONFLICT` con il riferimento della prenotazione che occupa il tavolo (garantito dal vincolo di esclusione anche con due gestori in contemporanea).
-- Persone > somma dei posti massimi dei tavoli assegnati → **avviso** nella risposta (`warnings: ["SEATS_BELOW_PARTY_SIZE"]`), non blocco (P-08).
-- Annullamento, `NO_SHOW` o cambio d'orario aggiornano le assegnazioni nella stessa transazione.
-- Sostituzione dei tavoli: `PUT …/tables` con l'elenco completo; le vecchie assegnazioni diventano `active = false` (storico conservato).
-
-## 9. Notifiche collegate alle prenotazioni (P-11)
-
+## 9. Notifiche (at-least-once, dettaglio in ADR-0005)
 | Fatto | Locale (email) | Cliente email | Cliente SMS |
 |---|---|---|---|
-| Nuova richiesta WEB | ✓ | «richiesta ricevuta» se email presente | — |
-| Confermata | — | ✓ se email | **Fake in V1**; reale solo dopo approvazione costi e provider |
-| Rifiutata / scaduta | — | ✓ se email | Fake |
-| Annullata dal locale | — | ✓ se email | Fake |
-| Modificata (confermata) | — | ✓ se email | Fake |
+| Nuova richiesta WEB | ✓ | ricevuta, se ha email | — |
+| Confermata / rifiutata / scaduta / annullata / modificata | — | ✓ se ha email | **solo `FakeSmsGateway`** finché non autorizzi provider e costi |
 
-Tutte passano dall'**outbox**: accodate nella stessa transazione del cambio di stato, inviate dal worker dopo il commit, con chiave unica anti-duplicato. Un invio fallito non cambia la prenotazione; la riga in dashboard mostra lo stato del messaggio (`In coda / Inviato / Non inviato / Non previsto`).
+- Accodate nella stessa transazione del fatto, inviate dal worker dopo il commit; chiave di business unica (nessun doppio accodamento).
+- **Non promettiamo consegna «exactly-once»**: la presa in carico è unica, l'invio è *almeno una volta*. Gli esiti incerti (timeout dopo l'invio) non vengono ritentati in automatico se il provider non supporta una chiave di idempotenza: diventano `UNCERTAIN` e il gestore decide se reinviare.
+- Un invio fallito non cambia mai lo stato della prenotazione.
 
 ## 10. Ruoli e permessi
-
 | Operazione | OWNER | STAFF | Pubblico |
 |---|:-:|:-:|:-:|
-| Vedere opzioni prenotabili, inviare richiesta | | | ✓ |
-| Vedere elenco e dettaglio prenotazioni | ✓ | ✓ | |
-| Inserire prenotazione PHONE/EMAIL | ✓ | ✓ | |
-| Confermare / rifiutare / annullare / completare / no-show | ✓ | ✓ | |
-| Correggere NO_SHOW ↔ COMPLETED | ✓ | | |
-| Assegnare tavoli | ✓ | ✓ | |
-| Fasce, capienze, eccezioni, regole generali, aree, tavoli | ✓ | | |
-| Creare/pubblicare eventi e capienza evento | ✓ | ✓ | |
-| Annullare un evento con prenotazioni | ✓ | | |
+| Opzioni prenotabili, invio richiesta | | | ✓ |
+| Elenco/dettaglio prenotazioni, inserimento PHONE/EMAIL | ✓ | ✓ | |
+| Conferma / rifiuto / annullamento / completata / no-show | ✓ | ✓ | |
+| Correzione NO_SHOW ↔ COMPLETED | ✓ | | |
+| Assegnazione tavoli | ✓ | ✓ | |
+| **Eccezione posti tavolo** | ✓ | | |
+| Zone, capienze fisiche, fasce, eccezioni, regole generali, aree, tavoli | ✓ | | |
+| Eventi: bozza, pubblicazione, quota evento | ✓ | ✓ | |
+| Annullamento evento con prenotazioni | ✓ | | |
+| Rinvio di una notifica `UNCERTAIN`/`FAILED`/`DEAD` | ✓ | ✓ | |
 | Template notifiche, attivazione SMS | ✓ | | |
-| Rinviare una notifica fallita | ✓ | ✓ | |
 | Menu, foto, avvisi | ✓ | ✓ | |
 | Personalizza sito, impostazioni, utenti | ✓ | | |
 
-Ogni controllo è **lato server** (regole su URL + `@PreAuthorize` sui servizi). Un id inesistente o non visibile risponde `404` senza rivelare altro.
+Controllo sempre **lato server** (regole su URL + `@PreAuthorize`). Id inesistenti o non visibili → `404`.
 
 ## 11. Privacy (sintesi)
-
-- Dati minimi; note libere mai nei log né nell'outbox.
-- Log applicativi: solo `public_ref` e id, mai nome/telefono/email.
-- Anonimizzazione automatica dopo N giorni dalla data (proposta 90, P-13): nome → «—», telefono/email → null, note → null; i numeri aggregati restano.
-- Testi informativi da validare con un esperto (FASE 8).
+Dati minimi; note libere mai nei log né nell'outbox; log solo con `public_ref`/id; anonimizzazione dopo N giorni (proposta 90, P-13); testi legali da validare (FASE 8).
 
 ## 12. Cosa NON fa la V1
-
-Auto-conferma; scelta automatica o combinazione di tavoli; suggerimento di orari alternativi; lista d'attesa; overbooking controllato; durata variabile per gruppo; lettura automatica di email/telefonate; area clienti con login; pagamenti/caparre. Ogni punto richiede una nuova approvazione (V2).
+Auto-conferma; scelta, combinazione o suggerimento automatico di tavoli; suggerimento di orari alternativi; lista d'attesa; overbooking controllato; durata variabile automatica; tracciamento clienti senza prenotazione; lettura automatica di email/telefonate; area clienti; pagamenti/caparre; SMS reali senza autorizzazione.

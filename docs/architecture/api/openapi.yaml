@@ -4,7 +4,7 @@ info:
   license:
     name: Proprietario — uso riservato
     identifier: LicenseRef-Proprietary
-  version: 1.0.0-draft
+  version: 1.0.0-draft.2
   summary: Contratto V1 dei flussi principali (prenotazioni, autenticazione). Bozza FASE 1, non implementata.
   description: |
     Bozza di progettazione. Gli altri endpoint (menu, media, contenuti, configurazione) sono elencati in
@@ -30,6 +30,7 @@ paths:
       parameters:
         - { name: date, in: query, required: true, schema: { type: string, format: date } }
         - { name: eventId, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: guests, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 50, default: 2 } }
       responses:
         '200':
           description: Opzioni del giorno
@@ -278,15 +279,19 @@ paths:
             schema:
               type: object
               required: [version, tableIds]
+              additionalProperties: false
               properties:
                 version: { type: integer }
                 tableIds: { type: array, maxItems: 6, uniqueItems: true, items: { type: string, format: uuid } }
+                overrideSeats: { type: boolean, default: false, description: Solo OWNER; consente posti tavolo inferiori alle persone }
+                overrideReason: { type: [string, 'null'], maxLength: 200 }
       responses:
         '200':
           description: Tavoli aggiornati
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Reservation' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
@@ -294,10 +299,11 @@ paths:
     get:
       tags: [admin-reservations]
       operationId: getCapacity
-      summary: Coperti del giorno per fascia ed evento
+      summary: Occupazione del giorno per zona, quanto per quanto, e quote eventi
       security: [{ session: [] }]
       parameters:
         - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: zoneId, in: query, required: false, schema: { type: string, format: uuid } }
       responses:
         '200':
           description: Situazione coperti del giorno
@@ -305,23 +311,43 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [date, buckets]
+                required: [date, zones, events]
                 properties:
                   date: { type: string, format: date }
-                  buckets:
+                  zones:
                     type: array
                     items:
                       type: object
-                      required: [kind, label, capacityCovers, confirmedCovers, pendingCovers, remainingCovers]
+                      required: [zoneId, name, physicalCapacity, slots]
                       properties:
-                        kind: { type: string, enum: [SERVICE, EVENT] }
-                        label: { type: string }
-                        windowId: { type: [string, 'null'], format: uuid }
-                        eventId: { type: [string, 'null'], format: uuid }
+                        zoneId: { type: string, format: uuid }
+                        name: { type: string }
+                        physicalCapacity: { type: integer, minimum: 0 }
+                        slots:
+                          type: array
+                          description: Quanti da 15 minuti del giorno di servizio
+                          items:
+                            type: object
+                            required: [start, capacityCovers, occupiedCovers, pendingCovers, freeCovers]
+                            properties:
+                              start: { type: string, format: date-time }
+                              capacityCovers: { type: integer, minimum: 0 }
+                              occupiedCovers: { type: integer, minimum: 0 }
+                              pendingCovers: { type: integer, minimum: 0 }
+                              freeCovers: { type: integer, minimum: 0 }
+                              exclusiveEventId: { type: [string, 'null'], format: uuid }
+                  events:
+                    type: array
+                    items:
+                      type: object
+                      required: [eventId, title, exclusive, capacityCovers, confirmedCovers]
+                      properties:
+                        eventId: { type: string, format: uuid }
+                        title: { type: string }
+                        zoneId: { type: [string, 'null'], format: uuid }
+                        exclusive: { type: boolean }
                         capacityCovers: { type: integer, minimum: 0 }
                         confirmedCovers: { type: integer, minimum: 0 }
-                        pendingCovers: { type: integer, minimum: 0 }
-                        remainingCovers: { type: integer, minimum: 0 }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
@@ -387,6 +413,12 @@ components:
     LocalTime:
       type: string
       pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+    DurationMinutes:
+      type: integer
+      minimum: 30
+      maximum: 360
+      multipleOf: 15
+      description: Durata dell'occupazione; default la durata standard della fascia
     Phone:
       type: string
       description: Numero di telefono; il server lo normalizza in E.164 (+39 per numeri italiani senza prefisso).
@@ -488,8 +520,12 @@ components:
         customer: { $ref: '#/components/schemas/CustomerInput' }
         notes: { type: [string, 'null'], maxLength: 500 }
         internalNote: { type: [string, 'null'], maxLength: 500 }
+        durationMinutes: { $ref: '#/components/schemas/DurationMinutes' }
+        zoneId: { type: [string, 'null'], format: uuid }
         confirmNow: { type: boolean, default: false }
         tableIds: { type: array, maxItems: 6, uniqueItems: true, items: { type: string, format: uuid } }
+        overrideSeats: { type: boolean, default: false, description: Solo OWNER }
+        overrideReason: { type: [string, 'null'], maxLength: 200 }
 
     ReservationUpdate:
       type: object
@@ -500,6 +536,8 @@ components:
         date: { type: string, format: date }
         time: { $ref: '#/components/schemas/LocalTime' }
         guestCount: { type: integer, minimum: 1, maximum: 50 }
+        durationMinutes: { $ref: '#/components/schemas/DurationMinutes' }
+        zoneId: { type: string, format: uuid }
         notes: { type: [string, 'null'], maxLength: 500 }
         internalNote: { type: [string, 'null'], maxLength: 500 }
         needsCallback: { type: boolean }
@@ -513,6 +551,12 @@ components:
         status: { type: string, enum: [CONFIRMED, REJECTED, CANCELLED, COMPLETED, NO_SHOW] }
         reason: { oneOf: [ { $ref: '#/components/schemas/StatusReason' }, { type: 'null' } ] }
         note: { type: [string, 'null'], maxLength: 300 }
+        zoneId:
+          description: Solo con status CONFIRMED; obbligatorio se il locale ha più zone e la richiesta non ne indica una
+          type: [string, 'null']
+          format: uuid
+        overrideSeats: { type: boolean, default: false, description: Solo OWNER; posti tavolo inferiori alle persone }
+        overrideReason: { type: [string, 'null'], maxLength: 200 }
         tableIds:
           description: Solo con status CONFIRMED; assegnazione manuale facoltativa nella stessa transazione
           type: array
@@ -533,6 +577,9 @@ components:
         date: { type: string, format: date }
         time: { $ref: '#/components/schemas/LocalTime' }
         endTime: { $ref: '#/components/schemas/LocalTime' }
+        occupiedUntil:
+          description: Fine effettiva dell'occupazione (anticipata da uscita anticipata o no-show); null se non confermata
+          oneOf: [ { $ref: '#/components/schemas/LocalTime' }, { type: 'null' } ]
         guestCount: { type: integer }
         customer:
           type: object
@@ -544,6 +591,11 @@ components:
         notes: { type: [string, 'null'] }
         internalNote: { type: [string, 'null'] }
         needsCallback: { type: boolean }
+        zone:
+          type: [object, 'null']
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
         window:
           type: [object, 'null']
           properties:
@@ -564,6 +616,7 @@ components:
               code: { type: string }
               area: { type: string }
               maxSeats: { type: integer }
+              seatsOverride: { type: boolean }
         notifications:
           type: array
           items:
@@ -571,11 +624,11 @@ components:
             required: [channel, state]
             properties:
               channel: { type: string, enum: [EMAIL, SMS] }
-              state: { type: string, enum: [PENDING, SENDING, SENT, DELIVERED, FAILED, DEAD, SKIPPED] }
+              state: { type: string, enum: [PENDING, SENDING, SENT, DELIVERED, UNCERTAIN, FAILED, DEAD, SKIPPED] }
               reason: { type: [string, 'null'] }
         warnings:
           type: array
-          items: { type: string, enum: [OUTSIDE_SLOTS, SHORT_NOTICE, EVENT_OVERLAP, SEATS_BELOW_PARTY_SIZE] }
+          items: { type: string, enum: [OUTSIDE_SLOTS, SHORT_NOTICE, MIN_SEATS_ABOVE_PARTY] }
         createdAt: { type: string, format: date-time }
 
     ReservationDetail:

@@ -1,21 +1,23 @@
 # Modello dati PostgreSQL — FireFlies Aperitif V1
 
-> FASE 1 · 19/10/2026 · Stato: **proposta da approvare**. Questo documento **non è una migrazione**: lo schema Flyway `V1__…` sarà scritto da zero in FASE 2 a partire da qui.
-> La bozza SQL precedente (`V1__initial_schema.sql`) non è disponibile (vedi DECISION_LOG §4): nessun elemento di `AUTO_TABLE` o di assegnazione automatica è stato ripreso.
+> FASE 1 · rev. 2 del 19/10/2026 (revisione finale) · Stato: **proposta da approvare**. Questo documento **non è una migrazione**: lo schema Flyway `V1__…` sarà scritto da zero in FASE 2 a partire da qui.
+> La bozza SQL precedente (`V1__initial_schema.sql`) non è disponibile (DECISION_LOG §4): nessun elemento `AUTO_TABLE` o di assegnazione automatica è stato ripreso.
+> **Cambiato rispetto alla rev. 1**: `capacity_buckets` (contatore per fascia di arrivo) è sostituita da `capacity_zones` + `capacity_slots` (occupazione per quanti da 15 minuti); eventi con quota e flag `exclusive`; eccezione posti tavolo; outbox con lease, chiave di idempotenza verso il provider ed esiti incerti. Saldo: **+1 tabella**, giustificata in §3.3.
 
 ## 1. Convenzioni
 
 | Tema | Regola |
 |---|---|
-| Nomi | `snake_case`, tabelle al plurale, vincoli con prefisso: `pk_`, `fk_`, `uq_`/`ux_`, `ck_`, `ex_`, indici `ix_` |
-| Chiavi | `uuid` generati con `gen_random_uuid()` per le entità esposte via API; `bigint generated always as identity` per tabelle solo interne (storico, audit, tentativi); codice testuale per i dati di riferimento (allergeni) |
-| Tempo | istanti in `timestamptz` (UTC in DB); date locali in `date`; orari di calendario in `time` interpretati in **Europe/Rome**; intervalli `[inizio, fine)` |
-| Denaro | `price_cents integer` (euro × 100), `NULL` = prezzo non comunicato |
-| Enum | `text` + `CHECK (… IN (…))` (più semplice da evolvere di `CREATE TYPE`) |
-| Audit colonne | `created_at`, `updated_at` (`timestamptz not null default now()`), `version integer` per lock ottimistico dove c'è modifica concorrente da UI |
-| Cancellazioni | fisiche per configurazione; **mai** per prenotazioni (si cambia stato) né per media in uso (FK `RESTRICT`) |
-| Estensioni | solo `btree_gist` (per il vincolo di esclusione sui tavoli) |
-| Dati seed | solo dati di riferimento normativi (14 allergeni UE) e template notifiche; dati demo **solo** nel profilo `local`, etichettati |
+| Nomi | `snake_case`, tabelle al plurale; prefissi `pk_`, `fk_`, `uq_`/`ux_`, `ck_`, `ex_`, indici `ix_` |
+| Chiavi | `uuid` (`gen_random_uuid()`) per entità esposte via API; `bigint identity` per tabelle interne (storico, audit, tentativi); codice testuale per dati di riferimento |
+| Tempo | istanti `timestamptz`; date locali `date`; orari di calendario `time` in **Europe/Rome**; intervalli `[inizio, fine)` |
+| **Quanto** | 15 minuti. Orari di prenotazioni, eventi e quanti sono multipli di 15 min: `CHECK (extract(epoch FROM col)::bigint % 900 = 0)` (indipendente dal fuso; l'Italia ha offset a ore intere) |
+| Denaro | `price_cents integer`, `NULL` = prezzo non comunicato |
+| Enum | `text` + `CHECK (… IN (…))` |
+| Colonne di servizio | `created_at`, `updated_at`; `version integer` per lock ottimistico dove la UI modifica in concorrenza |
+| Cancellazioni | fisiche per configurazione senza storico; **mai** per prenotazioni (cambio di stato) né per media in uso (FK `RESTRICT`) |
+| Estensioni | solo `btree_gist` |
+| Seed | solo dati normativi (14 allergeni UE), template notifiche e la zona predefinita «Locale» **senza capienza attiva** (`active = false` finché il titolare non la imposta); dati demo solo nel profilo `local` |
 
 ## 2. Diagramma ER
 
@@ -24,16 +26,17 @@ erDiagram
   app_users ||--o{ audit_logs : "esegue"
   app_users ||--o{ reservation_status_history : "cambia"
 
+  capacity_zones ||--o{ dining_areas : "contiene"
+  capacity_zones ||--o{ service_windows : "fasce"
+  capacity_zones ||--o{ capacity_slots : "quanti 15 min"
+  capacity_zones |o--o{ events : "zona (null = tutto il locale)"
   dining_areas ||--o{ dining_tables : contiene
-  dining_areas |o--o{ service_windows : "limita (facoltativo)"
-  service_windows ||--o{ booking_exceptions : "eccezioni (facoltativo)"
-  service_windows ||--o{ capacity_buckets : "fascia × giorno"
-  events |o--o| capacity_buckets : "capienza evento"
+  service_windows ||--o{ booking_exceptions : "eccezioni"
+  events |o--o{ capacity_slots : "esclusiva"
 
-  reservations }o--|| capacity_buckets : "consuma coperti se CONFIRMED"
-  reservations }o--o| service_windows : "fascia richiesta"
+  capacity_zones |o--o{ reservations : "zona confermata"
+  reservations }o--o| service_windows : "fascia di arrivo"
   reservations }o--o| events : "per l'evento"
-  reservations }o--o| dining_areas : "preferenza area"
   reservations ||--o{ reservation_status_history : storico
   reservations ||--o{ reservation_table_assignments : "tavoli (manuale)"
   dining_tables ||--o{ reservation_table_assignments : occupato
@@ -56,33 +59,42 @@ erDiagram
   media_assets |o--o| site_content : "foto home"
 ```
 
-Colonne principali (tipi e vincoli completi nelle sezioni seguenti):
+Colonne principali della parte prenotazioni:
 
 ```mermaid
 erDiagram
+  capacity_zones {
+    uuid id PK
+    text name UK
+    int physical_capacity
+    boolean active
+  }
+  capacity_slots {
+    uuid zone_id PK
+    timestamptz slot_start PK
+    int capacity_covers
+    int occupied_covers
+    uuid exclusive_event_id FK
+  }
   reservations {
     uuid id PK
     text public_ref UK
     text status
     text source
-    date reservation_date
     timestamptz starts_at
     timestamptz ends_at
+    timestamptz occupied_until
     int guest_count
-    uuid service_window_id FK
+    uuid capacity_zone_id FK
     uuid event_id FK
-    uuid capacity_bucket_id FK
     text customer_phone_e164
-    text customer_email
     uuid idempotency_key UK
     int version
   }
-  capacity_buckets {
+  events {
     uuid id PK
-    text kind
-    uuid service_window_id FK
-    date service_date
-    uuid event_id FK
+    uuid zone_id FK
+    boolean exclusive
     int capacity_covers
     int confirmed_covers
   }
@@ -92,300 +104,247 @@ erDiagram
     uuid table_id FK
     tstzrange occupied
     boolean active
+    boolean seats_override
   }
   notification_outbox {
     uuid id PK
     text business_event_key UK
-    text channel
     text state
+    uuid lease_token
+    text provider_idempotency_key
     int attempts
-    timestamptz next_attempt_at
   }
 ```
 
 ## 3. Tabelle, vincoli e indici
 
-### 3.1 Identità e audit (modulo `security`, `audit`)
+### 3.1 Identità e audit (`security`, `audit`)
 
-**`app_users`**
-| Colonna | Tipo | Vincoli |
-|---|---|---|
-| id | uuid | PK |
-| email | varchar(254) | not null; `ux_app_users_email` UNIQUE su `lower(email)` |
-| password_hash | varchar(255) | not null (bcrypt/Argon2, mai in chiaro) |
-| display_name | varchar(80) | not null |
-| role | text | not null, `CHECK (role IN ('OWNER','STAFF'))` |
-| active | boolean | not null default true |
-| failed_login_count | int | not null default 0, `CHECK (>= 0)` |
-| locked_until | timestamptz | null |
-| last_login_at, password_changed_at | timestamptz | null |
-| created_at, updated_at, version | | |
+**`app_users`**: `id uuid PK`; `email varchar(254)` con `ux_app_users_email UNIQUE (lower(email))`; `password_hash`; `display_name varchar(80)`; `role text CHECK (role IN ('OWNER','STAFF'))`; `active`; `failed_login_count int CHECK (>= 0)`; `locked_until`; `last_login_at`; `password_changed_at`; `created_at`, `updated_at`, `version`. Un solo ruolo per utente (OWNER include i permessi STAFF). Nessun account creato dalle migrazioni.
 
-Un utente ha **un solo ruolo** (OWNER include tutti i permessi di STAFF): più semplice di `app_roles` + `app_user_roles`, sufficiente per la V1. Nessun account creato dalle migrazioni: il primo OWNER si crea con un comando una tantum (FASE 3).
+**`spring_session`, `spring_session_attributes`**: schema ufficiale Spring Session JDBC, copiato nella migrazione.
 
-**`spring_session`, `spring_session_attributes`**: schema ufficiale Spring Session JDBC, copiato nella migrazione Flyway (non auto-generato). Indici su `expiry_time` e `principal_name` come da schema ufficiale.
+**`audit_logs`**: `id bigint identity PK`; `actor_user_id uuid null FK SET NULL` (null = sistema); `action text` (es. `RESERVATION_CONFIRMED`, `TABLE_SEATS_OVERRIDE`, `CAPACITY_CHANGED`, `NOTIFICATION_MANUAL_RESEND`); `object_type`; `object_id`; `metadata jsonb` **senza dati personali**; `occurred_at`. Indici `(object_type, object_id, occurred_at desc)`, `(occurred_at)`.
 
-**`audit_logs`**: `id bigint identity PK`, `actor_user_id uuid null FK → app_users ON DELETE SET NULL` (null = sistema), `action text not null` (es. `RESERVATION_CONFIRMED`), `object_type text not null`, `object_id text not null`, `metadata jsonb not null default '{}'` (**senza dati personali**: niente nomi/telefoni), `occurred_at timestamptz not null`.
-Indici: `ix_audit_object (object_type, object_id, occurred_at desc)`, `ix_audit_occurred (occurred_at)`.
+### 3.2 Spazi, fasce e regole (`dining`)
 
-### 3.2 Spazi, fasce e regole (modulo `dining`)
+**`dining_areas`**: `id uuid PK`; **`zone_id uuid not null FK → capacity_zones RESTRICT`**; `name varchar(60)` (`UNIQUE (lower(name))`); `active`; `sort_order`. Nessuna capienza propria.
 
-**`dining_areas`**: `id uuid PK`, `name varchar(60) not null` (`ux_dining_areas_name` su `lower(name)`), `active boolean`, `sort_order int`.
+**`dining_tables`**: `id uuid PK`; `area_id not null FK RESTRICT`; `code varchar(10)` con `UNIQUE (area_id, code)`; `min_seats`, `max_seats smallint CHECK (min_seats >= 1 AND max_seats >= min_seats AND max_seats <= 30)`; `active`; `sort_order`. Nessuna colonna `combinable` (V2).
 
-**`dining_tables`**
+**`service_windows`**
 | Colonna | Vincoli |
 |---|---|
 | id uuid | PK |
-| area_id uuid | not null, FK → dining_areas `RESTRICT` |
-| code varchar(10) | not null; `uq_table_code UNIQUE (area_id, code)` |
-| min_seats, max_seats smallint | `CHECK (min_seats >= 1 AND max_seats >= min_seats AND max_seats <= 30)` |
-| active boolean, sort_order int | |
+| **zone_id uuid** | not null FK → capacity_zones `RESTRICT` |
+| iso_day smallint | `CHECK (BETWEEN 1 AND 7)` |
+| name varchar(40) | |
+| first_start, last_start time | `CHECK (last_start >= first_start)`; minuti multipli di 15; nessuna fascia oltre mezzanotte |
+| slot_minutes smallint | `CHECK (IN (15, 30, 60))` |
+| default_duration_minutes smallint | `CHECK (BETWEEN 30 AND 360 AND default_duration_minutes % 15 = 0)` |
+| **max_covers int null** | limite di **presenze contemporanee** nella fascia, `CHECK (>= 0)`; null = capienza fisica della zona; non può superare la capienza fisica (controllo applicativo sotto lock della zona) |
+| valid_from date, valid_to date null | `CHECK (valid_to IS NULL OR valid_to >= valid_from)` |
+| active | |
 
-Nessuna colonna `combinable`: la combinazione di tavoli è **V2**. I posti sono scritti dal gestore e servono come informazione/avviso, non per calcoli automatici.
+Fasce sovrapposte nella stessa zona e giorno: rifiutate dall'applicazione sotto lock della zona. Indice `(zone_id, iso_day, active)`.
 
-**`service_windows`** (fasce prenotabili, distinte dagli orari pubblici)
+**`booking_policies`**: `id`; `effective_from date UNIQUE`; **`confirmation_mode text CHECK (confirmation_mode = 'MANUAL')`**; `web_booking_enabled`; `min_lead_minutes CHECK (BETWEEN 0 AND 10080)`; `max_advance_days CHECK (BETWEEN 1 AND 365)`; `max_party_size_web CHECK (BETWEEN 1 AND 50)`; `pending_expiry_minutes_before_start CHECK (BETWEEN 0 AND 1440)`; `created_by`, `created_at`.
+
+**`booking_exceptions`**: `id`; `service_date date`; `service_window_id null FK CASCADE` (null = tutte le fasce del giorno); `kind CHECK (IN ('CLOSED','CAPACITY_OVERRIDE'))`; `capacity_override int null` con `CHECK ((kind = 'CAPACITY_OVERRIDE') = (capacity_override IS NOT NULL))` e `>= 0` (limite di presenze per quella data); `reason varchar(140)`; `created_by`, `created_at`. `UNIQUE NULLS NOT DISTINCT (service_date, service_window_id)`. `CLOSED` blocca gli arrivi ordinari, non cambia la capienza dei quanti.
+
+### 3.3 Capienza (`capacity`)
+
+**`capacity_zones`** — *giustificazione della nuova tabella*: le richieste di eventi «limitati a un'area» e di capienza fisica non superabile richiedono un'entità che rappresenti uno **spazio fisicamente separato** con la sua capienza; le aree dei tavoli non bastano perché più aree possono stare nella stessa stanza.
 | Colonna | Vincoli |
 |---|---|
 | id uuid | PK |
-| area_id uuid | null = tutto il locale; FK → dining_areas |
-| iso_day smallint | `CHECK (iso_day BETWEEN 1 AND 7)` (1 = lunedì) |
-| name varchar(40) | es. «Aperitivo» |
-| first_start, last_start time | `CHECK (last_start >= first_start)`; niente fasce oltre la mezzanotte in V1 |
-| slot_minutes smallint | `CHECK (slot_minutes IN (15, 30, 60))` |
-| default_duration_minutes smallint | `CHECK (BETWEEN 30 AND 360)` |
-| capacity_covers int | `CHECK (>= 0)` |
-| valid_from date not null, valid_to date null | `CHECK (valid_to IS NULL OR valid_to >= valid_from)` |
-| active boolean | |
+| name varchar(40) | `UNIQUE (lower(name))` |
+| physical_capacity int | `CHECK (physical_capacity BETWEEN 0 AND 1000)` |
+| active boolean | prenotazioni possibili solo su zone attive |
+| sort_order, version, updated_at | |
 
-Sovrapposizioni tra fasce dello stesso giorno/area: rifiutate dall'applicazione (validazione in un'unica transazione con lock sulle fasce del giorno). Indice `ix_windows_day (iso_day, active)`.
+La riga della zona è anche il **punto di sincronizzazione** tra conferme (`FOR SHARE`) e cambi di capienza (`FOR UPDATE`), BOOKING_RULES §3.5.
 
-**`booking_policies`** (regole generali, con data di validità)
+**`capacity_slots`** — registro di occupazione (sostituisce `capacity_buckets`)
 | Colonna | Vincoli |
 |---|---|
-| id uuid | PK |
-| effective_from date | not null, UNIQUE |
-| confirmation_mode text | `CHECK (confirmation_mode = 'MANUAL')` — **in V1 l'unico valore ammesso**; l'auto-conferma richiederà una nuova migrazione e una nuova approvazione |
-| web_booking_enabled boolean | |
-| min_lead_minutes int | `CHECK (BETWEEN 0 AND 10080)` |
-| max_advance_days int | `CHECK (BETWEEN 1 AND 365)` |
-| max_party_size_web smallint | `CHECK (BETWEEN 1 AND 50)` |
-| pending_expiry_minutes_before_start int | `CHECK (BETWEEN 0 AND 1440)` |
-| created_by uuid, created_at | |
-
-Regola vigente = riga con `effective_from` più recente ≤ data della prenotazione.
-
-**`booking_exceptions`**
-| Colonna | Vincoli |
-|---|---|
-| id uuid | PK |
-| service_date date | not null |
-| service_window_id uuid | null = tutte le fasce del giorno; FK → service_windows `CASCADE` |
-| kind text | `CHECK (kind IN ('CLOSED','CAPACITY_OVERRIDE'))` |
-| capacity_override int | `CHECK ((kind = 'CAPACITY_OVERRIDE') = (capacity_override IS NOT NULL))`, `>= 0` |
-| reason varchar(140), created_by, created_at | |
-
-`ux_booking_exception UNIQUE NULLS NOT DISTINCT (service_date, service_window_id)` (PostgreSQL ≥ 15).
-
-### 3.3 Capienza (modulo `capacity`)
-
-**`capacity_buckets`** — un contatore per «fascia × giorno» oppure per «evento».
-
-| Colonna | Vincoli |
-|---|---|
-| id uuid | PK |
-| kind text | `CHECK (kind IN ('SERVICE','EVENT'))` |
-| service_window_id uuid, service_date date | valorizzati se `SERVICE` |
-| event_id uuid | valorizzato se `EVENT`, FK → events `RESTRICT` |
-| capacity_covers int | `CHECK (>= 0)` |
-| confirmed_covers int | `CHECK (>= 0)` |
+| zone_id uuid | FK → capacity_zones `RESTRICT` |
+| slot_start timestamptz | **PK `(zone_id, slot_start)`**; `ck_slot_aligned` (multiplo di 15 min) |
+| capacity_covers int | `CHECK (>= 0)`; capienza effettiva del quanto calcolata alla creazione e aggiornata dai cambi di capienza |
+| occupied_covers int | `CHECK (>= 0)` |
+| exclusive_event_id uuid null | FK → events `RESTRICT`; quanto riservato a un evento esclusivo |
 | updated_at | |
 
-- `ck_bucket_kind`: `(kind='SERVICE' AND service_window_id IS NOT NULL AND service_date IS NOT NULL AND event_id IS NULL) OR (kind='EVENT' AND event_id IS NOT NULL AND service_window_id IS NULL AND service_date IS NULL)`.
-- **`ck_bucket_not_overbooked`: `CHECK (confirmed_covers <= capacity_covers)`** — ultima difesa: nessun codice può superare la capienza, nemmeno abbassandola sotto i confermati (verificato nello spike).
-- `ux_bucket_service UNIQUE (service_window_id, service_date)`, `ux_bucket_event UNIQUE (event_id)`.
+- **`ck_slot_not_overbooked CHECK (occupied_covers <= capacity_covers)`** — ultima difesa.
+- `ix_slots_event (exclusive_event_id) WHERE exclusive_event_id IS NOT NULL`.
+- Righe create **solo** per i quanti toccati da conferme o eventi esclusivi (pochi: ≈ 30–100 al giorno per zona). Pulizia delle righe più vecchie di 13 mesi.
+- Lettura per la dashboard: `WHERE zone_id = ? AND slot_start >= ? AND slot_start < ?` sulla PK.
 
-Creazione **pigra**: alla prima conferma per una fascia-giorno si esegue `INSERT … ON CONFLICT DO NOTHING` copiando la capienza vigente (fascia o eccezione), poi l'update condizionale. Le modifiche di capienza del gestore aggiornano anche i contatori futuri già creati, nella stessa transazione.
-
-### 3.4 Prenotazioni (modulo `reservation`)
+### 3.4 Prenotazioni (`reservation`)
 
 **`reservations`**
 | Colonna | Tipo | Vincoli / note |
 |---|---|---|
 | id | uuid | PK |
-| public_ref | varchar(12) | not null UNIQUE; codice leggibile casuale (es. `FF-7K3Q9M`) da comunicare al telefono |
-| status | text | `CHECK (status IN ('PENDING','CONFIRMED','REJECTED','CANCELLED','COMPLETED','NO_SHOW'))` |
-| status_reason | text | null; `CHECK (IN ('EXPIRED','NO_CAPACITY','CUSTOMER_REQUEST','VENUE_DECISION','EVENT_CANCELLED','DUPLICATE','OTHER'))` |
-| source | text | `CHECK (source IN ('WEB','PHONE','EMAIL'))` |
-| reservation_date | date | data locale del servizio (Europe/Rome) |
-| starts_at, ends_at | timestamptz | `CHECK (ends_at > starts_at)` |
-| guest_count | smallint | `CHECK (guest_count BETWEEN 1 AND 50)` |
-| service_window_id | uuid null | FK → service_windows `RESTRICT`; obbligatorio se `event_id IS NULL` |
-| event_id | uuid null | FK → events `RESTRICT` |
-| area_id | uuid null | FK → dining_areas; preferenza, non assegnazione |
-| capacity_bucket_id | uuid null | FK → capacity_buckets `RESTRICT` |
-| customer_name | varchar(80) | not null (salvo anonimizzazione) |
-| customer_phone_e164 | varchar(16) | `CHECK (customer_phone_e164 ~ '^\+[1-9][0-9]{6,14}$')`; not null salvo anonimizzazione (P-10) |
-| customer_email | varchar(254) | null |
-| customer_notes | varchar(500) | null |
-| internal_note | varchar(500) | null, visibile solo ai gestori |
-| needs_callback | boolean | not null default false (ex stato «da contattare» del mockup) |
-| privacy_notice_version | varchar(20) | not null per `WEB` |
-| privacy_ack_at | timestamptz | not null per `WEB` |
-| idempotency_key | uuid null | `ux_res_idem UNIQUE (idempotency_key)` |
-| request_fingerprint | char(64) null | SHA-256 del payload normalizzato, per rilevare riuso della chiave con dati diversi |
-| created_by_user_id, handled_by_user_id | uuid null | FK → app_users `SET NULL` |
+| public_ref | varchar(12) | UNIQUE, casuale leggibile (`FF-7K3Q9M`) |
+| status | text | `CHECK (IN ('PENDING','CONFIRMED','REJECTED','CANCELLED','COMPLETED','NO_SHOW'))` |
+| status_reason | text null | `CHECK (IN ('EXPIRED','NO_CAPACITY','CUSTOMER_REQUEST','VENUE_DECISION','EVENT_CANCELLED','DUPLICATE','OTHER'))` |
+| source | text | `CHECK (IN ('WEB','PHONE','EMAIL'))` |
+| reservation_date | date | data locale dell'arrivo |
+| starts_at, ends_at | timestamptz | `CHECK (ends_at > starts_at)`; entrambi allineati a 15 min |
+| **occupied_until** | timestamptz null | fine effettiva dell'occupazione; `= ends_at` alla conferma, anticipata da uscita anticipata/no-show; `CHECK (occupied_until IS NULL OR (occupied_until > starts_at AND occupied_until <= ends_at))`, allineato |
+| guest_count | smallint | `CHECK (BETWEEN 1 AND 50)` |
+| service_window_id | uuid null | FK `RESTRICT`; fascia di arrivo (ordinarie) |
+| event_id | uuid null | FK `RESTRICT` |
+| **capacity_zone_id** | uuid null | FK `RESTRICT`; preferenza mentre `PENDING`, zona definitiva dalla conferma |
+| customer_name | varchar(80) | null solo se anonimizzata |
+| customer_phone_e164 | varchar(16) | `CHECK (~ '^\+[1-9][0-9]{6,14}$')`; null solo se anonimizzata |
+| customer_email | varchar(254) null | |
+| customer_notes, internal_note | varchar(500) null | |
+| needs_callback | boolean | ex «da contattare» |
+| privacy_notice_version, privacy_ack_at | | obbligatori per WEB |
+| idempotency_key | uuid null | `UNIQUE` |
+| request_fingerprint | char(64) null | SHA-256 del payload normalizzato |
+| created_by_user_id, handled_by_user_id | uuid null | FK `SET NULL` |
 | confirmed_at, closed_at, anonymized_at | timestamptz null | |
 | created_at, updated_at, version | | |
 
-Vincoli di coerenza:
-- `ck_res_target`: `(event_id IS NOT NULL) OR (service_window_id IS NOT NULL)`.
-- **`ck_res_confirmed_has_bucket`: `status NOT IN ('CONFIRMED','COMPLETED','NO_SHOW') OR capacity_bucket_id IS NOT NULL`** — una prenotazione confermata ha sempre consumato coperti.
+Vincoli:
+- `ck_res_target`: `event_id IS NOT NULL OR service_window_id IS NOT NULL`.
+- **`ck_res_occupying`**: `status NOT IN ('CONFIRMED','COMPLETED','NO_SHOW') OR (capacity_zone_id IS NOT NULL AND occupied_until IS NOT NULL)` — chi occupa posti ha sempre zona e intervallo.
 - `ck_res_web_privacy`: `source <> 'WEB' OR (privacy_ack_at IS NOT NULL AND privacy_notice_version IS NOT NULL)`.
 - `ck_res_anonymized`: `anonymized_at IS NOT NULL OR (customer_phone_e164 IS NOT NULL AND customer_name IS NOT NULL)`.
-- **`ux_res_web_duplicate`: `UNIQUE (customer_phone_e164, starts_at) WHERE source = 'WEB' AND status IN ('PENDING','CONFIRMED')`** — blocca il doppio invio dallo stesso telefono per lo stesso orario anche senza chiave di idempotenza; non vale per gli inserimenti dei gestori (verificato nello spike).
+- **`ux_res_web_duplicate`**: `UNIQUE (customer_phone_e164, starts_at) WHERE source = 'WEB' AND status IN ('PENDING','CONFIRMED')`.
 
 Indici:
-- `ix_res_date_status (reservation_date, status)` — dashboard giornaliera.
-- `ix_res_pending_start (starts_at) WHERE status = 'PENDING'` — job di scadenza e coda «da gestire».
-- `ix_res_event (event_id, status) WHERE event_id IS NOT NULL`.
-- `ix_res_bucket (capacity_bucket_id) WHERE capacity_bucket_id IS NOT NULL`.
-- `ix_res_phone (customer_phone_e164)` — ricerca dal telefono.
-- `ix_res_created (created_at desc)`.
+- `ix_res_date_status (reservation_date, status)`;
+- `ix_res_pending_start (starts_at) WHERE status = 'PENDING'` (scadenze);
+- **`ix_res_zone_time` GiST `(capacity_zone_id, tstzrange(starts_at, occupied_until)) WHERE status IN ('CONFIRMED','COMPLETED','NO_SHOW')`** — elenco conflitti e riconciliazione per intervallo;
+- `ix_res_event (event_id, status) WHERE event_id IS NOT NULL`;
+- `ix_res_phone (customer_phone_e164)`; `ix_res_created (created_at desc)`.
 
-**`reservation_table_assignments`** (assegnazione manuale e facoltativa)
+**`reservation_table_assignments`**
 | Colonna | Vincoli |
 |---|---|
 | id uuid | PK |
-| reservation_id uuid | not null FK → reservations `RESTRICT` |
-| table_id uuid | not null FK → dining_tables `RESTRICT` |
-| occupied tstzrange | not null, `CHECK (lower_inc(occupied) AND NOT upper_inc(occupied) AND NOT isempty(occupied))` → sempre `[inizio, fine)` |
-| active boolean | not null default true |
-| assigned_by uuid, assigned_at, released_at | |
+| reservation_id, table_id | FK `RESTRICT` |
+| occupied tstzrange | `[starts_at, occupied_until)`; `CHECK (lower_inc(occupied) AND NOT upper_inc(occupied) AND NOT isempty(occupied))` |
+| active boolean | |
+| **seats_override** boolean | default false |
+| **seats_override_by** uuid null, **seats_override_reason** varchar(200) null | `ck_override_complete CHECK (NOT seats_override OR (seats_override_by IS NOT NULL AND seats_override_reason IS NOT NULL))` |
+| assigned_by, assigned_at, released_at | |
 
-- **`ex_table_no_overlap EXCLUDE USING gist (table_id WITH =, occupied WITH &&) WHERE (active)`** — due assegnazioni attive dello stesso tavolo non possono sovrapporsi; intervalli adiacenti (`21:30` fine / `21:30` inizio) sono ammessi (verificato nello spike).
-- `ux_assignment_once UNIQUE (reservation_id, table_id) WHERE active`.
-- `ix_assign_res (reservation_id)`.
+- **`ex_table_no_overlap EXCLUDE USING gist (table_id WITH =, occupied WITH &&) WHERE (active)`**.
+- `UNIQUE (reservation_id, table_id) WHERE active`; `ix_assign_res (reservation_id)`.
+- Che `seats_override_by` sia un OWNER è garantito dall'applicazione (+ audit); la colonna conserva chi ha deciso.
 
-Il predicato non può leggere lo stato della prenotazione (sta in un'altra tabella): per questo c'è la colonna **`active`**, aggiornata **nella stessa transazione** di ogni cambio di stato o di orario (BOOKING_RULES §8).
+**`reservation_status_history`**: `id bigint identity PK`, `reservation_id FK`, `from_status null`, `to_status`, `reason null`, `note varchar(300) null`, `changed_by_user_id null` (null = cliente web o sistema), `changed_at`. Indice `(reservation_id, changed_at)`. Registra anche le modifiche (`from_status = to_status`, nota sintetica senza dati personali).
 
-**`reservation_status_history`**: `id bigint identity PK`, `reservation_id uuid not null FK`, `from_status text null`, `to_status text not null`, `reason text null`, `note varchar(300) null`, `changed_by_user_id uuid null` (null = cliente web o sistema), `changed_at timestamptz not null`. Indice `(reservation_id, changed_at)`. Anche le **modifiche** (data, ora, persone) vengono registrate qui con `from_status = to_status` e `note` sintetica senza dati personali.
-
-### 3.5 Eventi (modulo `event`)
+### 3.5 Eventi (`event`)
 
 **`events`**
 | Colonna | Vincoli |
 |---|---|
-| id uuid | PK |
-| slug varchar(80) | not null UNIQUE, `CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$')` |
-| title varchar(120), kind text | `CHECK (kind IN ('SERATA','FORMAT'))` |
-| status text | `CHECK (status IN ('DRAFT','PUBLISHED','CANCELLED'))` |
-| starts_at, ends_at | timestamptz null; `CHECK (ends_at IS NULL OR starts_at IS NULL OR ends_at > starts_at)` |
-| area_id | null = tutto il locale |
-| artist, summary, body | varchar/text con lunghezze massime |
-| poster_media_id | FK → media_assets `RESTRICT` |
-| booking_mode text | `CHECK (booking_mode IN ('NONE','REQUEST'))` |
-| capacity_covers int | null |
-| blocks_ordinary_booking boolean | not null default true |
+| id uuid, slug varchar(80) UNIQUE `CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$')`, title varchar(120) | |
+| kind, status | `kind CHECK (IN ('SERATA','FORMAT'))`, `status CHECK (IN ('DRAFT','PUBLISHED','CANCELLED'))` |
+| starts_at, ends_at | `CHECK (ends_at IS NULL OR starts_at IS NULL OR ends_at > starts_at)`; allineati a 15 min se presenti |
+| **zone_id** | null = tutto il locale; FK → capacity_zones |
+| **exclusive** boolean | default **true** (blocca il servizio ordinario nei suoi quanti) |
+| booking_mode | `CHECK (IN ('NONE','REQUEST'))` |
+| capacity_covers int null | quota evento |
+| **confirmed_covers int** | default 0, `CHECK (>= 0)` |
+| artist, summary, body, poster_media_id | |
 | created/updated, version | |
 
 - `ck_event_published_has_date`: `status <> 'PUBLISHED' OR kind = 'FORMAT' OR starts_at IS NOT NULL`.
-- `ck_event_booking_complete`: `booking_mode = 'NONE' OR (starts_at IS NOT NULL AND ends_at IS NOT NULL AND capacity_covers IS NOT NULL AND capacity_covers >= 0)`.
-- Indici: `ix_events_public (status, starts_at)`, `ix_events_range` GiST su `tstzrange(starts_at, ends_at)` per la ricerca dei conflitti.
+- `ck_event_booking_complete`: `booking_mode = 'NONE' OR (starts_at IS NOT NULL AND ends_at IS NOT NULL AND capacity_covers IS NOT NULL)`.
+- **`ck_event_quota CHECK (capacity_covers IS NULL OR confirmed_covers <= capacity_covers)`**.
+- Indici: `(status, starts_at)`; GiST `tstzrange(starts_at, ends_at)`.
 
-**`event_media`**: `(event_id, media_id)` PK, `sort_order`; FK `RESTRICT` su media.
+La quota evento sta **sulla riga evento** (niente tabella contatori separata): il lock della riga evento serializza le conferme dello stesso evento.
 
-### 3.6 Menu (modulo `menu`)
+**`event_media`**: PK `(event_id, media_id)`, `sort_order`; FK `RESTRICT` sui media.
 
+### 3.6 Menu (`menu`) — invariato dalla rev. 1
 - **`menu_categories`**: `id uuid PK`, `slug UNIQUE`, `name varchar(40)`, `hint varchar(80)`, `sort_order`, `visible`.
-- **`menu_items`**: `id uuid PK`, `category_id FK RESTRICT`, `name varchar(80)`, `description varchar(400)`, `ingredients varchar(400) null`, **`price_cents int null CHECK (price_cents >= 0 AND price_cents <= 100000)`**, `photo_media_id FK RESTRICT null`, `allergens_status text CHECK (IN ('UNDECLARED','DECLARED'))`, `allergens_verified_at`, `allergens_verified_by`, `visible`, `sort_order`, `version`, timestamp. Indice `(category_id, sort_order)`.
-  - `allergens_status` distingue «nessun allergene» (dichiarato, elenco vuoto) da «non ancora dichiarato» — distinzione già presente nel mockup (`null` vs `[]`).
-  - `ck_item_allergens_verified`: `allergens_status = 'UNDECLARED' OR allergens_verified_at IS NOT NULL`.
-- **`allergens`**: `code text PK` (14 allergeni del Reg. UE 1169/2011, Allegato II), `name_it`, `sort_order`. Seed nella migrazione (dato normativo, non demo).
+- **`menu_items`**: `id uuid PK`, `category_id FK RESTRICT`, `name varchar(80)`, `description varchar(400)`, `ingredients varchar(400) null`, **`price_cents int null CHECK (price_cents BETWEEN 0 AND 100000)`**, `photo_media_id FK RESTRICT null`, `allergens_status CHECK (IN ('UNDECLARED','DECLARED'))` («nessun allergene» ≠ «non ancora dichiarati»), `allergens_verified_at`, `allergens_verified_by`, `visible`, `sort_order`, `version`; `ck_item_allergens_verified: allergens_status = 'UNDECLARED' OR allergens_verified_at IS NOT NULL`; indice `(category_id, sort_order)`.
+- **`allergens`**: `code text PK` (14 allergeni Reg. UE 1169/2011, Allegato II), `name_it`, `sort_order` — seed normativo.
 - **`menu_item_allergens`**: PK `(menu_item_id, allergen_code)`, FK `CASCADE` sulla voce.
 
-### 3.7 Media e contenuti (moduli `media`, `content`)
+### 3.7 Media e contenuti (`media`, `content`)
+Unica novità della rev. 2: `site_settings.sms_enabled boolean not null default false`, uno dei tre interruttori necessari per un SMS reale (ADR-0005).
+- **`media_assets`**: `id uuid PK`; `storage_key UNIQUE` casuale (mai il nome file dell'utente); `status CHECK (IN ('PENDING_UPLOAD','PROCESSING','READY','REJECTED'))`; `mime_type CHECK (IN ('image/jpeg','image/png','image/webp'))`; `bytes CHECK (BETWEEN 1 AND 5242880)`; `width`, `height`; `sha256`; `alt_text varchar(250)` con `CHECK (status <> 'READY' OR alt_text IS NOT NULL)`; `credit`, `consent_note`; `in_gallery`, `gallery_order`; `uploaded_by`, `created_at`, `ready_at`, `upload_expires_at`. Indici sulla galleria e sugli upload in attesa.
+- **`media_variants`**: `UNIQUE (media_id, variant)`, `variant CHECK (IN ('W480','W960','W1600'))`, `storage_key UNIQUE`, dimensioni; FK `CASCADE`.
+- **Uso dei media**: FK reali `ON DELETE RESTRICT` (`menu_items.photo_media_id`, `events.poster_media_id`, `event_media`, `hero_slides`, `owners.front/back_media_id`, `staff_members.media_id`, `site_content.hero_media_id`) → `409 MEDIA_IN_USE`; vista `media_usages_v` per il messaggio «è usata in…».
+- **`site_settings`** (riga unica `CHECK (id = 1)`): indirizzo, `map_query`, `map_mode CHECK (IN ('CONSENT','AUTO'))`, telefono ed email pubblici, Instagram, `address_confirmed`, `hours_confirmed`, `menu_hero_interval_sec CHECK (BETWEEN 10 AND 600) DEFAULT 60`, `sms_enabled`, `version`.
+- **`site_content`** (riga unica): `hero_claim`, `hero_lead`, `hero_media_id`, `story_title`, `story_text`, `story_confirmed`, `version`. **`site_sections`**: `code PK`, `enabled`, `sort_order`.
+- **`opening_hours`** (orari **pubblici**): `iso_day`, `opens_at`, `closes_at`, `closes_next_day`, `closed`. **`opening_exceptions`**: `date UNIQUE`, `closed`, orari alternativi, nota.
+- **`hero_slides`**: `page CHECK (IN ('MENU','HOME'))`, `media_id FK RESTRICT`, `sort_order`, `enabled`; `UNIQUE (page, sort_order) DEFERRABLE INITIALLY DEFERRED`.
+- **`owners`**, **`staff_members`**: nome, ruolo, testi, foto (FK `RESTRICT`), ordine, visibilità. **`announcements`**: `text varchar(140)`, `tone CHECK (IN ('INFO','IMPORTANT'))`, `active`, `visible_until`.
 
-**`media_assets`**
-| Colonna | Vincoli |
-|---|---|
-| id uuid | PK |
-| storage_key varchar(200) | UNIQUE; nome casuale (`media/{uuid}/original`), mai il nome file dell'utente |
-| status text | `CHECK (status IN ('PENDING_UPLOAD','PROCESSING','READY','REJECTED'))` |
-| mime_type text | `CHECK (mime_type IN ('image/jpeg','image/png','image/webp'))` |
-| bytes int | `CHECK (bytes BETWEEN 1 AND 5242880)` (5 MB come nel mockup) |
-| width, height int | `> 0` quando READY |
-| sha256 char(64) | null fino alla verifica |
-| alt_text varchar(250) | `CHECK (status <> 'READY' OR alt_text IS NOT NULL)` |
-| credit, consent_note varchar | |
-| in_gallery boolean, gallery_order int | |
-| uploaded_by, created_at, ready_at, upload_expires_at | |
+### 3.8 Notifiche (`notification`)
 
-Indici: `ix_media_gallery (gallery_order) WHERE in_gallery AND status = 'READY'`, `ix_media_pending (upload_expires_at) WHERE status = 'PENDING_UPLOAD'`.
-
-**`media_variants`**: `(media_id, variant)` UNIQUE, `variant CHECK (IN ('W480','W960','W1600'))`, `storage_key UNIQUE`, `width`, `height`, `bytes`; FK `CASCADE`.
-
-**Uso dei media**: niente tabella generica senza FK. Ogni riferimento è una **FK reale con `ON DELETE RESTRICT`** (`menu_items.photo_media_id`, `events.poster_media_id`, `event_media`, `hero_slides`, `owners.front_media_id/back_media_id`, `staff_members.media_id`, `site_content.hero_media_id`): il database impedisce di cancellare una foto in uso (→ API `409 MEDIA_IN_USE`). Una vista `media_usages_v` (UNION delle FK) alimenta il messaggio «è usata in…» già presente nel mockup.
-
-**Contenuti**
-- `site_settings` (riga unica, `id smallint PK CHECK (id = 1)`): indirizzo, `map_query`, `map_mode CHECK (IN ('CONSENT','AUTO'))`, telefono ed email pubblici, Instagram, `address_confirmed`, `hours_confirmed`, `menu_hero_interval_sec CHECK (BETWEEN 10 AND 600) DEFAULT 60`, `version`.
-- `site_content` (riga unica): `hero_claim`, `hero_lead`, `hero_media_id`, `story_title`, `story_text`, `story_confirmed`, `version`.
-- `site_sections`: `code text PK`, `enabled`, `sort_order`.
-- `opening_hours`: `id`, `iso_day`, `opens_at`, `closes_at`, `closed`; `CHECK (closed OR closes_at > opens_at)` (gestione chiusura dopo mezzanotte: `closes_at` può essere `00:00`–`04:00` del giorno dopo con flag `closes_next_day` — P-24). Orari **pubblici**, non usati per accettare prenotazioni.
-- `opening_exceptions`: `date UNIQUE`, `closed`, orari alternativi, nota.
-- `hero_slides`: `id`, `page CHECK (IN ('MENU','HOME'))`, `media_id FK RESTRICT`, `sort_order`, `enabled`; `UNIQUE (page, sort_order) DEFERRABLE INITIALLY DEFERRED` (riordino in una transazione).
-- `owners`: nome, ruolo, descrizione, motto, `front_media_id`, `back_media_id`, `color_token CHECK (IN ('giallo','arancione','verde', …))`, `sort_order`, `visible`.
-- `staff_members`: nome, ruolo, `media_id`, ordine, visibile.
-- `announcements`: `text varchar(140)`, `tone CHECK (IN ('INFO','IMPORTANT'))`, `active`, `visible_until timestamptz null`, autore. Indice `(active, visible_until)`.
-
-### 3.8 Notifiche (modulo `notification`)
-
-**`notification_templates`**: PK `(code, channel)`, `channel CHECK (IN ('EMAIL','SMS'))`, `subject null`, `body text`, `active`, `version`. `CHECK (channel <> 'SMS' OR char_length(body) <= 320)`.
+**`notification_templates`**: PK `(code, channel)`, `channel CHECK (IN ('EMAIL','SMS'))`, `subject null`, `body`, `active`, `version`; `CHECK (channel <> 'SMS' OR char_length(body) <= 320)`.
 
 **`notification_outbox`**
-| Colonna | Vincoli |
+| Colonna | Vincoli / note |
 |---|---|
 | id uuid | PK |
-| business_event_key varchar(160) | **UNIQUE** — es. `reservation:{id}:CONFIRMED:CUSTOMER:EMAIL`; impedisce doppie notifiche |
-| aggregate_type text, aggregate_id uuid | es. `RESERVATION`, id |
-| channel text | `EMAIL` / `SMS` |
-| recipient_kind text | `CHECK (IN ('CUSTOMER','STAFF'))` |
-| recipient varchar(254) | telefono E.164 o email; cancellato alla pulizia |
-| template_code text | FK → template |
-| payload jsonb | minimo: data, ora, persone, riferimento, nome del locale; **mai note libere** |
-| state text | `CHECK (state IN ('PENDING','SENDING','SENT','DELIVERED','FAILED','DEAD','SKIPPED'))` |
-| attempts smallint | `CHECK (attempts BETWEEN 0 AND 10)` |
-| next_attempt_at, locked_until | timestamptz |
-| last_error_code varchar(60) | senza dati personali |
+| business_event_key varchar(160) | **UNIQUE** — un fatto, una notifica (es. `reservation:{id}:CONFIRMED:CUSTOMER:EMAIL`; per le modifiche include la `version`) |
+| aggregate_type, aggregate_id | |
+| channel | `EMAIL` / `SMS` |
+| recipient_kind, recipient | |
+| template_code, payload jsonb minimo | |
+| state | `CHECK (IN ('PENDING','SENDING','SENT','DELIVERED','UNCERTAIN','FAILED','DEAD','SKIPPED'))` |
+| skip_reason | null; es. `NO_EMAIL`, `SMS_DISABLED`, `SUPERSEDED`, `EXPIRED` |
+| attempts smallint | `CHECK (BETWEEN 0 AND 10)` |
+| next_attempt_at | |
+| **lease_token** uuid null, **locked_until** timestamptz null | `CHECK (state <> 'SENDING' OR (lease_token IS NOT NULL AND locked_until IS NOT NULL))` |
+| **provider_idempotency_key** varchar(80) | stabile tra i ritentativi automatici; cambia solo con un reinvio manuale |
+| manual_resend_count smallint | default 0 |
+| **expires_at** timestamptz | oltre questa data il messaggio non ha più senso (es. dopo l'orario della prenotazione) → `SKIPPED (EXPIRED)` |
+| last_error_code | senza dati personali |
 | created_at, sent_at, purge_after | |
 
-Indici: **`ix_outbox_ready (next_attempt_at) WHERE state IN ('PENDING','FAILED')`**, `ix_outbox_lease (locked_until) WHERE state = 'SENDING'`, `ix_outbox_aggregate (aggregate_type, aggregate_id)`.
+Indici: **`ix_outbox_ready (next_attempt_at) WHERE state = 'PENDING'`**, `ix_outbox_lease (locked_until) WHERE state = 'SENDING'`, `ix_outbox_attention (created_at) WHERE state IN ('UNCERTAIN','FAILED','DEAD')`, `ix_outbox_aggregate (aggregate_type, aggregate_id)`.
 
-`SKIPPED` = notifica non dovuta (canale disattivato, recapito mancante, SMS non autorizzato): resta traccia del perché.
+**`notification_attempts`**
+| Colonna | Note |
+|---|---|
+| id bigint identity | PK |
+| outbox_id | FK `CASCADE` |
+| attempt_no smallint | `UNIQUE (outbox_id, attempt_no)` |
+| provider | `fake`, poi il provider scelto |
+| idempotency_key_used | chiave inviata al provider (null se non supportata) |
+| started_at | scritto e **committato prima** della chiamata al provider |
+| finished_at | null = esito mai registrato (worker interrotto) |
+| outcome | null finché in corso; `CHECK (IN ('ACCEPTED','REJECTED_PERMANENT','TRANSIENT_ERROR','UNKNOWN'))` |
+| http_status, provider_message_id, error_code, duration_ms | |
 
-**`notification_attempts`**: `id bigint identity`, `outbox_id FK CASCADE`, `provider text` (`fake`, `resend`, …), `provider_message_id`, `result CHECK (IN ('ACCEPTED','REJECTED','ERROR','TIMEOUT'))`, `error_code`, `attempted_at`, `duration_ms`.
-
-Lo stato della prenotazione e lo stato della notifica sono **separati**: un SMS fallito non cambia una prenotazione confermata.
-
-## 4. Invarianti (riassunto verificabile)
+## 4. Invarianti
 
 | # | Invariante | Dove è garantita |
 |---|---|---|
-| I-1 | I coperti confermati di una fascia-giorno o di un evento non superano mai la capienza | `ck_bucket_not_overbooked` + update condizionale |
-| I-2 | Un tavolo non ha due assegnazioni attive sovrapposte | `ex_table_no_overlap` |
-| I-3 | Una prenotazione CONFIRMED/COMPLETED/NO_SHOW ha consumato coperti esattamente una volta | `ck_res_confirmed_has_bucket` + transizioni in un'unica transazione + test di riconciliazione `SUM(guest_count) = confirmed_covers` |
-| I-4 | Nessun doppio invio web dallo stesso telefono per lo stesso orario | `ux_res_web_duplicate` + chiave di idempotenza |
-| I-5 | Ogni notifica di un fatto di business è accodata al massimo una volta | `business_event_key UNIQUE` |
-| I-6 | L'auto-conferma non è attivabile senza nuova migrazione | `CHECK (confirmation_mode = 'MANUAL')` |
-| I-7 | Una foto in uso non si cancella | FK `ON DELETE RESTRICT` |
-| I-8 | Ogni cambio di stato è storicizzato | scrittura di `reservation_status_history` nella stessa transazione (test) |
-| I-9 | Assegnazioni attive solo per prenotazioni CONFIRMED | applicazione (transazione unica) + test di riconciliazione |
+| I-1 | In ogni zona e quanto, persone confermate presenti ≤ capienza effettiva | `ck_slot_not_overbooked` + lock ordinati dei quanti |
+| I-2 | Registro = realtà: per ogni quanto, `occupied_covers` = somma delle persone delle prenotazioni che lo occupano | transazioni uniche + **query di riconciliazione** nei test (verificata nello spike 2) |
+| I-3 | Prenotazioni e quota di un evento: confermati ≤ quota | `ck_event_quota` + lock della riga evento |
+| I-4 | Nessun quanto di un evento esclusivo contiene coperti ordinari | lock ordinati dei quanti in pubblicazione e conferma (spike 2: 0 violazioni) + test di riconciliazione |
+| I-5 | Un tavolo non ha due assegnazioni attive sovrapposte | `ex_table_no_overlap` |
+| I-6 | Posti del tavolo < persone solo con eccezione OWNER motivata e auditata | `ck_override_complete` + controllo ruolo + audit |
+| I-7 | Chi occupa posti ha zona e intervallo | `ck_res_occupying` |
+| I-8 | Nessun doppio invio web stesso telefono e orario | `ux_res_web_duplicate` + chiave di idempotenza |
+| I-9 | Un fatto di business accoda al massimo una notifica | `business_event_key UNIQUE` |
+| I-10 | Un messaggio è in carico a un solo worker alla volta; un worker con lease scaduto non registra esiti | `FOR UPDATE SKIP LOCKED` + `lease_token` negli update (spike 2) |
+| I-11 | Auto-conferma non attivabile senza nuova migrazione | `CHECK (confirmation_mode = 'MANUAL')` |
+| I-12 | Una foto in uso non si cancella | FK `RESTRICT` |
+| I-13 | Ogni cambio di stato è storicizzato | stessa transazione (test) |
 
-## 5. Separazione V1 / V2 nel modello
+## 5. V1 / V2 nel modello
 
-| V1 (questo schema) | Rimandato a V2 (nessuna colonna ora) |
+| V1 | V2 (nessuna colonna ora) |
 |---|---|
-| tavoli con posti min/max informativi | `combinable`, gruppi di tavoli, layout planimetria |
-| capienza per fascia-giorno ed evento | capienza per area con ottimizzazione, overbooking controllato |
-| `confirmation_mode = 'MANUAL'` | `AUTO` con policy di capienza |
-| assegnazione manuale facoltativa | algoritmo di scelta tavolo, suggerimenti |
-| — | lista d'attesa (`WAITLISTED`), CRM, fidelity, statistiche avanzate |
+| zone fisiche con capienza, quanti da 15 min | ottimizzazione della capienza, overbooking controllato, durate variabili automatiche |
+| tavoli con posti, assegnazione manuale, eccezione OWNER | `combinable`, gruppi di tavoli, planimetria, scelta automatica |
+| `confirmation_mode = 'MANUAL'` | `AUTO` con policy |
+| eventi esclusivi o condivisi sulla stessa capienza | prenotazione di posti riservati all'evento (hold) |
+| — | lista d'attesa, clienti senza prenotazione, CRM |

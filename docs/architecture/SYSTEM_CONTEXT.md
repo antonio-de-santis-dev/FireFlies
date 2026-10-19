@@ -1,6 +1,7 @@
 # Architettura di sistema e moduli — FireFlies Aperitif
 
-> FASE 1 · 19/10/2026 · Stato: **proposta da approvare**. Nessun codice backend scritto.
+> FASE 1 · rev. 2 del 19/10/2026 (revisione finale) · Stato: **proposta da approvare**. Nessun codice backend scritto.
+> Rev. 2: modulo `capacity` con zone e registro di occupazione per quanti; ordine globale dei lock; worker outbox con lease e recupero degli esiti incerti.
 > Decisioni di riferimento: [DECISION_LOG](DECISION_LOG.md). Modello dati: [DATA_MODEL](DATA_MODEL.md). Regole: [BOOKING_RULES](BOOKING_RULES.md). API: [API_CONTRACT](API_CONTRACT.md).
 
 ## 1. Diagramma architetturale (produzione)
@@ -94,11 +95,11 @@ backend/
     media/           asset, upload-intent/finalize, varianti, storage S3/FileSystem, verifica uso
     content/         impostazioni sito, orari pubblici, sezioni, titolari, staff, hero, avvisi, galleria
     menu/            categorie, voci, allergeni UE
-    dining/          aree, tavoli, fasce prenotabili, policy, eccezioni di calendario
-    capacity/        contatori di coperti (fascia-giorno ed evento), consumo/rilascio atomici
-    event/           eventi, pubblicazione, capienza evento, porta OrdinaryBookingConflicts
-    reservation/     richieste, state machine, modifiche, assegnazione tavoli, scadenze, storico
-    notification/    outbox, template, worker, EmailGateway, SmsGateway (+ Fake), tentativi
+    dining/          aree, tavoli, fasce prenotabili (limite di presenze), policy, eccezioni di calendario
+    capacity/        zone di capienza, registro di occupazione a quanti da 15 min, occupazione/rilascio atomici con lock ordinati
+    event/           eventi, pubblicazione, quota evento, esclusività, porta OrdinaryBookingConflicts
+    reservation/     richieste, state machine, modifiche, assegnazione manuale tavoli (eccezione posti OWNER), scadenze, storico
+    notification/    outbox at-least-once, template, worker con lease, EmailGateway/SmsGateway (+ Fake, blocco SMS reali), tentativi
   src/main/resources/
     application.yml, application-local.yml, application-test.yml, application-prod.yml
     db/migration/    V1__… (scritte in FASE 2)
@@ -115,6 +116,7 @@ Dentro ogni modulo, solo dove serve: `api/` (controller + DTO record), `applicat
 ```mermaid
 flowchart TD
   reservation --> capacity
+  dining --> capacity
   reservation --> dining
   reservation --> event
   reservation --> notification
@@ -134,6 +136,7 @@ flowchart TD
 
 - Nessun ciclo. Il controllo «un evento si sovrappone a prenotazioni ordinarie?» serve a `event` ma i dati stanno in `reservation`: `event` dichiara l'interfaccia `OrdinaryBookingConflicts` e `reservation` la implementa (inversione della dipendenza).
 - `notification` non conosce `reservation`: riceve un comando di accodamento con un payload minimo già pronto.
+- `capacity` è l'unico modulo che scrive `capacity_slots`. Le sue operazioni prendono i lock sempre nello stesso ordine: **riga evento → riga zona → quanti per zona e orario → prenotazione/tavoli**. `dining` lo chiama per i cambi di capienza delle fasce, `event` per quota ed esclusività.
 - `security` fornisce l'autenticazione tramite Spring Security; i moduli leggono l'utente corrente da `common.CurrentActor`.
 
 ### Responsabilità e proprietà dei dati
@@ -146,7 +149,7 @@ flowchart TD
 | content | `site_settings`, `site_sections`, `site_content`, `opening_hours`, `opening_exceptions`, `owners`, `staff_members`, `hero_slides`, `announcements` | OWNER (impostazioni, contenuti), STAFF (avvisi, galleria) |
 | menu | `menu_categories`, `menu_items`, `allergens`, `menu_item_allergens` | OWNER, STAFF |
 | dining | `dining_areas`, `dining_tables`, `service_windows`, `booking_policies`, `booking_exceptions` | OWNER |
-| capacity | `capacity_buckets` | solo tramite `CapacityLedger` (reservation, event) |
+| capacity | `capacity_zones`, `capacity_slots` | OWNER (zone); occupazione solo tramite `CapacityLedger` (reservation, event, dining per i cambi di capienza) |
 | event | `events`, `event_media` | OWNER, STAFF |
 | reservation | `reservations`, `reservation_status_history`, `reservation_table_assignments` | pubblico (crea PENDING), STAFF/OWNER, sistema (scadenze) |
 | notification | `notification_templates`, `notification_outbox`, `notification_attempts` | sistema; OWNER per i template |
@@ -155,10 +158,12 @@ flowchart TD
 
 | Job | Frequenza | Cosa fa | Concorrenza |
 |---|---|---|---|
-| Worker outbox | ogni 10 s | prende fino a 20 messaggi con `FOR UPDATE SKIP LOCKED`, li marca `SENDING` con lease, commit, invia, registra il tentativo | sicuro anche con 2 istanze |
+| Worker outbox | ogni 10 s | prende fino a 20 messaggi con `FOR UPDATE SKIP LOCKED`, li marca `SENDING` con `lease_token`, registra l'inizio del tentativo, commit, invia fuori transazione, registra l'esito solo se il lease è ancora suo (ADR-0005) | sicuro anche con 2 istanze (spike 2) |
+| Recupero lease | ogni minuto | `SENDING` con lease scaduto: tentativo senza esito → regola «esito incerto»; nessuna chiamata iniziata → `PENDING` | update condizionale |
 | Scadenza richieste | ogni 5 min | `PENDING` oltre la scadenza → `REJECTED` motivo `EXPIRED` (BOOKING_RULES §6) | update condizionale per riga |
 | Pulizia upload | ogni ora | asset `PENDING_UPLOAD` scaduti → cancellati da storage e DB | idempotente |
 | Retention dati | ogni notte 03:30 | anonimizza prenotazioni oltre il periodo concordato (P-13) | idempotente |
-| Pulizia outbox | ogni notte | elimina il payload dei messaggi inviati da oltre 30 giorni | idempotente |
+| Pulizia outbox | ogni notte | elimina payload e destinatario dei messaggi chiusi da oltre 30 giorni | idempotente |
+| Pulizia registro | ogni mese | elimina i quanti di `capacity_slots` più vecchi di 13 mesi | idempotente |
 
 Lo scheduler usa `Clock` iniettato (test deterministici) e il fuso `Europe/Rome` per le regole di calendario.
