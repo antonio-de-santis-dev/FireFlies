@@ -41,7 +41,12 @@ l'altezza proporzionale; nuovo test `locandineMaiRitagliateNelleVarianti` (1080�
   verticale di riferimento indicata dal committente non è arrivata in questa sessione**; appena disponibile va copiata lì.
 
 ### Esito
-`posters.spec` 9 test ✅, `qa.spec` e `a11y.spec` ✅ (nessuna regressione), `ImageProcessorTest` 17 ✅.
+- Locale: backend unità 74 ✅ (`ImageProcessorTest` 17); Playwright **78/78** ✅ (`npm run verifica`, di cui
+  `posters.spec` 9), nessuna regressione su QA (7 larghezze) e axe.
+- CI: frontend run 39429654838 ✅ su `d6ac3d4`; backend run 39426932068 ✅ su `5dd5972` (backend invariato dopo).
+  Il run frontend 39426932093 su `5dd5972` era fallito per le miniature che allargavano la pagina sotto i 900 px
+  (difetto introdotto dalla prima correzione, trovato da `qa.spec`, corretto in `d6ac3d4` e ora coperto anche da
+  `posters.spec`).
 
 ## Requisiti 1–14
 Da ricevere. Vincoli già noti e rispettati: nessun invio reale di email o SMS senza dati veri e autorizzazione.
