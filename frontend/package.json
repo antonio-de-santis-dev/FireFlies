@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit -p .",
     "test": "node scripts/e2e.mjs tests/navigation.spec.ts tests/auth.spec.ts tests/content.spec.ts tests/reservations.spec.ts tests/events.spec.ts tests/posters.spec.ts",
     "screenshots": "node scripts/e2e.mjs tests/screenshots.spec.ts && node tests/frames.mjs && node tests/overview.mjs",
-    "qa": "node scripts/e2e.mjs tests/qa.spec.ts tests/a11y.spec.ts",
+    "qa": "node scripts/e2e.mjs tests/qa.spec.ts tests/a11y.spec.ts tests/event-visibility.spec.ts tests/fase7.spec.ts",
     "demo": "node scripts/e2e.mjs tests/demo.spec.ts",
-    "verifica": "npm run typecheck && node scripts/e2e.mjs tests/navigation.spec.ts tests/auth.spec.ts tests/content.spec.ts tests/reservations.spec.ts tests/events.spec.ts tests/posters.spec.ts tests/qa.spec.ts tests/a11y.spec.ts"
+    "verifica": "npm run typecheck && node scripts/e2e.mjs tests/navigation.spec.ts tests/auth.spec.ts tests/content.spec.ts tests/reservations.spec.ts tests/events.spec.ts tests/posters.spec.ts tests/qa.spec.ts tests/a11y.spec.ts tests/event-visibility.spec.ts tests/fase7.spec.ts"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",

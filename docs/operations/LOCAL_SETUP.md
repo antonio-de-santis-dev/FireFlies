@@ -125,14 +125,20 @@ Se una variabile manca l'avvio si ferma con il nome della variabile da impostare
 - Per ricominciare da zero in sviluppo: `docker compose down -v` (§9) e cancellare `backend/data/media`.
 - **Prenotazioni (FASE 5)**: sullo stesso database vuoto vengono impostate una zona «Locale» da 40 posti, le aree
   «Sala» (T1–T6) e «Dehors» (D1–D4), le fasce del modulo approvato (Colazione 07:30–10:30, Pomeriggio 15–17,
-  Aperitivo 18–20:30, Sera 21–22) in tutti i giorni tranne il mercoledì e le richieste dal sito aperte. **Nessuna
-  prenotazione finta**: per provarle si usa «Richiedi un tavolo» sul sito e poi «Richieste» nell'area gestori. Tutto si
-  cambia da «Capienza e tavoli» (titolare). Le notifiche vengono solo preparate: **nessuna email o SMS parte**.
+  Aperitivo 18–20:30, Sera 21–22) in **tutti** i giorni (FASE 7: il mercoledì resta chiuso perché chiuso negli orari del
+  sito; un'apertura straordinaria lo rende prenotabile) e le richieste dal sito aperte. **Nessuna prenotazione finta**:
+  per provarle si usa «Richiedi un tavolo» sul sito e poi «Richieste» nell'area gestori. Capienza per fascia, chiusure e
+  limiti si cambiano da **Impostazioni › Capienza** (titolare). Notifiche: in locale il worker è acceso con i **gateway
+  finti** e i modelli demo attivi, quindi nel dettaglio si legge «Simulata: nessun messaggio reale» — **nessuna email o
+  SMS parte** (NOTIFICATIONS.md).
+- **Pulizia notturna (FASE 7)**: ogni notte alle 02:00 (con nuovi tentativi alle 03, 04, 05) ora di Roma. In locale si
+  spegne con `FIREFLIES_RETENTION_ENABLED=false`. Esiti in `maintenance_runs`.
 - **Eventi (FASE 6)**: «Domeniche del Fire» (format senza date), «DJ set al Fire» pubblicato e prenotabile su richiesta
   (sabato ad almeno 14 giorni da oggi, 22:30–02:00, esclusivo: in quell'orario il servizio ordinario è chiuso) e la bozza
   «Aperitivo e vinili». Gli indirizzi `…-esempio` sono etichettati come esempio sul sito. Si gestiscono da «Eventi».
 - Un database già creato con una fase precedente non riceve la configurazione delle prenotazioni né gli eventi (il
-  caricamento avviene solo su database vuoto): impostarla dalla pagina «Capienza e tavoli» oppure ripartire da zero (§9).
+  caricamento avviene solo su database vuoto): impostarla da Impostazioni › Capienza oppure ripartire da zero (§9).
+  Attenzione: un database demo creato prima della FASE 7 ha le fasce solo nei giorni aperti.
 - Un database demo non va mai copiato in produzione: si parte da un database nuovo e i contenuti veri li inseriscono i
   titolari dall'area gestori.
 

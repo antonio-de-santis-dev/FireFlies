@@ -199,13 +199,17 @@ solo OWNER (regola sull'URL e `@PreAuthorize`).
 | `POST /admin/service-windows`, `PUT/DELETE /admin/service-windows/{id}` | fasce per giorno della settimana: primo e ultimo arrivo (multipli di 15'), passo 15/30/60, permanenza 30–360', `maxCovers` facoltativo, validità; mai oltre la mezzanotte; la capienza dei quanti futuri viene ricalcolata (stesso controllo `409`) |
 | `PUT /admin/booking-policy` | regole: `webBookingEnabled` (aprirle richiede una zona attiva), `minLeadMinutes`, `maxAdvanceDays`, `maxPartySizeWeb`, `pendingExpiryMinutesBeforeStart` |
 | `POST /admin/booking-exceptions`, `DELETE /admin/booking-exceptions/{id}` | `CLOSED` (chiusura agli arrivi) o `CAPACITY_OVERRIDE` (limite di presenze) per data, di una fascia o di tutto il giorno (stesso controllo `409`) |
+| `GET /admin/capacity-matrix` (STAFF) · `PUT /admin/capacity-matrix` (OWNER) **(FASE 7)** | tabella giorni × fasce: `{ physicalCapacity, cells: [{ isoDay, band: COLAZIONE\|POMERIGGIO\|APERITIVO\|SERA, offered, maxCovers }], exceptions, openingExceptions }`; `PUT { cells: [{ isoDay, band, maxCovers (null = capienza del locale, 0…1000) }] }` aggiorna `maxCovers` delle fasce prenotabili di quel giorno e fascia e ricalcola il registro; sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` (`context.conflicts[{ slotStart, occupiedCovers, newCapacity }]`), nulla cambia; fascia sconosciuta → `422` |
+| `POST /admin/opening-exceptions`, `DELETE /admin/opening-exceptions/{id}` (OWNER) **(FASE 7)** | chiusura o apertura straordinaria `{ day, closed, opensAt?, closesAt?, note? }` → `201 { exception, activeReservations }` (le prenotazioni già presenti restano, il numero va gestito a mano); data passata → `422`; data già presente → `409 EXCEPTION_EXISTS` |
+| `GET /admin/capacity-summary?from=&to=` (STAFF) **(FASE 7)** | righe per giorno e fascia `{ date, band, label, closed, requests, pending, confirmed, guests, capacity, available, fromStatistics }` (al massimo 62 giorni, `no-store`); `available` = gruppo più grande ancora accoglibile in un orario della fascia |
+| `GET /admin/reservations/today?band=` (STAFF) **(FASE 7)** | solo `CONFIRMED` di oggi (Europe/Rome): `{ date, band, items: [{ id, reference, time, name, guests, band, bandLabel, event }], bands: [{ band, label, reservations, guests }], reservations, guests }`; niente telefono, email o note; `no-store` |
 
 ## 6. Eventi (implementato in FASE 6)
 
 ### Pubblico
 | Metodo e percorso | Descrizione |
 |---|---|
-| `GET /public/events` | eventi pubblicati e annullati, format senza data e serate non ancora finite; `Cache-Control: max-age=60` |
+| `GET /public/events` | eventi pubblicati e annullati, format senza data e serate non ancora finite; `Cache-Control: no-cache` (FASE 7: prima `max-age=60`, un evento appena pubblicato poteva non comparire per un minuto) |
 | `GET /public/events/{slug}` | scheda; bozza o inesistente → `404` |
 
 `PublicEvent`: `{ id, slug, title, kind: SERATA|FORMAT, status: PUBLISHED|CANCELLED, date, startTime, endTime, artist,
@@ -219,11 +223,11 @@ più: `422 EVENT_NOT_BOOKABLE`, `422 EVENT_FULL`, `422 TOO_EARLY`.
 | Metodo e percorso | Descrizione |
 |---|---|
 | `GET /admin/events`, `GET /admin/events/{id}` | elenco/dettaglio: `AdminEvent` con `confirmedCovers`, `pendingCovers`, `confirmedReservations`, `pendingReservations`, `version`, `warnings` |
-| `POST /admin/events` | bozza: `{ title, kind, date, startTime, endTime, zoneId, exclusive (default true), bookingMode, capacityCovers, artist, summary, body, posterMediaId, mediaIds[] }`; `slug` dal titolo (univoco) |
-| `PUT /admin/events/{id}` | modifica `{ …, version, acknowledgePending }`. Pubblicato: cambio di orario/zona/esclusività con confermate → `409 EVENT_HAS_CONFIRMED_RESERVATIONS`, senza → riserva spostata con gli stessi controlli della pubblicazione; quota sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` |
+| `POST /admin/events` | `{ title, kind, date, startTime, endTime, zoneId, exclusive (default true), bookingMode, capacityCovers, artist, summary, body, posterMediaId, mediaIds[], visible (default false), acknowledgePending }`; `slug` dal titolo (univoco). **FASE 7:** `visible: true` = pubblicato nella stessa transazione, con gli stessi errori di `publish`; se fallisce non resta nulla |
+| `PUT /admin/events/{id}` | modifica `{ …, version, acknowledgePending, visible }` (`visible` assente = stato invariato; `true` su una bozza = pubblica; `false` su un pubblicato = torna bozza, solo senza prenotazioni attive → `409 EVENT_HAS_ACTIVE_RESERVATIONS`). Pubblicato: cambio di orario/zona/esclusività con confermate → `409 EVENT_HAS_CONFIRMED_RESERVATIONS`, senza → riserva spostata con gli stessi controlli della pubblicazione; quota sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` |
 | `POST /admin/events/{id}/publish` | `{ version, acknowledgePending }` → `409 EVENT_CONFLICTS` (sotto); `422 EVENT_DATE_REQUIRED`, `422 EVENT_IN_PAST`; `warnings`: `PENDING_REQUESTS_BLOCKED`, `EVENT_QUOTA_NOT_GUARANTEED` |
 | `POST /admin/events/{id}/cancel` | `{ version, cancelReservations }`; con prenotazioni attive solo OWNER (`403`); con `true` le prenotazioni passano ad «Annullata» motivo `EVENT_CANCELLED`, posti e quota rilasciati, notifiche accodate |
-| `DELETE /admin/events/{id}` | solo bozze senza prenotazioni (`409 INVALID_TRANSITION` altrimenti) |
+| `DELETE /admin/events/{id}` | **FASE 7:** qualunque stato senza prenotazioni → `204` (riserva esclusiva liberata); prenotazioni attive → `409 EVENT_HAS_ACTIVE_RESERVATIONS`; solo storico chiuso → `409 EVENT_HAS_HISTORY` |
 
 Validazioni: `NOT_ALIGNED_15_MIN`, `VALIDATION_FAILED` (titolo, date incomplete, «su richiesta» senza quota o senza data),
 `QUOTA_ABOVE_CAPACITY`, `ZONE_NOT_SEPARATE` (zona indicata con una sola zona attiva), `EXCLUSIVITY_OWNER_ONLY` (`403`),
@@ -241,8 +245,8 @@ otherEvent: bool, acknowledgeable: bool }`; mai nomi, telefoni o email.
 | Avvisi **(FASE 4)** | `GET/POST /admin/announcements`, `PUT/DELETE …/{id}`; `{ text (5…140), tone: INFO\|IMPORTANT, active, visibleUntil (data, inclusa, ora italiana) }` | STAFF |
 | Contenuti sito **(FASE 4, T-31)** | `GET/PUT /admin/site-content`: un unico documento con `version`, `heroClaim`, `heroLead`, `heroMediaId`, `sections{codice: bool}`, `storyTitle`, `storyText`, `storyConfirmed`, `owners[]` (`id` null = nuovo; mancanti = rimossi), `ownersConfirmed`, `staff[]`, `staffConfirmed`, `menuHeroMediaIds[]` (max 10), `menuHeroIntervalSec` (10…600) | OWNER |
 | Impostazioni **(FASE 4, T-31)** | `GET/PUT /admin/site-settings`: `version`, `addressLine`, `addressConfirmed`, `mapQuery`, `mapMode: CONSENT\|AUTO`, `phone`, `email`, `instagramUrl`, `hoursConfirmed`, `hours[7]` (chiusura prima dell'apertura = dopo mezzanotte). Eccezioni di apertura: fasi successive | OWNER |
-| Notifiche | `GET /admin/notifications?reservationId=&state=`; `POST /admin/notifications/{id}/resend` `{ acknowledgeDuplicateRisk }` solo per `UNCERTAIN`/`FAILED`/`DEAD` (con `UNCERTAIN` l'avviso di possibile doppio invio è obbligatorio, altrimenti `422`); `POST /admin/notifications/{id}/mark-handled` → `SKIPPED (HANDLED_MANUALLY)`; entrambe in audit | STAFF |
-| Template | `GET/PUT /admin/notification-templates/{code}/{channel}` | OWNER |
+| Notifiche **(FASE 7, implementato)** | stato nel dettaglio della prenotazione (`notifications[]` con `id`, `state`, `skipReason`, `delivered`, `simulated`, `resendable`); `POST /admin/notifications/{id}/resend` → `202`, solo `FAILED`/`DEAD`/`UNCERTAIN`, al massimo 3 volte (`409 RESEND_LIMIT`), altrimenti `409 INVALID_TRANSITION`; stessa chiave di idempotenza; audit `NOTIFICATION_RESENT`. **Non implementati** (proposta della FASE 1): elenco `GET /admin/notifications`, `mark-handled`, conferma del rischio di doppio invio | STAFF |
+| Template | `GET/PUT /admin/notification-templates/{code}/{channel}` — **non implementato** (FASE 7: modelli nel seed V7, attivi solo nei dati demo) | OWNER |
 | SMS | `PUT /admin/site-settings` campo `smsEnabled` — efficace solo con profilo `prod` e provider configurato (ADR-0005); in `local`/`test` resta sempre `fake` | OWNER |
 | Utenti | `GET/POST /admin/users`, `PUT /admin/users/{id}`, `POST /admin/users/{id}/password-reset` | OWNER |
 | Audit | `GET /admin/audit?objectType=&objectId=&from=&to=` | OWNER |

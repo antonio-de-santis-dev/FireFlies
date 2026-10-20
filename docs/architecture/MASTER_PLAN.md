@@ -304,6 +304,11 @@ Non decidere il provider senza consultare il committente. Usare Docker Compose p
 ### FASE 7 — EMAIL / SMS / OUTBOX (STOP)
 - Email avvisi; provider SMS solo previa conferma dei costi; fake in sviluppo; tracking stati, retry e deduplica.
 - Non inviare messaggi reali a clienti senza dati veri e autorizzazione.
+- **Completamento obbligatorio (20/10/2026, C-30)**: oltre all'outbox, panoramica e menu dei gestori (telefono), menu e
+  prezzi (visibile di default, eliminazione), eventi con «Visibile sul sito» ed eliminazione, richieste a schede e
+  «Da richiamare» automatico, via «Capienza e tavoli» (capienza in Impostazioni per giorno e fascia), foto su telefono,
+  calendario prenotazioni di oggi, scelta tavolo / evento-compleanno e giorni chiusi, pulizia notturna (prenotazioni
+  1 mese, eventi 2 mesi, statistiche anonime), locandine intere. Stato reale in `FASE7_REPORT.md`.
 - **STOP: test e approvazione.**
 
 ### FASE 8 — HARDENING, MONITORAGGIO, DEPLOY (STOP)

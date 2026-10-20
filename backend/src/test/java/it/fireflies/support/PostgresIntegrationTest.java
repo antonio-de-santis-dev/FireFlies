@@ -74,6 +74,7 @@ public abstract class PostgresIntegrationTest {
                     """).update();
             jdbc.sql("UPDATE site_sections SET enabled = true").update();
             jdbc.sql("UPDATE site_settings SET demo_content = false, phone_public = NULL, email_public = NULL").update();
+            jdbc.sql("UPDATE notification_templates SET active = false").update(); // il caricamento demo li accende
             jdbc.sql("DELETE FROM media_assets").update();
             mediaStorage.reset();
             jdbc.sql("TRUNCATE spring_session CASCADE").update();

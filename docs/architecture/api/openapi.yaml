@@ -4,11 +4,13 @@ info:
   license:
     name: Proprietario — uso riservato
     identifier: LicenseRef-Proprietary
-  version: 1.0.0-draft.5
-  summary: Contratto V1. Implementati autenticazione (FASE 3), menu, foto, contenuti e avvisi (FASE 4), prenotazioni (FASE 5).
+  version: 1.0.0-draft.6
+  summary: Contratto V1. Implementati autenticazione (FASE 3), menu, foto, contenuti e avvisi (FASE 4), prenotazioni (FASE 5), viste operative, capienza per fascia e notifiche (FASE 7).
   description: |
     Autenticazione, menu, foto, contenuti del sito e avvisi sono implementati e verificati dai test.
     Le prenotazioni (FASE 5) sono implementate; configurazione ed eventi sono descritti in API_CONTRACT.md §5–6.
+    FASE 7: eventi con `visible` (salvataggio atomico) in API_CONTRACT.md §6; qui calendario di oggi, riepilogo e tabella
+    della capienza, date straordinarie, nuovo invio di una notifica.
     Orari locali in Europe/Rome. Errori in application/problem+json.
 servers:
   - url: /api/v1
@@ -693,6 +695,179 @@ paths:
         '409': { $ref: '#/components/responses/Conflict' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
+  /admin/reservations/today:
+    get:
+      tags: [admin-reservations]
+      operationId: todayReservations
+      summary: Prenotazioni CONFERMATE di oggi (Europe/Rome), senza recapiti (FASE 7)
+      security: [{ session: [] }]
+      parameters:
+        - { name: band, in: query, required: false, schema: { type: string, enum: [COLAZIONE, POMERIGGIO, APERITIVO, SERA] } }
+      responses:
+        '200':
+          description: Elenco del giorno (Cache-Control no-store)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [date, items, bands, reservations, guests]
+                properties:
+                  date: { type: string, format: date }
+                  band: { type: [string, 'null'] }
+                  reservations: { type: integer }
+                  guests: { type: integer }
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, reference, time, guests, band, bandLabel]
+                      properties:
+                        id: { type: string, format: uuid }
+                        reference: { type: string }
+                        time: { type: string, example: '19:30:00' }
+                        name: { type: [string, 'null'] }
+                        guests: { type: integer }
+                        band: { type: string }
+                        bandLabel: { type: string }
+                        event: { type: [string, 'null'] }
+                  bands:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        band: { type: string }
+                        label: { type: string }
+                        reservations: { type: integer }
+                        guests: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/capacity-summary:
+    get:
+      tags: [admin-reservations]
+      operationId: capacitySummary
+      summary: Riepilogo per giorno e fascia (richieste, confermate, persone, capienza, disponibili) — FASE 7
+      security: [{ session: [] }]
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Righe per giorno e fascia (al massimo 62 giorni); i giorni puliti sommano reservation_stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  from: { type: string, format: date }
+                  to: { type: string, format: date }
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date: { type: string, format: date }
+                        band: { type: string }
+                        label: { type: string }
+                        closed: { type: boolean }
+                        requests: { type: integer }
+                        pending: { type: integer }
+                        confirmed: { type: integer }
+                        guests: { type: integer }
+                        capacity: { type: [integer, 'null'] }
+                        available: { type: [integer, 'null'], description: gruppo più grande ancora accoglibile }
+                        fromStatistics: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/capacity-matrix:
+    get:
+      tags: [admin-reservations]
+      operationId: capacityMatrix
+      summary: Persone al massimo per giorno della settimana e fascia, limiti e date straordinarie (FASE 7)
+      security: [{ session: [] }]
+      responses:
+        '200': { description: 'Tabella { physicalCapacity, cells[{ isoDay, band, offered, maxCovers }], exceptions, openingExceptions }' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [admin-reservations]
+      operationId: saveCapacityMatrix
+      summary: Salva la tabella (solo OWNER); ricalcola il registro dei posti
+      security: [{ session: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cells]
+              properties:
+                cells:
+                  type: array
+                  items:
+                    type: object
+                    required: [isoDay, band]
+                    properties:
+                      isoDay: { type: integer, minimum: 1, maximum: 7 }
+                      band: { type: string, enum: [COLAZIONE, POMERIGGIO, APERITIVO, SERA] }
+                      maxCovers: { type: [integer, 'null'], minimum: 0, maximum: 1000 }
+      responses:
+        '200': { description: Tabella aggiornata }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/opening-exceptions:
+    post:
+      tags: [admin-reservations]
+      operationId: addOpeningException
+      summary: Chiusura o apertura straordinaria del locale (solo OWNER, FASE 7)
+      security: [{ session: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [day, closed]
+              properties:
+                day: { type: string, format: date }
+                closed: { type: boolean }
+                opensAt: { type: [string, 'null'], example: '18:00' }
+                closesAt: { type: [string, 'null'], example: '23:00' }
+                note: { type: [string, 'null'], maxLength: 140 }
+      responses:
+        '201': { description: '{ exception, activeReservations }' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /admin/opening-exceptions/{id}:
+    delete:
+      tags: [admin-reservations]
+      operationId: deleteOpeningException
+      security: [{ session: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '204': { description: Eliminata }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/notifications/{id}/resend:
+    post:
+      tags: [admin-reservations]
+      operationId: resendNotification
+      summary: Nuovo invio di una notifica FAILED, DEAD o UNCERTAIN (al massimo 3, stessa chiave di idempotenza, audit) — FASE 7
+      security: [{ session: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '202': { description: Rimessa in coda (PENDING) }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
   /admin/capacity:
     get:
       tags: [admin-reservations]
@@ -860,6 +1035,10 @@ components:
         firstDate: { type: [string, 'null'], format: date }
         lastDate: { type: [string, 'null'], format: date }
         date: { type: [string, 'null'], format: date }
+        closedDates:
+          type: array
+          description: FASE 7 — giorni tra firstDate e lastDate senza arrivi dal sito (chiusure settimanali o straordinarie, nessuna fascia)
+          items: { type: string, format: date }
         groups:
           type: array
           items:

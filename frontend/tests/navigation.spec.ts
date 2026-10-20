@@ -243,7 +243,7 @@ test.describe('Area gestori', () => {
     await go(page, '/gestione/impostazioni');
     await page.getByLabel(/Orari verificati dal gestore/).check();
     await page.getByRole('button', { name: 'Salva', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
+    await expect(page.locator('.toast')).toContainText('Impostazioni salvate');
     await go(page, '/');
     await expect(page.locator('.hero').getByText('orari da confermare')).toHaveCount(0);
   });

@@ -638,6 +638,7 @@
 .cap-windows > summary::-webkit-details-marker { display: none; }
 .cap-windows > summary::after { content: '▾'; margin-left: 8px; color: var(--ff-gold); }
 .cap-windows[open] > summary::after { content: '▴'; }
+@media (max-width: 899px) { .admin__brand { flex: none; min-width: 44px; } }
 @media (max-width: 560px) {
   .admin__brand > span { display: none; }
   .admin__side-foot { gap: 0; }

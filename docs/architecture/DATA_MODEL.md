@@ -321,6 +321,27 @@ Indici: **`ix_outbox_ready (next_attempt_at) WHERE state = 'PENDING'`**, `ix_out
 | outcome | null finché in corso; `CHECK (IN ('ACCEPTED','REJECTED_PERMANENT','TRANSIENT_ERROR','UNKNOWN'))` |
 | http_status, provider_message_id, error_code, duration_ms | |
 
+### 3.9 Statistiche e pulizia (V10, FASE 7)
+
+**`reservation_stats`** — contatori anonimi per giorno e fascia delle prenotazioni cancellate dalla pulizia notturna.
+| Colonna | Vincoli / note |
+|---|---|
+| service_date date, band varchar(12) | **PK** `(service_date, band)`; `ck_stats_band IN ('COLAZIONE','POMERIGGIO','APERITIVO','SERA')` |
+| requests, confirmed, confirmed_covers, rejected, cancelled, expired, no_show, from_web, for_events | interi ≥ 0, `confirmed ≤ requests` (`ck_stats_counts`); lotti successivi dello stesso giorno si sommano (`ON CONFLICT … DO UPDATE`) |
+| capacity_covers | capienza minima dei quanti occupati al momento della pulizia (null se nessuna confermata) |
+| updated_at | |
+
+Nessun nome, telefono, email, nota, riferimento o id di prenotazione.
+
+**`maintenance_runs`** — una riga per lavoro e giorno: **PK** `(job, run_date)`, `status IN ('RUNNING','DONE','FAILED')`
+(`ck_run_status`), `attempts`, `started_at`, `finished_at`, `details jsonb` (conteggi per passo), `last_error`. La presa
+della riga con `INSERT … ON CONFLICT DO UPDATE … WHERE status = 'FAILED' OR (RUNNING da più di 2 ore)` rende la pulizia
+idempotente e concorrente (ora legale compresa).
+
+**Tabelle esistenti usate in modo nuovo**: `service_windows.max_covers` = capienza per giorno e fascia; `opening_exceptions`
+(V2) = chiusure e aperture straordinarie (ora con API); `notification_outbox.expires_at` = fine della prenotazione;
+`notification_attempts.provider = 'fake'` = invio simulato. Le tabelle dei tavoli restano (non più usate dalla UI).
+
 ## 4. Invarianti
 
 | # | Invariante | Dove è garantita |
@@ -338,6 +359,9 @@ Indici: **`ix_outbox_ready (next_attempt_at) WHERE state = 'PENDING'`**, `ix_out
 | I-11 | Auto-conferma non attivabile senza nuova migrazione | `CHECK (confirmation_mode = 'MANUAL')` |
 | I-12 | Una foto in uso non si cancella | FK `RESTRICT` |
 | I-13 | Ogni cambio di stato è storicizzato | stessa transazione (test) |
+| I-14 | La pulizia non lascia il registro incoerente: quanti cancellati solo senza prenotazioni che li occupano, persone tolte dai quanti rimasti | `RetentionService` + riconciliazione dopo ogni test (`RetentionIT`) |
+| I-15 | Una sola pulizia riuscita al giorno | PK di `maintenance_runs` |
+| I-16 | Un evento pubblicato con una riserva esclusiva non resta orfano: torna bozza o si elimina solo liberando i quanti | `EventService` (stessa transazione) |
 
 ## 5. V1 / V2 nel modello
 

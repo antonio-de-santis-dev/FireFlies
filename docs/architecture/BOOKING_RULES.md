@@ -149,7 +149,13 @@ Senza zone fisicamente separate e configurate, **non esiste** un modo per avere 
 - **Cambiare orario, zona o esclusività** di un evento che ha prenotazioni confermate → `409 EVENT_HAS_CONFIRMED_RESERVATIONS` in V1: prima vanno gestite le prenotazioni. Evita spostamenti silenziosi.
 - **Annullare un evento** con prenotazioni attive: scelta esplicita `cancelReservations: true|false` (solo OWNER). Con `true` tutte passano a `CANCELLED` motivo `EVENT_CANCELLED`, posti rilasciati, notifiche accodate, in una transazione. Con `false` l'evento resta visibile come annullato al pubblico e le prenotazioni restano da gestire. In entrambi i casi i quanti esclusivi vengono liberati solo quando non ci sono più prenotazioni dell'evento confermate.
 
-## 8. Tavoli (manuale e facoltativo)
+### 7.4 Visibilità ed eliminazione (FASE 7)
+- Un solo salvataggio: `visible: true` pubblica **nella stessa transazione** con tutti i controlli di §7.3; se un controllo fallisce non resta nulla (nessuna bozza orfana). Un evento nuovo nasce bozza (switch «Visibile sul sito» spento). Modificare senza toccare lo switch lascia lo stato com'è.
+- `visible: false` su un evento pubblicato lo riporta in bozza solo senza prenotazioni `PENDING`/`CONFIRMED` (`409 EVENT_HAS_ACTIVE_RESERVATIONS`); la riserva esclusiva si libera.
+- Eliminazione (con conferma) di bozze, pubblicati e annullati **senza prenotazioni**; con prenotazioni attive → annullarle o annullare l'evento; con solo storico chiuso → `409 EVENT_HAS_HISTORY`, lo elimina la pulizia notturna (§13).
+
+## 8. Tavoli (fuori dall'interfaccia dalla FASE 7)
+- **FASE 7:** la pagina «Capienza e tavoli» e l'assegnazione dei tavoli non sono più nell'interfaccia; la capienza si ragiona in persone per fascia (§3, Impostazioni › Capienza). Tabelle, API e vincoli restano invariati (nessuna migrazione distruttiva) e valgono le regole sotto per i dati esistenti.
 - Zone, aree e tavoli li configura l'OWNER. La V1 funziona anche senza tavoli.
 - Il gestore **può** assegnare uno o più tavoli a una prenotazione **CONFIRMED** (anche nella stessa richiesta di conferma). I tavoli devono appartenere alla zona della prenotazione. **Mai automaticamente.**
 - Intervallo del tavolo = `[starts_at, occupied_until)`. Tavoli adiacenti nel tempo ammessi; sovrapposti → `409 TABLE_CONFLICT` (vincolo di esclusione, anche con due gestori in contemporanea).
@@ -170,6 +176,7 @@ Senza zone fisicamente separate e configurate, **non esiste** un modo per avere 
 - Accodate nella stessa transazione del fatto, inviate dal worker dopo il commit; chiave di business unica (nessun doppio accodamento).
 - **Non promettiamo consegna «exactly-once»**: la presa in carico è unica, l'invio è *almeno una volta*. Gli esiti incerti (timeout dopo l'invio) non vengono ritentati in automatico se il provider non supporta una chiave di idempotenza: diventano `UNCERTAIN` e il gestore decide se reinviare.
 - Un invio fallito non cambia mai lo stato della prenotazione.
+- **FASE 7:** worker implementato (dettaglio in `docs/operations/NOTIFICATIONS.md`), solo con gateway finti: nessun messaggio reale parte. Scadenza = fine della prenotazione.
 
 ## 10. Ruoli e permessi
 | Operazione | OWNER | STAFF | Pubblico |
@@ -191,7 +198,15 @@ Senza zone fisicamente separate e configurate, **non esiste** un modo per avere 
 Controllo sempre **lato server** (regole su URL + `@PreAuthorize`). Id inesistenti o non visibili → `404`.
 
 ## 11. Privacy (sintesi)
-Dati minimi; note libere mai nei log né nell'outbox; log solo con `public_ref`/id; anonimizzazione dopo N giorni (proposta 90, P-13); testi legali da validare (FASE 8).
+Dati minimi; note libere mai nei log né nell'outbox; log solo con `public_ref`/id; **cancellazione dopo un mese** (FASE 7, §13) con statistiche anonime; testi legali da validare (FASE 8).
+
+## 13. Capienza per fascia, giorni chiusi, calendario di oggi, conservazione (FASE 7)
+- **Fasce**: Colazione, Pomeriggio, Aperitivo, Sera. Una prenotazione appartiene alla fascia prenotabile in cui il suo orario è un arrivo (nome della fascia), altrimenti all'orario: prima delle 11 colazione, fino alle 17 pomeriggio, fino alle 20 aperitivo, poi sera.
+- **Capienza per giorno della settimana e fascia** = persone presenti **nello stesso momento** al massimo (`service_windows.max_covers`; vuoto = capienza del locale). Vale sul registro dei quanti di §3: raggiunto il limite il sito segna «completo» e nessuna conferma passa (`409 CAPACITY_EXCEEDED`), anche con conferme contemporanee. Eccezioni per data con `booking_exceptions`. Ridurre sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` (con data e ora) e nulla cambia.
+- **Giorni chiusi**: data straordinaria chiusa, oppure giorno chiuso negli orari settimanali del sito, salvo **apertura straordinaria**; anche la chiusura di tutto il giorno di `booking_exceptions`. Dal sito: date disabilitate (`closedDates`) e `422 DAY_CLOSED`. Gestori: possibile con avviso `DAY_CLOSED`.
+- **Calendario di oggi**: solo `CONFIRMED` di oggi (Europe/Rome), filtro per fascia, niente recapiti.
+- **Riepilogo** per giorno e fascia: richieste, in attesa, confermate, persone, capienza, gruppo più grande ancora accoglibile; per i giorni già puliti si sommano le statistiche anonime.
+- **Conservazione** (job 02:00–05:00 Europe/Rome, una esecuzione riuscita al giorno): prenotazioni finite da almeno un mese di calendario (mai future o in corso, mai con notifiche ancora da inviare) → contatori anonimi in `reservation_stats`, poi cancellati storico, assegnazioni, notifiche della prenotazione e la prenotazione; quanti del registro di quel passato; eventi finiti da almeno due mesi senza prenotazioni; notifiche finali dopo 90 giorni; audit dopo 12 mesi.
 
 ## 12. Cosa NON fa la V1
-Auto-conferma; scelta, combinazione o suggerimento automatico di tavoli; suggerimento di orari alternativi; lista d'attesa; overbooking controllato; durata variabile automatica; tracciamento clienti senza prenotazione; lettura automatica di email/telefonate; area clienti; pagamenti/caparre; SMS reali senza autorizzazione.
+Auto-conferma; scelta, combinazione o suggerimento automatico di tavoli; organizzazione di feste private dal sito (solo contatto telefonico, FASE 7); suggerimento di orari alternativi; lista d'attesa; overbooking controllato; durata variabile automatica; tracciamento clienti senza prenotazione; lettura automatica di email/telefonate; area clienti; pagamenti/caparre; SMS reali senza autorizzazione.
