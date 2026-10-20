@@ -31,6 +31,25 @@ class ImageProcessorTest {
         });
     }
 
+    /**
+     * Locandine (FASE 7 · requisito 15): le varianti si riducono solo in scala, con le proporzioni dell'originale e
+     * l'immagine intera — nessun ritaglio per locandine verticali, quadrate o orizzontali.
+     */
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({"1080, 1920", "1240, 1754", "1200, 1200", "1920, 1080"})
+    void locandineMaiRitagliateNelleVarianti(int width, int height) throws Exception {
+        ImageProcessor.Processed p = processor.process(TestImages.jpeg(width, height));
+        assertThat(p.width()).isEqualTo(width);
+        assertThat(p.height()).isEqualTo(height);
+        for (ImageProcessor.Variant v : p.variants()) {
+            java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(v.bytes()));
+            assertThat(img.getWidth()).isEqualTo(v.width());
+            assertThat(img.getHeight()).isEqualTo(v.height());
+            // altezza proporzionale alla larghezza (arrotondamento di un pixel al massimo)
+            assertThat(Math.abs(v.height() - (double) height * v.width() / width)).as(v.size().name()).isLessThanOrEqualTo(1.0);
+        }
+    }
+
     @Test
     void fotoStrettaNonVieneMaiIngrandita() {
         ImageProcessor.Processed p = processor.process(TestImages.jpeg(700, 500));

@@ -368,8 +368,8 @@ export function EventEditor({ id }: { id: string }) {
           )}
           <div className="panel">
             <h2 className="panel__title">Locandina</h2>
-            <Img asset={mediaOr(f.poster)} className="editor__preview" />
-            <PhotoPicker legend="Scegli o carica la locandina" value={f.poster} onChange={(pid) => up('poster', pid)} allowNone />
+            <Img asset={mediaOr(f.poster)} className="editor__preview editor__preview--poster" />
+            <PhotoPicker legend="Scegli o carica la locandina" value={f.poster} onChange={(pid) => up('poster', pid)} allowNone contain />
           </div>
         </aside>
       </div>

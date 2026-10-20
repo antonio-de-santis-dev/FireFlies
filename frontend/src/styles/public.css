@@ -695,8 +695,13 @@
   overflow: hidden;
 }
 .event-row--format .event-row__link { background: var(--ff-green-900); }
-.event-row__img { width: 100%; height: 100%; min-height: 260px; object-fit: cover; transition: transform 600ms var(--ease-out); }
-.event-row__link:hover .event-row__img { transform: scale(1.03); }
+.event-row__media { display: grid; place-items: center; background: var(--poster-bg); min-height: 260px; }
+/* locandine (spesso verticali, con date e testi): sempre intere, mai ritagliate né deformate (FASE 7 · req. 15) */
+.event-row__img {
+  display: block; width: 100%; height: auto; max-height: min(70vh, 560px); object-fit: contain;
+  transition: filter 600ms var(--ease-out);
+}
+.event-row__link:hover .event-row__img { filter: brightness(1.08); }
 .event-row__body { display: grid; gap: 10px; align-content: center; padding: 28px 28px 28px 0; justify-items: start; }
 .event-row__badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; }
 .event-row__title { font-family: var(--font-display); font-size: var(--fs-h2); font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
@@ -710,7 +715,8 @@
 }
 @media (max-width: 640px) {
   .event-row__link { grid-template-columns: 1fr; gap: 0; }
-  .event-row__img { min-height: 0; aspect-ratio: 16 / 10; }
+  .event-row__media { min-height: 0; }
+  .event-row__img { max-height: none; }
   .event-row__body { padding: 20px; }
 }
 
@@ -743,11 +749,16 @@ a.cal__day.has-event:hover { background: #a50d4f; }
   margin-top: 16px;
   align-items: start;
 }
-.event-detail__hero { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.event-detail__poster { display: grid; place-items: center; background: var(--poster-bg); }
+/* desktop e tablet: la locandina sta tutta nello schermo (accanto alle informazioni da 900 px, sopra sotto i 900) */
+.event-detail__hero {
+  display: block; width: 100%; height: auto; max-height: calc(100vh - var(--header-h) - 48px); object-fit: contain;
+}
 .event-detail__thumbs { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.event-detail__thumbs img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+.event-detail__thumbs li { display: grid; place-items: center; aspect-ratio: 1; background: var(--poster-bg); }
+.event-detail__thumbs img { display: block; max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
 .event-detail__info { display: grid; gap: 20px; align-content: start; position: sticky; top: calc(var(--header-h) + 24px); }
-.event-detail__info h1 { font-size: clamp(2.5rem, 1.5rem + 4vw, 5rem); }
+.event-detail__info h1 { font-size: clamp(2.5rem, 1.5rem + 4vw, 5rem); overflow-wrap: anywhere; }
 .event-facts { margin: 0; display: grid; gap: 0; }
 .event-facts > div { display: grid; grid-template-columns: 150px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--ff-ink-800); }
 .event-facts dt { display: inline-flex; gap: 8px; align-items: center; color: var(--ff-gold); font-weight: 700; }
@@ -759,6 +770,11 @@ a.cal__day.has-event:hover { background: #a50d4f; }
   .event-detail__grid { grid-template-columns: minmax(0, 1fr); }
   .event-detail__info { position: static; }
   .event-facts > div { grid-template-columns: 1fr; gap: 4px; }
+}
+
+/* smartphone: locandina intera a tutta larghezza (anche se più alta dello schermo), poi le informazioni */
+@media (max-width: 640px) {
+  .event-detail__hero { max-height: none; }
 }
 
 /* ================= Galleria ================= */
@@ -1184,8 +1200,9 @@ a.cal__day.has-event:hover { background: #a50d4f; }
   text-decoration: none;
   overflow: hidden;
 }
-.poster__img { width: 100%; height: 100%; object-fit: cover; transition: transform 700ms var(--ease-out); }
-.poster:hover .poster__img { transform: scale(1.04); }
+.poster__media { display: grid; place-items: center; background: var(--poster-bg); }
+.poster__img { display: block; width: 100%; height: auto; max-height: min(75vh, 620px); object-fit: contain; transition: filter 700ms var(--ease-out); }
+.poster:hover .poster__img { filter: brightness(1.08); }
 .poster__body { display: grid; align-content: space-between; gap: 20px; padding: clamp(24px, 3vw, 44px); }
 .poster__kicker { font-weight: 800; font-size: 0.9375rem; }
 .poster__title { font-family: var(--font-display); font-weight: 800; font-size: clamp(3rem, 2rem + 4vw, 6rem); line-height: 0.88; letter-spacing: -0.045em; font-variation-settings: 'wdth' 80; }
@@ -1196,7 +1213,7 @@ a.cal__day.has-event:hover { background: #a50d4f; }
 .poster:hover .poster__cta { text-decoration: underline; text-underline-offset: 5px; }
 @media (max-width: 767px) {
   .poster { grid-template-columns: minmax(0, 1fr); min-height: 0; }
-  .poster__img { aspect-ratio: 4 / 3; height: auto; }
+  .poster__img { max-height: none; }
 }
 
 /* ================= Galleria: social ================= */

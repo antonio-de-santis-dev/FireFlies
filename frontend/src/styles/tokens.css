@@ -1,5 +1,7 @@
 /* FireFlies — token di design (vedi docs/DESIGN-SYSTEM.md) */
 :root {
+  /* fondo dei riquadri delle locandine (spazi lasciati da object-fit: contain) */
+  --poster-bg: var(--ff-ink-950);
   /* Brand — NON modificare */
   --ff-gold: #c5a069;
   --ff-fuchsia: #e41a70;

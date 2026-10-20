@@ -73,11 +73,12 @@ export function UploadButton({ onUploaded, label = 'Carica foto', multiple = fal
 }
 
 /** Scelta di una foto dalla libreria, con anteprime cliccabili e caricamento immediato. */
-export function PhotoPicker({ value, onChange, allowNone = false, legend }: { value: string | null; onChange: (id: string | null) => void; allowNone?: boolean; legend: string }) {
+/** `contain`: anteprime intere, senza ritaglio (locandine degli eventi). */
+export function PhotoPicker({ value, onChange, allowNone = false, legend, contain = false }: { value: string | null; onChange: (id: string | null) => void; allowNone?: boolean; legend: string; contain?: boolean }) {
   const { media } = useStore();
   const name = useId();
   return (
-    <fieldset className="picker">
+    <fieldset className={`picker${contain ? ' picker--contain' : ''}`}>
       <legend>{legend}</legend>
       <div className="picker__grid">
         {allowNone && (

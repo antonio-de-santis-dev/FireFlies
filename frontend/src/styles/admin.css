@@ -260,6 +260,8 @@
 .editor__side { display: grid; gap: 16px; position: sticky; top: 16px; }
 .editor__row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .editor__preview { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--radius-1); }
+.editor__preview--poster { aspect-ratio: auto; height: auto; max-height: 420px; object-fit: contain; background: var(--poster-bg); }
+.picker--contain .picker__opt img { object-fit: contain; background: var(--poster-bg); }
 .editor__preview--none { display: grid; place-items: center; gap: 8px; padding: 16px; text-align: center; background: var(--ff-ink-800); color: var(--ff-muted); font-size: var(--fs-small); }
 .allergens { display: grid; gap: 12px; }
 .allergens__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 12px; }
@@ -288,7 +290,7 @@
   background: var(--ff-ink-900);
   border-radius: var(--radius-2);
 }
-.ev-admin__img { width: 120px; height: 90px; object-fit: cover; border-radius: var(--radius-1); }
+.ev-admin__img { width: 120px; height: 90px; object-fit: contain; background: var(--poster-bg); border-radius: var(--radius-1); }
 .ev-admin__body h2 { font-size: 1.375rem; margin: 6px 0 4px; }
 .ev-admin__badges { display: flex; flex-wrap: wrap; gap: 6px; }
 .ev-admin__body .small { }

@@ -61,7 +61,7 @@ function FeaturedPoster({ e }: { e: FireEvent }) {
   return (
     <section className="container featured" aria-labelledby="featured-title">
       <Link to={`/eventi/${e.id}`} className="poster">
-        <Img asset={mediaOr(e.photo)} className="poster__img" decorative />
+        <span className="poster__media"><Img asset={mediaOr(e.photo)} className="poster__img" decorative sizes="(min-width: 768px) 58vw, 100vw" /></span>
         <span className="poster__body">
           <span className="poster__kicker">Ogni domenica · format del locale</span>
           <span id="featured-title" className="poster__title">Domeniche<br />del Fire</span>
@@ -81,7 +81,7 @@ function EventRow({ e }: { e: FireEvent }) {
   return (
     <li className={`event-row${e.kind === 'format' ? ' event-row--format' : ''}`}>
       <Link to={`/eventi/${e.id}`} className="event-row__link">
-        <Img asset={mediaOr(e.photo)} decorative className="event-row__img" />
+        <span className="event-row__media"><Img asset={mediaOr(e.photo)} decorative className="event-row__img" sizes="(min-width: 1024px) 28vw, (min-width: 641px) 40vw, 100vw" /></span>
         <span className="event-row__body">
           <span className="event-row__badges">
             {e.kind === 'format' ? <ConfirmBadge>Format ricorrente</ConfirmBadge> : null}
@@ -184,7 +184,7 @@ export function EventDetail({ id }: { id: string }) {
       </div>
       <div className="container event-detail__grid">
         <div className="event-detail__media">
-          <Img asset={mediaOr(e.photo)} eager className="event-detail__hero" />
+          <div className="event-detail__poster"><Img asset={mediaOr(e.photo)} eager className="event-detail__hero" sizes="(min-width: 900px) 58vw, 100vw" /></div>
           <ul className="event-detail__thumbs" aria-label="Altre foto">
             {e.media.filter((m) => m !== e.photo && mediaAsset(m)).map((m) => (
               <li key={m}><Img asset={mediaAsset(m)!} /></li>
