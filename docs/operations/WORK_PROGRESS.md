@@ -1,6 +1,6 @@
 # WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Ultimo aggiornamento: 20/10/2026, **FASE 6 completata in locale**; in attesa della CI e dell'approvazione.
+> Ultimo aggiornamento: 20/10/2026, **FASE 6 completata**: test locali e CI verdi. In attesa dell'approvazione del committente.
 
 ## Fase e branch
 - **FASE 6 — Eventi e capienza** (autorizzata il 20/10/2026 con l'approvazione della FASE 5, C-27).
@@ -23,7 +23,7 @@
 | 3 | Prenotazioni per eventi (sito e gestori), quota alla conferma, rilasci | fatto (`9ed8490`) |
 | 4 | Test backend (ciclo di vita, conflitti, concorrenza, permessi) | fatto (`1900a87`) |
 | 5 | Frontend: pagina Eventi pubblica, dialog per evento, gestione eventi, richieste; Playwright | fatto (`91850b1`) |
-| 6 | Documentazione, CI, report; stop in attesa di approvazione | documenti fatti; CI da verificare |
+| 6 | Documentazione, CI, report; stop in attesa di approvazione | fatto: CI frontend 39402045306 ✅ (`91850b1`), backend 39400310406 ✅ (`1900a87`) |
 
 ## File modificati non committati
 - (aggiornato a ogni checkpoint)
@@ -36,5 +36,5 @@
 - Nessuno.
 
 ## Prossima azione esatta
-Verificare le due workflow GitHub Actions sull'ultimo commit e riportarle in TEST_REPORT §CI; poi **fermarsi**:
-la FASE 7 richiede l'approvazione del committente.
+Nessuna: **fase ferma in attesa dell'approvazione**. La FASE 7 (email / SMS / outbox) non va avviata senza
+l'autorizzazione del committente.

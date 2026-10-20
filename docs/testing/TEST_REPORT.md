@@ -37,8 +37,14 @@ calendario).
    Ora una bozza nuova parte senza prenotazione e il gestore sceglie (trovato rileggendo `navigation.spec`).
 2. Due test cercavano la serata demo nel calendario del mese corrente, valido solo con la data finta del mockup.
 
-### CI
-(aggiornato dopo la verifica su GitHub Actions)
+### CI (GitHub Actions, branch `fase-6/eventi-capienza`)
+| Workflow | Commit | Run | Esito |
+|---|---|---|---|
+| frontend (`npm run verifica`, 69 test) | `91850b1` (ultimo commit con codice frontend) | 39402045306 | ✅ success (6m37s) |
+| backend (`./mvnw -B verify`, 70 + 294 test) | `1900a87` — il codice backend non cambia dopo questo commit | 39400310406 | ✅ success (4m10s) |
+
+Anche i run intermedi della fase (`9ed8490`, `1900a87`) sono verdi su entrambe le workflow. I commit successivi
+toccano solo la documentazione.
 
 ## FASE 5 — Riepilogo
 
