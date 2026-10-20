@@ -295,11 +295,15 @@ test.describe('Mappa e area del titolare', () => {
     await expect(page.getByRole('alert')).toContainText('non è una foto JPG, PNG o WebP');
     await input.setInputFiles('public/assets/fireflies/logo/simbolo-512.png');
     await expect(page.getByText('Caricata ora')).toBeVisible();
-    await page.getByLabel(/Descrizione per chi non vede/).first().fill('Nuovo cocktail della casa');
+    const alt = page.getByLabel(/Descrizione per chi non vede/).first();
+    await alt.fill('Nuovo cocktail della casa');
+    await alt.press('Enter'); // salvataggio della descrizione, confermato dal server prima di proseguire
+    await expect(page.getByRole('status')).toContainText('Descrizione salvata');
     await page.getByRole('switch', { name: 'Non in galleria' }).first().click();
+    await expect(page.getByRole('switch', { name: 'In galleria' }).first()).toBeVisible();
 
     await go(page, '/gestione/menu/{Cornetto}');
-    await page.locator('.picker__opt').filter({ hasText: 'Nuovo cocktail della casa' }).click();
+    await page.locator('.picker__opt').filter({ has: page.getByRole('radio', { name: 'Nuovo cocktail della casa' }) }).click();
     await expect(page.getByRole('radio', { name: 'Nuovo cocktail della casa' })).toBeChecked();
     await page.getByRole('button', { name: 'Salva' }).click();
     // variante ricodificata dal backend (PNG con trasparenza), non più un URL blob del browser

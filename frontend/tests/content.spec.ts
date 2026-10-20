@@ -112,6 +112,53 @@ test.describe('Contenuti dal backend', () => {
     await expect(page.getByRole('status')).toContainText('Foto sostituita');
   });
 
+  test('foto: descrizione e galleria modificate di seguito, nessuna risposta ne annulla un’altra', async ({ page }) => {
+    // Riproduce in modo deterministico la gara vista in CI (run 39279505974): il server applica prima la modifica
+    // della galleria (con la vecchia descrizione) e poi la descrizione, ma la risposta della galleria arriva per ultima.
+    await signIn(page, 'Staff');
+    await go(page, '/gestione/foto');
+    const item = page.locator('.photos__item:has(input[value^="Cappuccino in tazza"])');
+    const id = (await item.getByRole('textbox').getAttribute('id'))!.replace('alt-', '');
+    // da qui in poi la foto si trova per id: l'attributo value cambia appena si scrive nel campo
+    const photo = page.locator(`.photos__item:has(#alt-${id})`);
+    let releaseAlt!: () => void;
+    const altMayGo = new Promise<void>((r) => (releaseAlt = r));
+    let altAnswered!: () => void;
+    const altFulfilled = new Promise<void>((r) => (altAnswered = r));
+    await page.route(`**/api/v1/admin/media/${id}`, async (route) => {
+      if (route.request().method() !== 'PATCH') return route.continue();
+      if ('altText' in (route.request().postDataJSON() ?? {})) {
+        await altMayGo;
+        await route.fulfill({ response: await route.fetch() });
+        altAnswered();
+      } else {
+        const response = await route.fetch(); // il server ha già salvato la galleria, con la vecchia descrizione
+        releaseAlt();
+        await altFulfilled;
+        await route.fulfill({ response }); // risposta «vecchia» consegnata per ultima
+      }
+    });
+
+    const before = await photo.getByRole('switch').getAttribute('aria-checked');
+    await photo.getByRole('textbox').fill('Cappuccino e cornetto al bancone del Fire');
+    await photo.getByRole('switch').click(); // il clic fa uscire dal campo: due PATCH quasi insieme
+    await altFulfilled;
+    await page.unrouteAll({ behavior: 'wait' });
+    await page.waitForLoadState('networkidle');
+    await expect(photo.getByRole('textbox'), 'la descrizione appena salvata resta a schermo')
+      .toHaveValue('Cappuccino e cornetto al bancone del Fire');
+    await expect(photo.getByRole('switch'), 'e anche la galleria').toHaveAttribute('aria-checked', String(before !== 'true'));
+
+    // il server ha entrambe le modifiche
+    const media = await (await page.request.get('/api/v1/admin/media')).json();
+    const saved = media.find((m: { id: string }) => m.id === id);
+    expect(saved.alt).toBe('Cappuccino e cornetto al bancone del Fire');
+    expect(saved.inGallery).toBe(before !== 'true');
+    // e il selettore di foto del menu (stessa scheda, senza ricaricare) la mostra con la descrizione nuova
+    await go(page, '/gestione/menu/{Cappuccino}');
+    await expect(page.getByRole('radio', { name: 'Cappuccino e cornetto al bancone del Fire' })).toBeChecked();
+  });
+
   test('foto in uso: il backend blocca l’eliminazione anche aggirando la UI', async ({ page }) => {
     await signIn(page, 'Staff');
     const media = await (await page.request.get('/api/v1/admin/media')).json();

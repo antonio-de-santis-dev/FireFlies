@@ -110,7 +110,9 @@ function AltField({ item }: { item: MediaItem }) {
   const save = async () => {
     if (alt.trim() === item.asset.alt) return;
     try {
-      dispatch({ type: 'media/update', item: { ...(await updatePhoto(item.id, { altText: alt.trim() })), uploaded: item.uploaded } });
+      // si applica solo la descrizione: la risposta può arrivare dopo quella di un'altra modifica (es. «In galleria»)
+      const saved = await updatePhoto(item.id, { altText: alt.trim() });
+      dispatch({ type: 'media/merge', id: item.id, alt: saved.asset.alt });
       setError(null);
       notify('Descrizione salvata.');
     } catch (e) {
@@ -191,7 +193,8 @@ export function Photos() {
 
   const toggleGallery = async (m: MediaItem) => {
     try {
-      dispatch({ type: 'media/update', item: { ...(await updatePhoto(m.id, { inGallery: !m.inGallery })), uploaded: m.uploaded } });
+      const saved = await updatePhoto(m.id, { inGallery: !m.inGallery });
+      dispatch({ type: 'media/merge', id: m.id, inGallery: saved.inGallery });
     } catch (e) {
       fail(e, 'Modifica non salvata: riprova.');
     }

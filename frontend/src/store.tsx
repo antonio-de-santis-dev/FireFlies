@@ -47,6 +47,8 @@ type Action =
   | { type: 'content/save'; content: SiteContent; mediaIndex?: Record<string, Asset> }
   | { type: 'media/add'; item: MediaItem }
   | { type: 'media/update'; item: MediaItem }
+  // solo i campi cambiati da una singola richiesta: due modifiche ravvicinate non si annullano a vicenda
+  | { type: 'media/merge'; id: string; alt?: string; inGallery?: boolean }
   | { type: 'media/remove'; id: string }
   | { type: 'announcements/set'; items: Announcement[] }
   | { type: 'announcement/save'; item: Announcement }
@@ -93,6 +95,16 @@ function reducer(state: State, action: Action): State {
       return { ...state, media: [action.item, ...state.media], mediaIndex: withAsset(state.mediaIndex, action.item) };
     case 'media/update':
       return { ...state, media: upsert(state.media, action.item), mediaIndex: withAsset(state.mediaIndex, action.item) };
+    case 'media/merge': {
+      const merge = (m: MediaItem): MediaItem => ({
+        ...m,
+        asset: action.alt === undefined ? m.asset : { ...m.asset, alt: action.alt },
+        inGallery: action.inGallery ?? m.inGallery,
+      });
+      const media = state.media.map((m) => (m.id === action.id ? merge(m) : m));
+      const updated = media.find((m) => m.id === action.id);
+      return { ...state, media, mediaIndex: updated ? withAsset(state.mediaIndex, updated) : state.mediaIndex };
+    }
     case 'media/remove':
       return { ...state, media: state.media.filter((m) => m.id !== action.id) };
     case 'announcements/set':
