@@ -9,6 +9,7 @@ import org.springframework.context.ApplicationContext;
 
 import it.fireflies.audit.AuditLog;
 import it.fireflies.content.ContentService;
+import it.fireflies.dining.DiningService;
 import it.fireflies.media.MediaService;
 import it.fireflies.menu.MenuService;
 import it.fireflies.support.PostgresIntegrationTest;
@@ -38,6 +39,9 @@ class DemoContentLoaderIT extends PostgresIntegrationTest {
     @Autowired
     AuditLog audit;
 
+    @Autowired
+    DiningService dining;
+
     @Test
     void nelProfiloTestIlCaricatoreNonEsiste() {
         assertThat(context.getBeanNamesForType(DemoContentLoader.class)).isEmpty();
@@ -47,7 +51,7 @@ class DemoContentLoaderIT extends PostgresIntegrationTest {
     @Test
     void caricaIlMockupUnaSolaVoltaEMarcaIlDatabase() throws Exception {
         DemoContentLoader loader = new DemoContentLoader(new DemoProperties(true, "../frontend/public/assets/fireflies"),
-                media, menu, content, jdbc, json, audit);
+                media, menu, content, jdbc, json, audit, dining);
         loader.run(null);
 
         assertThat(jdbc.sql("SELECT count(*) FROM media_assets").query(Long.class).single()).isEqualTo(32);
@@ -60,6 +64,14 @@ class DemoContentLoaderIT extends PostgresIntegrationTest {
         assertThat(content.hasDemoContent()).isTrue();
         assertThat(content.publicSite().content().owners()).hasSize(3);
         assertThat(content.publicSite().content().menuHero().photos()).hasSize(5);
+        // prenotazioni d'esempio: capienza, tavoli e fasce nei giorni di apertura, nessuna prenotazione finta
+        DiningService.Config booking = dining.config();
+        assertThat(booking.zones().getFirst().physicalCapacity()).isEqualTo(40);
+        assertThat(booking.zones().getFirst().active()).isTrue();
+        assertThat(booking.tables()).hasSize(10);
+        assertThat(booking.windows()).hasSize(6 * 4).noneMatch(w -> w.isoDay() == 3);
+        assertThat(booking.policy().webBookingEnabled()).isTrue();
+        assertThat(jdbc.sql("SELECT count(*) FROM reservations").query(Long.class).single()).isZero();
 
         loader.run(null);
         assertThat(jdbc.sql("SELECT count(*) FROM media_assets").query(Long.class).single()).as("seconda volta: niente").isEqualTo(32);

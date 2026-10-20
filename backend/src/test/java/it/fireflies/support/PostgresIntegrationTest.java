@@ -17,7 +17,7 @@ import it.fireflies.security.LoginAttemptLimiter;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-@Import({PostgresTestcontainer.class, Reconciliation.class, BookingFixtures.class, MediaTestStorage.class})
+@Import({PostgresTestcontainer.class, Reconciliation.class, BookingFixtures.class, MediaTestStorage.class, TestClock.Config.class})
 public abstract class PostgresIntegrationTest {
 
     @Autowired
@@ -40,6 +40,9 @@ public abstract class PostgresIntegrationTest {
 
     @Autowired
     protected WebRequestLimiter webLimiter;
+
+    @Autowired
+    protected TestClock clock;
 
     @AfterEach
     void verifyInvariantsAndClean() {
@@ -77,6 +80,7 @@ public abstract class PostgresIntegrationTest {
             jdbc.sql("DELETE FROM app_users").update();
             loginLimiter.clear();
             webLimiter.clear();
+            clock.reset();
         }
     }
 }

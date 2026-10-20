@@ -66,6 +66,8 @@ class PersistenceAfterRestartIT {
         String password = "una frase lunga di prova " + System.nanoTime();
         String photoSrc;
         String sessionCookie;
+        String reference;
+        String day = java.time.LocalDate.now(it.fireflies.common.BusinessTime.ZONE).plusDays(7).toString();
         try (ConfigurableApplicationContext first = start()) {
             first.getBean(UserAccountService.class).create(null,
                     new UserAccountService.NewUser("titolare.riavvio@example.invalid", "Titolare", Role.OWNER, password));
@@ -81,6 +83,25 @@ class PersistenceAfterRestartIT {
                     "photoMediaId", photo.path("id").asString(), "visible", true)).status()).isEqualTo(201);
             assertThat(owner.post("/api/v1/admin/announcements", Map.of("text", "Sabato DJ set dalle 22", "tone", "INFO",
                     "active", true)).status()).isEqualTo(201);
+            // prenotazioni: zona, fascia, regole, una richiesta dal sito confermata
+            JsonNode zone = owner.get("/api/v1/admin/booking-config").body().path("zones").get(0);
+            String zoneId = zone.path("id").asString();
+            assertThat(owner.put("/api/v1/admin/capacity-zones/" + zoneId, Map.of("version", zone.path("version").asInt(),
+                    "name", "Locale", "physicalCapacity", 6, "active", true)).status()).isEqualTo(200);
+            assertThat(owner.post("/api/v1/admin/service-windows", Map.of("zoneId", zoneId,
+                    "isoDay", java.time.LocalDate.parse(day).getDayOfWeek().getValue(), "name", "Aperitivo", "firstStart", "19:00",
+                    "lastStart", "19:00", "slotMinutes", 30, "defaultDurationMinutes", 120)).status()).isEqualTo(201);
+            assertThat(owner.put("/api/v1/admin/booking-policy", Map.of("webBookingEnabled", true, "minLeadMinutes", 60,
+                    "maxAdvanceDays", 60, "maxPartySizeWeb", 12, "pendingExpiryMinutesBeforeStart", 60)).status()).isEqualTo(200);
+            ApiClient.Response request = client(first).post("/api/v1/public/reservations", Map.of("date", day, "time", "19:00",
+                    "guests", 6, "name", "Cliente di prova", "phone", "300 000 0099", "privacyAccepted", true),
+                    Map.of("Idempotency-Key", java.util.UUID.randomUUID().toString()));
+            assertThat(request.status()).as(request.raw()).isEqualTo(201);
+            reference = request.body().path("reference").asString();
+            JsonNode listed = owner.get("/api/v1/admin/reservations").body().path("items").get(0);
+            assertThat(owner.patch("/api/v1/admin/reservations/" + listed.path("id").asString() + "/status",
+                    Map.of("version", listed.path("version").asInt(), "status", "CONFIRMED"))
+                    .status()).isEqualTo(200);
             sessionCookie = owner.cookie("FF_SESSION").orElseThrow();
         }
 
@@ -98,6 +119,13 @@ class PersistenceAfterRestartIT {
             ApiClient sameBrowser = client(second);
             sameBrowser.setCookie("FF_SESSION", sessionCookie);
             assertThat(sameBrowser.get("/api/v1/auth/me").status()).as("la sessione è in PostgreSQL").isEqualTo(200);
+
+            JsonNode reservation = sameBrowser.get("/api/v1/admin/reservations").body().path("items").get(0);
+            assertThat(reservation.path("reference").asString()).isEqualTo(reference);
+            assertThat(reservation.path("status").asString()).isEqualTo("CONFIRMED");
+            JsonNode slots = visitor.get("/api/v1/public/booking-options?date=" + day + "&guests=1").body()
+                    .path("groups").get(0).path("slots");
+            assertThat(slots.get(0).path("reason").asString()).as("i posti occupati sono nel database, non in memoria").isEqualTo("FULL");
         }
     }
 }

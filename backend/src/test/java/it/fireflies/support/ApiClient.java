@@ -57,6 +57,13 @@ public final class ApiClient {
         return send(withBody("POST", path, body), true);
     }
 
+    /** POST con header aggiuntivi (es. {@code Idempotency-Key}). */
+    public Response post(String path, Object body, Map<String, String> headers) {
+        HttpRequest.Builder request = withBody("POST", path, body);
+        headers.forEach(request::header);
+        return send(request, true);
+    }
+
     public Response patch(String path, Object body) {
         return send(withBody("PATCH", path, body), true);
     }
