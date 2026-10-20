@@ -90,7 +90,7 @@ export function PhotoPicker({ value, onChange, allowNone = false, legend, contai
         )}
         {media.map((m) => (
           <label key={m.id} className={`picker__opt${value === m.id ? ' is-selected' : ''}`}>
-            <input type="radio" name={name} className="sr-only" checked={value === m.id} onChange={() => onChange(m.id)} />
+            <input type="radio" name={name} value={m.id} className="sr-only" checked={value === m.id} onChange={() => onChange(m.id)} />
             {/* eager: le miniature stanno in un riquadro scorrevole, il lazy loading le lascerebbe vuote */}
             <Img asset={m.asset} decorative eager sizes="120px" />
             <span className="sr-only">{m.asset.alt}</span>

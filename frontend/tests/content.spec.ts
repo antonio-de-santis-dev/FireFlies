@@ -61,24 +61,50 @@ test.describe('Contenuti dal backend', () => {
     await expect(page.locator('.menu-item', { hasText: 'Rustico' })).toContainText('demo');
   });
 
-  test('nuova voce: creata, visibile sul sito, poi eliminata', async ({ page }) => {
+  test('nuova voce: visibile per impostazione predefinita, poi eliminata definitivamente con conferma', async ({ page }) => {
     await signIn(page, 'Staff');
     await go(page, '/gestione/menu/nuova');
+    await expect(page.getByRole('switch', { name: 'Visibile sul sito' })).toHaveAttribute('aria-checked', 'true');
     await page.getByLabel('Nome').fill('Spritz della casa');
     await page.getByLabel('Categoria').selectOption({ label: 'Cocktail' });
     await page.getByLabel('Prezzo (€)').fill('7');
-    await page.getByRole('switch', { name: 'Nascosta dal sito' }).click();
+    // una foto della libreria: dopo l'eliminazione della voce deve restare
+    const picker = page.getByRole('group', { name: 'Scegli o carica una foto' });
+    const firstPhoto = picker.locator('label.picker__opt:not(.picker__opt--none)').first();
+    await firstPhoto.click();
+    await expect(firstPhoto).toHaveClass(/is-selected/);
+    const photoId = await firstPhoto.locator('input').getAttribute('value');
     await page.getByRole('button', { name: 'Salva' }).click();
     await expect(page.getByRole('status')).toContainText('«Spritz della casa» aggiunta');
     await go(page, '/menu?cat=cocktail');
     await expect(page.locator('.menu-item', { hasText: 'Spritz della casa' })).toContainText('€ 7,00');
 
+    // spenta prima di salvare: resta nascosta
+    await go(page, '/gestione/menu/nuova');
+    await page.getByLabel('Nome').fill('Amaro nascosto');
+    await page.getByRole('switch', { name: 'Visibile sul sito' }).click();
+    await page.getByRole('button', { name: 'Salva' }).click();
+    await expect(page.getByRole('status')).toContainText('«Amaro nascosto» aggiunta');
+    await go(page, '/menu');
+    await expect(page.locator('.menu-item', { hasText: 'Amaro nascosto' })).toHaveCount(0);
+
     await go(page, '/gestione/menu/{Spritz della casa}');
-    await page.getByRole('button', { name: 'Elimina voce' }).click();
-    await page.getByRole('button', { name: 'Conferma: elimina la voce' }).click();
-    await expect(page.getByRole('status')).toContainText('eliminata');
+    await page.getByRole('button', { name: 'Elimina definitivamente' }).click();
+    const confirm = page.getByRole('group', { name: "Conferma l'eliminazione" });
+    await expect(confirm).toContainText('non si');
+    await confirm.getByRole('button', { name: 'No, tienila' }).click();
+    await expect(confirm).toHaveCount(0);
+    await page.getByRole('button', { name: 'Elimina definitivamente' }).click();
+    await page.getByRole('button', { name: 'Elimina la voce' }).click();
+    await expect(page.getByRole('status')).toContainText('eliminata definitivamente');
+    await expect(page.getByRole('row', { name: /Spritz della casa/ })).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByRole('row', { name: /Amaro nascosto/ })).toBeVisible();
+    await expect(page.getByRole('row', { name: /Spritz della casa/ })).toHaveCount(0);
     await go(page, '/menu');
     await expect(page.locator('.menu-item', { hasText: 'Spritz della casa' })).toHaveCount(0);
+    const library = await page.evaluate(async () => (await fetch('/api/v1/admin/media')).text());
+    expect(library, 'la foto resta nella libreria').toContain(photoId!);
   });
 
   test('foto: il backend rifiuta un file finto anche se si chiama .jpg', async ({ page }) => {

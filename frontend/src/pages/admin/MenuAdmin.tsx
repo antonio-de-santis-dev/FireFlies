@@ -120,7 +120,7 @@ export function MenuAdmin() {
 
 const blank = (category: CategoryId): MenuItem => ({
   id: 'nuova', name: '', category, description: '', ingredients: [], allergens: null, price: null,
-  photo: null, visible: false, source: 'reale',
+  photo: null, visible: true, source: 'reale', // FASE 7, req. 3: una voce nuova nasce visibile (lo switch si spegne prima di salvare)
 });
 
 export function MenuEditor({ id }: { id: string }) {
@@ -186,18 +186,24 @@ export function MenuEditor({ id }: { id: string }) {
   };
 
   const remove = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
+    if (busy) return;
+    setBusy(true);
+    setFailure(null);
     try {
       await deleteMenuItem(item.id);
-      dispatch({ type: 'menu/remove', id: item.id });
-      notify(`«${item.name}» eliminata dal menu.`);
-      navigate('/gestione/menu');
     } catch (error) {
-      setFailure(error instanceof ApiError ? error.message : 'Eliminazione non riuscita: riprova.');
+      // già eliminata da un altro gestore: il risultato è lo stesso
+      if (!(error instanceof ApiError && error.status === 404)) {
+        setConfirmDelete(false);
+        setFailure(error instanceof ApiError ? error.message : 'Eliminazione non riuscita: riprova.');
+        setBusy(false);
+        return;
+      }
     }
+    dispatch({ type: 'menu/remove', id: item.id });
+    notify(`«${item.name}» eliminata definitivamente dal menu.`);
+    setBusy(false);
+    navigate('/gestione/menu');
   };
 
   const preview = mediaAsset(item.photo);
@@ -266,10 +272,21 @@ export function MenuEditor({ id }: { id: string }) {
           <div className="panel">
             <h2 className="panel__title">Pubblicazione</h2>
             <Switch checked={item.visible} onChange={() => up('visible', !item.visible)} label={item.visible ? 'Visibile sul sito' : 'Nascosta dal sito'} />
-            {!isNew && (
-              <button type="button" className="btn btn--quiet btn--sm editor__delete" onClick={remove}>
-                <Trash2 size={16} aria-hidden="true" /> {confirmDelete ? 'Conferma: elimina la voce' : 'Elimina voce'}
+            <p className="small muted">{item.visible ? 'Compare nel menu del sito.' : 'Nascosta: resta qui e si può rimettere sul sito quando vuoi.'}</p>
+            {!isNew && !confirmDelete && (
+              <button type="button" className="btn btn--quiet btn--sm editor__delete" onClick={() => setConfirmDelete(true)}>
+                <Trash2 size={16} aria-hidden="true" /> Elimina definitivamente
               </button>
+            )}
+            {!isNew && confirmDelete && (
+              <div className="res-detail__form" role="group" aria-label="Conferma l'eliminazione">
+                <p className="small"><strong>Eliminare «{existing!.name}» dal menu?</strong> La voce sparisce dall'area gestori e dal sito e non si
+                  può recuperare. La foto resta nella libreria. Per toglierla solo dal sito usa invece «Nascosta».</p>
+                <div className="confirm-row">
+                  <button type="button" className="btn btn--quiet btn--sm" onClick={() => setConfirmDelete(false)}>No, tienila</button>
+                  <button type="button" className="btn btn--action btn--sm" disabled={busy} onClick={() => void remove()}>Elimina la voce</button>
+                </div>
+              </div>
             )}
           </div>
           <div className="panel">

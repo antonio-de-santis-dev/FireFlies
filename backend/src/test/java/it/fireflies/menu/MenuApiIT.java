@@ -122,6 +122,9 @@ class MenuApiIT extends SecurityIntegrationTest {
 
         assertThat(staff.delete("/api/v1/admin/menu/items/" + id).status()).isEqualTo(204);
         assertThat(staff.delete("/api/v1/admin/menu/items/" + id).status()).isEqualTo(404);
+        assertThat(staff.get("/api/v1/admin/menu").body().path("items")).as("eliminata davvero, non nascosta").isEmpty();
+        assertThat(jdbc.sql("SELECT count(*) FROM menu_item_allergens WHERE menu_item_id = ?::uuid").param(id)
+                .query(Long.class).single()).isZero();
         assertThat(audit("MENU_ITEM_CREATED")).isEqualTo(1);
         assertThat(audit("MENU_ITEM_UPDATED")).isEqualTo(2);
         assertThat(audit("MENU_ITEM_DELETED")).isEqualTo(1);

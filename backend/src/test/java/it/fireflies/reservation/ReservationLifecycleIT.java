@@ -296,6 +296,49 @@ class ReservationLifecycleIT extends ReservationTestSupport {
         assertThat(waiting.body().path("summary").path("needsCallback").asBoolean()).isTrue();
     }
 
+    private boolean callback(UUID id) {
+        return jdbc.sql("SELECT needs_callback FROM reservations WHERE id = ?").param(id).query(Boolean.class).single();
+    }
+
+    private UUID flagged(String time) {
+        UUID id = pending(time, 2);
+        ApiClient.Response r = staff.patch("/api/v1/admin/reservations/" + id, Map.of("version", version(id), "needsCallback", true));
+        assertThat(r.status()).as(r.raw()).isEqualTo(200);
+        assertThat(callback(id)).isTrue();
+        return id;
+    }
+
+    /** FASE 7, req. 5: «Da richiamare» si spegne nel backend quando la richiesta esce da «In attesa». */
+    @Test
+    void daRichiamareSiSpegneAllaConfermaEAllaChiusura() {
+        UUID confirmed = flagged("18:00");
+        assertThat(confirm(staff, confirmed).status()).isEqualTo(200);
+        assertThat(callback(confirmed)).as("confermata").isFalse();
+        UUID declined = flagged("18:30");
+        assertThat(changeStatus(staff, declined, "REJECTED", Map.of("reason", "NO_CAPACITY")).status()).isEqualTo(200);
+        assertThat(callback(declined)).as("rifiutata").isFalse();
+        UUID cancelled = flagged("19:00");
+        assertThat(changeStatus(staff, cancelled, "CANCELLED", Map.of("reason", "CUSTOMER_REQUEST")).status()).isEqualTo(200);
+        assertThat(callback(cancelled)).as("annullata").isFalse();
+        UUID still = flagged("19:30");
+        JsonNode list = staff.get("/api/v1/admin/reservations?needsCallback=true").body().path("items");
+        assertThat(list).as("nel filtro resta solo quella ancora in attesa").hasSize(1);
+        assertThat(list.get(0).path("id").asString()).isEqualTo(still.toString());
+
+        Map<String, Object> manual = new HashMap<>();
+        manual.put("source", "PHONE");
+        manual.put("date", DAY.toString());
+        manual.put("time", "20:00");
+        manual.put("guests", 2);
+        manual.put("name", "Cliente richiamato");
+        manual.put("phone", "0836 000 002");
+        manual.put("confirmNow", true);
+        manual.put("needsCallback", true);
+        ApiClient.Response now = staff.post("/api/v1/admin/reservations", manual);
+        assertThat(now.status()).as(now.raw()).isEqualTo(201);
+        assertThat(now.body().path("summary").path("needsCallback").asBoolean()).as("inserita già confermata").isFalse();
+    }
+
     @Test
     void elencoConFiltriEConteggi() {
         UUID a = pending("18:00", 2);

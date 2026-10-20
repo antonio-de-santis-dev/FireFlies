@@ -114,17 +114,23 @@ class ReservationStore {
                 """).params(zoneId, utc(to), utc(from)).query(Integer.class).single();
     }
 
+    /**
+     * Cambio di stato. «Da richiamare» si spegne da solo appena la richiesta esce da «In attesa» (confermata o chiusa
+     * in qualunque modo, FASE 7 req. 5): resta acceso solo finché c'è qualcosa da decidere col cliente; lo si può
+     * riaccendere a mano dalla modifica.
+     */
     void updateStatus(UUID id, String status, String reason, UUID zoneId, Instant occupiedUntil, UUID handledBy,
             boolean confirmed, boolean closed) {
         jdbc.sql("""
                 UPDATE reservations
-                   SET status = ?, status_reason = ?, capacity_zone_id = ?, occupied_until = ?, handled_by_user_id = ?,
+                   SET needs_callback = needs_callback AND ? = 'PENDING',
+                       status = ?, status_reason = ?, capacity_zone_id = ?, occupied_until = ?, handled_by_user_id = ?,
                        confirmed_at = CASE WHEN ? THEN now() ELSE confirmed_at END,
                        closed_at = CASE WHEN ? THEN now() ELSE closed_at END,
                        version = version + 1, updated_at = now()
                  WHERE id = ?
                 """)
-                .params(status, reason, zoneId, utc(occupiedUntil), handledBy, confirmed, closed, id).update();
+                .params(status, status, reason, zoneId, utc(occupiedUntil), handledBy, confirmed, closed, id).update();
     }
 
     void updateDetails(UUID id, LocalDate date, Instant startsAt, Instant endsAt, Instant occupiedUntil, int guests,
