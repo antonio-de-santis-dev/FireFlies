@@ -2,7 +2,7 @@ import { expect, request, type Page } from '@playwright/test';
 
 export const PUBLIC_ROUTES = ['/', '/menu', '/eventi', '/eventi/dj-set-esempio', '/eventi/domeniche-del-fire', '/galleria', '/locale', '/contatti'];
 // {Nome} = voce del menu: l'id (UUID del backend) si ricava al momento dal menu pubblico
-export const ADMIN_ROUTES = ['/gestione', '/gestione/menu', '/gestione/menu/{Tagliere FireFlies}', '/gestione/eventi', '/gestione/eventi/dj-set-esempio', '/gestione/richieste', '/gestione/foto', '/gestione/comunicazioni', '/gestione/sito', '/gestione/impostazioni'];
+export const ADMIN_ROUTES = ['/gestione', '/gestione/menu', '/gestione/menu/{Tagliere FireFlies}', '/gestione/eventi', '/gestione/eventi/dj-set-esempio', '/gestione/richieste', '/gestione/capienza', '/gestione/foto', '/gestione/comunicazioni', '/gestione/sito', '/gestione/impostazioni'];
 
 /** Raccoglie errori di console, eccezioni e richieste fallite. */
 export function watchProblems(page: Page) {
@@ -99,4 +99,25 @@ export async function stubGoogleMaps(page: Page) {
       body: '<body style="margin:0;display:grid;place-items:center;height:100vh;font:600 16px system-ui;background:#e8e4dc;color:#333;text-align:center;padding:16px">Qui il browser carica Google Maps.<br>Nell\'ambiente di test Google non è raggiungibile.</body>',
     }),
   );
+}
+
+/**
+ * Giorno prenotabile con i dati demo (fasce in tutti i giorni tranne il mercoledì, chiuso): almeno `from` giorni
+ * dopo oggi, così l'anticipo minimo (60 minuti) non conta. `skip` sceglie un giorno diverso per test diversi.
+ */
+export function bookableDay(from = 2, skip = 0): string {
+  const d = new Date();
+  d.setDate(d.getDate() + from);
+  let found = 0;
+  for (;;) {
+    if (d.getDay() !== 3 && found++ === skip) break;
+    d.setDate(d.getDate() + 1);
+  }
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
+}
+
+/** Numero di prova sempre diverso (il backend accetta al massimo 3 richieste al giorno dallo stesso numero). */
+export function testPhone(): string {
+  return `+39 300 ${String(Date.now()).slice(-7, -4)} ${String(Date.now()).slice(-4)}`;
 }

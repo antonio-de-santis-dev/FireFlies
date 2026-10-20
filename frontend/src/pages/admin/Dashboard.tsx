@@ -1,30 +1,41 @@
 import { ArrowRight, CalendarDays, CircleAlert, Clock, Images, Inbox, Megaphone, Palette, PhoneCall, UtensilsCrossed } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { hhmm, listReservations, type Summary } from '../../api/reservations';
 import { DemoBadge } from '../../components/ui';
-import { capitalize, formatEventDate } from '../../data/events';
-import { requestStatusLabel, type RequestStatus } from '../../data/requests';
+import { formatEventDate } from '../../data/events';
 import { Link, usePageMeta } from '../../router';
 import { useStore } from '../../store';
 import { AdminHead } from './AdminLayout';
+import { fmtShort, ReservationBadge } from './Requests';
 
-const STATUS_CLASS: Record<RequestStatus, string> = {
-  nuova: 'badge--action',
-  'da-contattare': 'badge--confirm',
-  confermata: 'badge--success',
-  annullata: 'badge--neutral',
+const today = () => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 10);
 };
 
-export function StatusBadge({ status }: { status: RequestStatus }) {
-  return <span className={`badge ${STATUS_CLASS[status]}`}>{requestStatusLabel[status]}</span>;
+/** Richieste da gestire dal backend: in attesa e da richiamare, da oggi in poi. */
+function useRequestsToHandle() {
+  const [state, setState] = useState<{ pending: Summary[]; pendingTotal: number; callbacks: Summary[] } | null>(null);
+  useEffect(() => {
+    let current = true;
+    Promise.all([
+      listReservations({ from: today(), status: ['PENDING'], size: 6 }),
+      listReservations({ from: today(), status: ['PENDING', 'CONFIRMED'], needsCallback: true, size: 6 }),
+    ])
+      .then(([p, c]) => current && setState({ pending: p.items, pendingTotal: p.total, callbacks: c.items.filter((r) => r.status !== 'PENDING') }))
+      .catch(() => current && setState({ pending: [], pendingTotal: 0, callbacks: [] }));
+    return () => { current = false; };
+  }, []);
+  return state;
 }
-
-const shortDate = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
-export const fmtShort = (iso: string) => capitalize(shortDate.format(new Date(`${iso}T12:00:00`)));
 
 export function Dashboard() {
   usePageMeta('Panoramica');
-  const { requests, events, menu, settings, role } = useStore();
-  const fresh = requests.filter((r) => r.status === 'nuova');
-  const toCall = requests.filter((r) => r.status === 'da-contattare');
+  const { events, menu, settings, role } = useStore();
+  const requests = useRequestsToHandle();
+  const fresh = requests?.pending ?? [];
+  const toCall = requests?.callbacks ?? [];
   const upcoming = events.filter((e) => e.kind === 'serata').sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
   const incomplete = menu.filter((m) => m.price == null || m.allergens == null);
   const todo = [
@@ -37,8 +48,8 @@ export function Dashboard() {
 
   return (
     <>
-      <AdminHead title="Ciao! Ecco la giornata." lead="Panoramica dimostrativa: richieste ed eventi sono esempi.">
-        <DemoBadge>Dati demo</DemoBadge>
+      <AdminHead title="Ciao! Ecco la giornata." lead="Richieste tavolo reali dal sito e dal telefono; gli eventi sono ancora esempi.">
+        <DemoBadge>Eventi demo</DemoBadge>
       </AdminHead>
 
       <nav className="quick" aria-label="Azioni rapide">
@@ -58,12 +69,12 @@ export function Dashboard() {
       <ul className="stats" aria-label="Riepilogo">
         <li className="stats__item stats__item--hot">
           <Inbox aria-hidden="true" />
-          <span className="stats__n">{fresh.length}</span>
-          <span>richieste nuove</span>
+          <span className="stats__n">{requests ? requests.pendingTotal : '…'}</span>
+          <span>richieste in attesa</span>
         </li>
         <li className="stats__item">
           <PhoneCall aria-hidden="true" />
-          <span className="stats__n">{toCall.length}</span>
+          <span className="stats__n">{requests ? toCall.length + fresh.filter((r) => r.needsCallback).length : '…'}</span>
           <span>da ricontattare</span>
         </li>
         <li className="stats__item">
@@ -84,15 +95,17 @@ export function Dashboard() {
             <h2 id="dash-req">Richieste da gestire</h2>
             <Link to="/gestione/richieste" className="panel__link">Tutte <ArrowRight size={16} aria-hidden="true" /></Link>
           </div>
-          {fresh.length + toCall.length === 0 ? (
+          {!requests ? (
+            <p className="muted" role="status">Caricamento…</p>
+          ) : fresh.length + toCall.length === 0 ? (
             <p className="muted">Nessuna richiesta in attesa. Ottimo lavoro.</p>
           ) : (
             <ul className="req-mini">
               {[...fresh, ...toCall].map((r) => (
                 <li key={r.id}>
-                  <span className="req-mini__when">{fmtShort(r.date)} · {r.time}</span>
-                  <span className="req-mini__who">{r.name} · {r.guests} pers.</span>
-                  <StatusBadge status={r.status} />
+                  <span className="req-mini__when">{fmtShort(r.date)} · {hhmm(r.time)}</span>
+                  <span className="req-mini__who">{r.customerName} · {r.guests} pers.</span>
+                  <ReservationBadge status={r.status} />
                 </li>
               ))}
             </ul>

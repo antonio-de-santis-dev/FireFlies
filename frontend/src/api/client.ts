@@ -44,10 +44,10 @@ export function onUnauthorized(handler: ((code: string) => void) | null) {
   unauthorizedHandler = handler;
 }
 
-async function request<T>(method: string, path: string, body?: unknown, retryCsrf = true): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, retryCsrf = true, extra: Record<string, string> = {}): Promise<T> {
   const write = method !== 'GET';
   const form = body instanceof FormData;
-  const headers: Record<string, string> = { Accept: 'application/json, application/problem+json' };
+  const headers: Record<string, string> = { Accept: 'application/json, application/problem+json', ...extra };
   if (body !== undefined && !form) headers['Content-Type'] = 'application/json';
 
   let response: Response;
@@ -78,7 +78,7 @@ async function request<T>(method: string, path: string, body?: unknown, retryCsr
     // Token CSRF ruotato (es. dopo un nuovo login in un'altra scheda): se ne chiede uno nuovo e si riprova una volta.
     if (response.status === 403 && problem?.code === 'CSRF_INVALID' && retryCsrf) {
       await ensureCsrf(true);
-      return request<T>(method, path, body, false);
+      return request<T>(method, path, body, false, extra);
     }
     if (response.status === 401 && path.startsWith('/admin/')) unauthorizedHandler?.(problem?.code ?? 'UNAUTHENTICATED');
     throw new ApiError(
@@ -93,7 +93,7 @@ async function request<T>(method: string, path: string, body?: unknown, retryCsr
 
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
+  post: <T>(path: string, body?: unknown, headers?: Record<string, string>) => request<T>('POST', path, body ?? {}, true, headers),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
   patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
   del: (path: string) => request<void>('DELETE', path),

@@ -16,7 +16,6 @@ export type SiteSettings = {
   mapsUrl: string;
   hours: DayHours[];
   hoursConfirmed: boolean;
-  bookingEnabled: boolean;
   mapQuery: string; // testo cercato su Google Maps (meglio l'indirizzo esatto quando confermato)
   mapMode: 'consenso' | 'automatico'; // consenso = la mappa si carica solo dopo un clic del visitatore
   version?: number; // versione sul backend (concorrenza ottimistica)
@@ -44,7 +43,6 @@ export const defaultSettings: SiteSettings = {
     { day: 'Domenica', short: 'Dom', open: '07:00', close: '23:00' },
   ],
   hoursConfirmed: false,
-  bookingEnabled: true,
   mapQuery: 'FireFlies Aperitif, Via Giovanni XXIII, 19, 73025 Martano LE',
   mapMode: 'consenso',
 };

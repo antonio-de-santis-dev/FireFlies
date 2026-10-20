@@ -62,49 +62,47 @@ Per errori di validazione `errors` contiene `{ "field": "guestCount", "code": "M
 Ogni foto (`MediaRef`) è `{ id, alt, width, height, src, srcset }`: `src` è la variante da 960 px (o la più grande
 disponibile), `srcset` elenca tutte le varianti (`… 480w, … 960w, … 1600w`). URL pubblici costruiti da
 `FIREFLIES_MEDIA_PUBLIC_URL` (in sviluppo `/media`, serviti dal backend; in produzione il dominio CDN del bucket).
-| `GET /public/booking-options?date=YYYY-MM-DD[&eventId=][&guests=]` | fasce e slot del giorno con stato: `OPEN`, `FULL`, `CLOSED`, `EVENT`, `TOO_EARLY`; `FULL` = per almeno un quanto della durata standard i posti confermati liberi sono meno delle persone indicate (default 2); regole (max persone, messaggi) | no-store |
-| `POST /public/reservations` | crea una richiesta `PENDING` | no-store |
+| `GET /public/booking-options?date=YYYY-MM-DD[&guests=]` | **(FASE 5)** orari richiedibili del giorno, senza numeri di posti | no-store |
+| `POST /public/reservations` | **(FASE 5)** crea una richiesta `PENDING` (mai confermata dall'API pubblica) | no-store |
 
-### `GET /public/booking-options?date=2026-10-24`
+### `GET /public/booking-options?date=2026-10-24&guests=4` (implementato in FASE 5)
 ```json
 {
-  "date": "2026-10-24",
-  "webBookingEnabled": true,
-  "maxPartySize": 12,
-  "message": "Ti confermiamo il tavolo appena possibile. La richiesta non è ancora una prenotazione.",
-  "windows": [
-    { "windowId": "0b6e…", "name": "Aperitivo",
-      "slots": [ { "time": "18:00", "state": "OPEN" }, { "time": "18:30", "state": "OPEN" },
-                 { "time": "19:00", "state": "FULL" } ] },
-    { "windowId": null, "name": "DJ set di esempio", "eventId": "a41c…",
-      "slots": [ { "time": "22:00", "state": "EVENT" } ] }
+  "webBookingEnabled": true, "maxPartySize": 12, "maxAdvanceDays": 60, "minLeadMinutes": 60,
+  "firstDate": "2026-10-20", "lastDate": "2026-12-19", "date": "2026-10-24",
+  "groups": [
+    { "name": "Aperitivo",
+      "slots": [ { "time": "18:00:00", "available": true,  "reason": null },
+                 { "time": "19:00:00", "available": false, "reason": "FULL" } ] }
   ]
 }
 ```
-Nessuna promessa di disponibilità: `OPEN` significa «puoi inviare una richiesta». Le fasce del dialog del mockup oggi codificate (Colazione/Pomeriggio/Aperitivo/Sera) verranno da qui.
+- Senza `date` (o fuori dai giorni prenotabili) restituisce solo le regole con `groups: []`; con le richieste chiuse
+  `webBookingEnabled: false` e nient'altro.
+- `reason`: `FULL` (in almeno un quanto della permanenza standard i posti **confermati** liberi sono meno di `guests`,
+  default 1), `TOO_EARLY` (meno dell'anticipo minimo), `DAY_CLOSED` (chiusura agli arrivi), `EVENT` (evento esclusivo).
+- Nessuna promessa: `available` significa «puoi inviare una richiesta». Il controllo vincolante avviene alla conferma.
 
-### `POST /public/reservations`
-Header: `Idempotency-Key: 3a9e5d0c-…` (UUID, obbligatorio).
+### `POST /public/reservations` (implementato in FASE 5)
+Header: `Idempotency-Key: <UUID>` (obbligatorio) e `X-XSRF-TOKEN` (come ogni scrittura, T-40).
 ```json
-{
-  "date": "2026-10-24",
-  "time": "19:30",
-  "guestCount": 4,
-  "eventId": null,
-  "areaPreferenceId": null,
-  "customer": { "name": "Cliente demo", "phone": "+39 000 000 0001", "email": null },
-  "notes": "Tavolo fuori se possibile",
-  "privacyNoticeVersion": "2026-10",
-  "privacyAcknowledged": true,
-  "website": ""
-}
+{ "date": "2026-10-24", "time": "19:30", "guests": 4, "name": "Cliente di prova", "phone": "333 123 4567",
+  "email": null, "notes": "Tavolo fuori se possibile", "privacyAccepted": true, "website": "" }
 ```
 `201 Created`
 ```json
-{ "publicRef": "FF-7K3Q9M", "status": "PENDING", "date": "2026-10-24", "time": "19:30", "guestCount": 4,
-  "message": "Richiesta inviata. Non è ancora una prenotazione: ti contatteremo per confermare." }
+{ "reference": "FF-7K3Q9M", "status": "PENDING", "date": "2026-10-24", "time": "19:30:00", "guests": 4,
+  "message": "Richiesta ricevuta: non è ancora una prenotazione. Il locale ti risponderà al più presto al telefono indicato." }
 ```
-Ripetizione con stessa chiave e stessi dati → `200` con lo stesso corpo. Errori: `400 IDEMPOTENCY_KEY_REQUIRED`, `409 DUPLICATE_REQUEST`, `422 …` (vedi tabella), `429`.
+- Telefono obbligatorio (normalizzato in E.164, prefisso +39 se manca), email facoltativa, note max 500, nome 2–80.
+- `website` è il campo trappola: se compilato → `422`.
+- Stessa chiave e stessi dati → di nuovo `201` con lo stesso corpo (nessuna seconda riga); stessa chiave e dati diversi →
+  `422 IDEMPOTENCY_KEY_REUSED`; due invii simultanei con la stessa chiave → uno `201`, l'altro `409 DUPLICATE_REQUEST`.
+- Errori: `400 IDEMPOTENCY_KEY_REQUIRED`, `403 CSRF_INVALID`, `409 DUPLICATE_REQUEST` (stesso telefono e stesso orario già
+  attivo), `422 VALIDATION_FAILED` (`context.field`), `422 WEB_BOOKING_DISABLED`, `422 PARTY_TOO_LARGE`
+  (`context.maxPartySize`), `422 TOO_FAR`, `422 SLOT_NOT_AVAILABLE`, `422 DAY_CLOSED`, `422 TOO_EARLY`,
+  `422 FULLY_BOOKED`, `422 EVENT_BLOCKS_SLOT`, `429 RATE_LIMITED` (`context.retryAfterSeconds`; 5/ora per IP, 3/24 h per
+  telefono).
 
 ## 3. Autenticazione (implementata in FASE 3)
 
@@ -130,67 +128,77 @@ Ripetizione con stessa chiave e stessi dati → `200` con lo stesso corpo. Error
 
 STAFF su questi endpoint → `403 FORBIDDEN` (registrato nell'audit come `ACCESS_DENIED`). Il primo titolare non si crea via API: procedura amministrativa (LOCAL_SETUP §3).
 
-## 4. Area gestori — prenotazioni
+## 4. Area gestori — prenotazioni (implementato in FASE 5)
 
-Tutte richiedono sessione; ruolo minimo STAFF salvo dove indicato.
+Tutte richiedono sessione e CSRF sulle scritture; ruolo minimo STAFF salvo dove indicato.
 
 | Metodo e percorso | Descrizione |
 |---|---|
-| `GET /admin/reservations?dateFrom&dateTo&status&source&eventId&q&needsCallback&page&size&sort` | elenco filtrato (q = riferimento, nome o telefono) |
-| `GET /admin/reservations/{id}` | dettaglio + storico + tavoli + stato notifiche |
-| `POST /admin/reservations` | inserimento manuale (`source: PHONE|EMAIL`, `confirmNow` facoltativo); header `Idempotency-Key` |
-| `PATCH /admin/reservations/{id}` | modifica dati, orario, durata, persone, zona (`version` obbligatoria); se CONFIRMED rilascia e rioccupa in una transazione |
+| `GET /admin/reservations?from&to&status&source&q&needsCallback&page&size` | elenco: `{ items, total, page, size, counts }`; `status` accetta più valori separati da virgola; `q` cerca riferimento, nome, email e cifre del telefono; `counts` per stato con gli stessi filtri **escluso** lo stato; ordine: in attesa prima, poi per orario; `size` max 200 |
+| `GET /admin/reservations/{id}` | dettaglio (`Detail`, sotto) |
+| `POST /admin/reservations` | inserimento manuale (`source: PHONE\|EMAIL`, `confirmNow`) |
+| `PATCH /admin/reservations/{id}` | modifica dati, orario, durata, persone, zona (`version` obbligatoria); se CONFIRMED rilascia e rioccupa in una transazione (posti insufficienti → `409 CAPACITY_EXCEEDED`, nulla cambia). Chiusa → solo note e recapiti |
 | `PATCH /admin/reservations/{id}/status` | transizione di stato |
-| `PUT /admin/reservations/{id}/tables` | `{ version, tableIds, overrideSeats, overrideReason }`; sostituisce i tavoli (`[]` = nessuno); stesse regole posti della conferma |
-| `GET /admin/capacity?date=&zoneId=` | linea del tempo del giorno per zona, quanto per quanto: capienza, persone confermate, persone in attesa, liberi, evento esclusivo; più le quote degli eventi |
+| `PUT /admin/reservations/{id}/tables` | `{ version, tableIds, overrideSeats, overrideReason }`; sostituisce i tavoli (`[]` = nessuno); solo CONFIRMED |
+| `GET /admin/capacity?date=` | per ogni zona attiva, quanto per quanto nelle fasce del giorno: `{ time, capacity, confirmed, pending, event }` |
+
+**Summary** (elemento dell'elenco): `{ id, reference, status, statusReason, source, date, time, endTime, guests,
+customerName, customerPhone, customerEmail, notes, needsCallback, zoneId, tables[], createdAt, version }`.
+
+**Detail**: `{ summary, notes, internalNote, zoneName, durationMinutes, createdBy, handledBy, confirmedAt, closedAt,
+updatedAt, tables[], history[], changes[], notifications[], capacity, actions[], warnings[] }`
+- `history`: `{ fromStatus, toStatus, reason, note, by, at }`; `changes`: voci dell'audit della prenotazione.
+- `notifications`: `{ template, channel, recipient, state, skipReason, delivered, createdAt }` — `delivered` è vero solo
+  per un invio reale (`SENT`), mai in V1.
+- `capacity` (solo PENDING/CONFIRMED): `{ zoneId, capacity, minFree, pendingOthers, eventBlocks, fits }`.
+- `actions`: quelle possibili adesso tra `CONFIRM, REJECT, CANCEL, EDIT, TABLES, COMPLETE, NO_SHOW, CORRECT, NOTES`
+  (`CORRECT` = NO_SHOW↔COMPLETED, solo OWNER entro 48 h).
 
 ### `PATCH /admin/reservations/{id}/status`
 ```json
 { "version": 3, "status": "CONFIRMED", "zoneId": null, "tableIds": ["c2d1…"],
   "overrideSeats": false, "overrideReason": null, "reason": null, "note": null }
 ```
+- Stesso stato già raggiunto → `200` senza effetti (doppio clic). Versione diversa → `409 VERSION_CONFLICT`.
+- `reason` obbligatorio per `REJECTED` (`NO_CAPACITY`, `VENUE_DECISION`, `DUPLICATE`, `OTHER`) e `CANCELLED`
+  (`CUSTOMER_REQUEST`, `VENUE_DECISION`, `DUPLICATE`, `OTHER`).
 - `zoneId`: obbligatorio solo se il locale ha più zone e la richiesta non ne indica una (`422 ZONE_REQUIRED`).
-- `tableIds`: facoltativo; tavoli della stessa zona (`422 TABLE_OUTSIDE_ZONE`).
-- `overrideSeats` + `overrideReason`: eccezione posti tavolo, **solo OWNER** (`403 SEATS_OVERRIDE_FORBIDDEN` per STAFF; motivo mancante → `422 OVERRIDE_REASON_REQUIRED`); registrata nell'audit.
+- `tableIds`: facoltativo; tavoli attivi della stessa zona (`422 TABLE_OUTSIDE_ZONE`).
+- `overrideSeats` + `overrideReason`: eccezione posti tavolo, **solo OWNER** (`403 SEATS_OVERRIDE_FORBIDDEN` per STAFF;
+  motivo mancante → `422 OVERRIDE_REASON_REQUIRED`); registrata nell'audit (`TABLE_SEATS_OVERRIDE`).
 
-`200` → prenotazione aggiornata:
+`200` → `Detail` aggiornato. Errori: `409 CAPACITY_EXCEEDED`, `409 EVENT_BLOCKS_SLOT`, `409 TABLE_CONFLICT`,
+`409 VERSION_CONFLICT`, `409 INVALID_TRANSITION` (es. annullare dopo l'inizio, completare prima dell'arrivo,
+«non presentato» prima di 15 minuti dall'arrivo, confermare un orario passato), `422 SEATS_BELOW_PARTY_SIZE`
+(`context.seats`, `context.guests`), `422 VALIDATION_FAILED`, `403 FORBIDDEN` (correzione da STAFF).
+
+COMPLETED / NO_SHOW: i quanti futuri (dal quarto d'ora successivo) tornano liberi e le assegnazioni dei tavoli si accorciano.
+
+### `POST /admin/reservations` (telefono o email)
 ```json
-{
-  "id": "6f1c…", "publicRef": "FF-7K3Q9M", "status": "CONFIRMED", "version": 4,
-  "source": "WEB", "date": "2026-10-24", "time": "19:30", "endTime": "21:30", "occupiedUntil": "21:30", "guestCount": 4,
-  "customer": { "name": "Cliente demo", "phone": "+390000000001", "email": null },
-  "notes": "Tavolo fuori se possibile", "internalNote": null, "needsCallback": false,
-  "zone": { "id": "5d0a…", "name": "Locale" },
-  "window": { "id": "0b6e…", "name": "Aperitivo" }, "event": null,
-  "tables": [ { "id": "c2d1…", "code": "T4", "area": "Dehors", "maxSeats": 4, "seatsOverride": false } ],
-  "notifications": [ { "channel": "EMAIL", "state": "SKIPPED", "reason": "NO_EMAIL" },
-                     { "channel": "SMS", "state": "SKIPPED", "reason": "SMS_DISABLED" } ],
-  "warnings": []
-}
+{ "source": "PHONE", "date": "2026-10-25", "time": "20:00", "guests": 6, "name": "Cliente al telefono",
+  "phone": "0836 000 000", "email": null, "durationMinutes": 120, "zoneId": null,
+  "notes": null, "internalNote": "Ha chiamato alle 11", "confirmNow": true, "needsCallback": false, "tableIds": [] }
 ```
-Errori: `409 CAPACITY_EXCEEDED` (con `context.firstFullSlot`), `409 EVENT_BLOCKS_SLOT`, `409 EVENT_QUOTA_EXCEEDED`, `409 TABLE_CONFLICT` (`context.conflictingRef`), `409 VERSION_CONFLICT`, `409 INVALID_TRANSITION`, `422 SEATS_BELOW_PARTY_SIZE` (`context.seats`, `context.guestCount`), `422 VALIDATION_FAILED` (es. motivo mancante su REJECTED), `403` (correzione NO_SHOW↔COMPLETED o eccezione posti da STAFF).
+`201` con il `Detail`; `warnings` può contenere `OUTSIDE_SLOTS`, `DAY_CLOSED`, `SHORT_NOTICE`. Orario a passi di 15 minuti
+(`422 NOT_ALIGNED_15_MIN`), nel futuro, in un giorno con almeno una fascia della zona (`422 NO_SERVICE_WINDOW`).
+`durationMinutes` (multiplo di 15, 15–720) è facoltativo: default la permanenza standard della fascia. Con `confirmNow`
+valgono tutti i controlli della conferma e tutto si annulla se i posti non bastano.
 
-Uscita anticipata: `{ "version": 5, "status": "COMPLETED" }` prima di `endTime` libera i quanti futuri; la risposta riporta il nuovo `occupiedUntil`.
+## 5. Area gestori — configurazione prenotazioni (implementata in FASE 5)
 
-### `POST /admin/reservations` (telefono)
-```json
-{ "source": "PHONE", "date": "2026-10-25", "time": "20:00", "guestCount": 6, "eventId": null,
-  "customer": { "name": "Cliente demo B", "phone": "+39 000 000 0002", "email": null },
-  "durationMinutes": 120, "zoneId": null,
-  "notes": null, "internalNote": "Ha chiamato alle 11", "confirmNow": true, "tableIds": [] }
-```
-`201` con la prenotazione; `warnings` può contenere `OUTSIDE_SLOTS`, `SHORT_NOTICE`, `MIN_SEATS_ABOVE_PARTY`. `durationMinutes` (multiplo di 15, 30–360) è facoltativo: default la durata standard della fascia. Con `confirmNow` valgono tutti i controlli della conferma.
+`GET /admin/booking-config` (STAFF e OWNER): `{ zones, areas, tables, windows, policy, exceptions }`. Tutte le scritture
+solo OWNER (regola sull'URL e `@PreAuthorize`).
 
-## 5. Area gestori — configurazione prenotazioni (OWNER)
 
 | Metodo e percorso | Descrizione |
 |---|---|
-| `GET/POST /admin/capacity-zones`, `PUT /admin/capacity-zones/{id}` | zone di capienza e capienza fisica; riduzione sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` con orari e riferimenti |
-| `GET/POST /admin/areas`, `PUT/DELETE /admin/areas/{id}` | aree, ognuna in una zona (`DELETE` → `409` se ha tavoli) |
-| `GET/POST /admin/tables`, `PUT/DELETE /admin/tables/{id}` | tavoli (`DELETE` → disattiva se ha storico) |
-| `GET/POST /admin/service-windows`, `PUT/DELETE /admin/service-windows/{id}` | fasce con `maxCovers` (presenze contemporanee); riduzione sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` con date e orari in conflitto |
-| `GET /admin/booking-policy`, `PUT /admin/booking-policy` | regole generali (nuova riga con `effectiveFrom`) |
-| `GET/POST /admin/booking-exceptions`, `DELETE /admin/booking-exceptions/{id}` | chiusure agli arrivi e limiti di presenze per data (stesso controllo `409`) |
+| `POST /admin/capacity-zones`, `PUT /admin/capacity-zones/{id}` | zone e capienza fisica (`version`); riduzione sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` con i quanti in conflitto; nome già usato → `409 NAME_TAKEN` |
+| `POST /admin/areas`, `PUT/DELETE /admin/areas/{id}` | aree, ognuna in una zona (`DELETE` con tavoli → `409`) |
+| `POST /admin/tables`, `PUT/DELETE /admin/tables/{id}` | tavoli con posti min/max; `DELETE` → `204`, oppure `200 { deactivated: true }` se ha storico |
+| `POST /admin/service-windows`, `PUT/DELETE /admin/service-windows/{id}` | fasce per giorno della settimana: primo e ultimo arrivo (multipli di 15'), passo 15/30/60, permanenza 30–360', `maxCovers` facoltativo, validità; mai oltre la mezzanotte; la capienza dei quanti futuri viene ricalcolata (stesso controllo `409`) |
+| `PUT /admin/booking-policy` | regole: `webBookingEnabled` (aprirle richiede una zona attiva), `minLeadMinutes`, `maxAdvanceDays`, `maxPartySizeWeb`, `pendingExpiryMinutesBeforeStart` |
+| `POST /admin/booking-exceptions`, `DELETE /admin/booking-exceptions/{id}` | `CLOSED` (chiusura agli arrivi) o `CAPACITY_OVERRIDE` (limite di presenze) per data, di una fascia o di tutto il giorno (stesso controllo `409`) |
 
 ## 6. Area gestori — eventi
 

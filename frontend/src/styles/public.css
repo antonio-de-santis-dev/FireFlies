@@ -1116,6 +1116,11 @@ a.cal__day.has-event:hover { background: #a50d4f; }
 .slot-group__label { font-size: 0.8125rem; font-weight: 800; color: var(--ff-gold); }
 .slot-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .slot-chip { min-height: 44px; padding: 8px 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* orario non disponibile (completo, troppo vicino, chiuso): visibile ma barrato e non selezionabile */
+.slot-chip:disabled { opacity: 0.45; text-decoration: line-through; cursor: not-allowed; border-color: var(--ff-ink-700); transform: none; }
+/* campo trappola anti-spam: fuori dallo schermo, mai visibile né raggiungibile */
+.hp-field { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.booking-ref { font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
 .stepper--big { grid-template-columns: 56px 110px 56px; }
 .stepper--big .icon-btn { width: 56px; height: 56px; }
 .stepper--big .input { min-height: 56px; font-size: 1.75rem; font-family: var(--font-display); }

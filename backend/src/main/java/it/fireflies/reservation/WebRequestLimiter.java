@@ -8,6 +8,7 @@ import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,14 +19,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class WebRequestLimiter {
 
-    static final int MAX_PER_HOUR = 5;
     private static final Duration WINDOW = Duration.ofHours(1);
 
     private final Map<String, Deque<Instant>> byIp = new ConcurrentHashMap<>();
     private final Clock clock;
+    private final int maxPerHour;
 
-    WebRequestLimiter(Clock clock) {
+    /** {@code fireflies.reservations.web-requests-per-hour}: 5 come da regole; più alto solo nei test end-to-end. */
+    WebRequestLimiter(Clock clock, @Value("${fireflies.reservations.web-requests-per-hour:5}") int maxPerHour) {
         this.clock = clock;
+        this.maxPerHour = maxPerHour;
     }
 
     /** Secondi da attendere, oppure 0 se la richiesta è ammessa (e viene contata). */
@@ -36,7 +39,7 @@ public class WebRequestLimiter {
             while (!hits.isEmpty() && !hits.peekFirst().isAfter(now.minus(WINDOW))) {
                 hits.pollFirst();
             }
-            if (hits.size() >= MAX_PER_HOUR) {
+            if (hits.size() >= maxPerHour) {
                 return Math.max(1, Duration.between(now, hits.peekFirst().plus(WINDOW)).toSeconds());
             }
             hits.addLast(now);

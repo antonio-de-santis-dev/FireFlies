@@ -31,7 +31,7 @@ for (const [vp, w, h] of [['desktop', 1440, 900], ['mobile', 390, 844]] as const
     for (const v of await audit(page, `${vp} prenotazione`)) found.push(`prenotazione: ${v.id}`);
     await page.keyboard.press('Escape');
     await signIn(page);
-    for (const route of ['/gestione', '/gestione/menu', '/gestione/menu/{Tagliere FireFlies}', '/gestione/eventi', '/gestione/richieste', '/gestione/foto', '/gestione/sito', '/gestione/impostazioni']) {
+    for (const route of ['/gestione', '/gestione/menu', '/gestione/menu/{Tagliere FireFlies}', '/gestione/eventi', '/gestione/richieste', '/gestione/capienza', '/gestione/foto', '/gestione/sito', '/gestione/impostazioni']) {
       await go(page, route);
       for (const v of await audit(page, `${vp} #${route}`)) found.push(`${route}: ${v.id} (${v.impact}) ×${v.nodes.length}`);
     }

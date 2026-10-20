@@ -104,13 +104,13 @@ test('Demo 2 — desktop', async ({ browser }) => {
     await step('prenotazione-persone');
     await d.getByRole('button', { name: 'Avanti' }).click();
     await d.getByLabel('Nome').pressSequentially('Mario', { delay: 60 });
-    await d.getByLabel('Telefono o email').pressSequentially('333 000 0000', { delay: 40 });
+    await d.getByLabel('Telefono', { exact: true }).pressSequentially('300 000 0002', { delay: 40 });
     await d.getByLabel(/Ho letto l'informativa/).check();
     await step('prenotazione-dati');
     await d.getByRole('button', { name: 'Avanti' }).click();
     await step('prenotazione-riepilogo');
-    await d.getByRole('button', { name: 'Invia la richiesta (simulata)' }).click();
-    await step('conferma-simulata');
+    await d.getByRole('button', { name: 'Invia la richiesta' }).click();
+    await step('richiesta-in-attesa');
   });
 });
 

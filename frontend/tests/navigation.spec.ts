@@ -1,6 +1,6 @@
 // Test funzionali del walkthrough: ogni interazione richiesta dal brief deve funzionare davvero.
 import { expect, test } from '@playwright/test';
-import { go, signIn, stubGoogleMaps, watchProblems } from './helpers';
+import { bookableDay, go, signIn, stubGoogleMaps, testPhone, watchProblems } from './helpers';
 import { keepBaseline, photoSrc } from './baseline';
 
 test.describe('Area pubblica — desktop', () => {
@@ -77,7 +77,7 @@ test.describe('Area pubblica — desktop', () => {
     await expect(page.getByRole('dialog', { name: 'Richiedi un tavolo' })).toContainText('Per la serata DJ set al Fire');
   });
 
-  test('prenotazione in 6 passi: validazione, riepilogo modificabile, conferma simulata', async ({ page }) => {
+  test('richiesta tavolo in 5 passi: validazione, riepilogo modificabile, invio reale «in attesa»', async ({ page }) => {
     await go(page, '/');
     await page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click();
     const dialog = page.getByRole('dialog', { name: 'Richiedi un tavolo' });
@@ -85,10 +85,11 @@ test.describe('Area pubblica — desktop', () => {
     // passo 1: giorno obbligatorio
     await dialog.getByRole('button', { name: 'Avanti' }).click();
     await expect(dialog.locator('#bk-date-err')).toContainText('Scegli il giorno');
-    await dialog.getByRole('radiogroup', { name: 'Prossimi 14 giorni' }).getByRole('radio').nth(3).click();
+    await dialog.locator('#bk-date').fill(bookableDay(2, 1));
     await dialog.getByRole('button', { name: 'Avanti' }).click();
-    // passo 2: orario
+    // passo 2: orari veri del giorno, dal backend
     await expect(dialog.getByText('Passo 2 di 5')).toBeVisible();
+    await expect(dialog.getByRole('radiogroup', { name: 'Aperitivo' })).toBeVisible();
     await dialog.getByRole('button', { name: 'Avanti' }).click();
     await expect(dialog.locator('#bk-time-err')).toBeVisible();
     await dialog.getByRole('radio', { name: '19:30' }).click();
@@ -97,15 +98,16 @@ test.describe('Area pubblica — desktop', () => {
     await dialog.getByRole('button', { name: '6 persone' }).click();
     await expect(dialog.getByLabel('Persone', { exact: true })).toHaveValue('6');
     await dialog.getByRole('button', { name: 'Avanti' }).click();
-    // passo 4: dati con errori inline
+    // passo 4: dati con errori inline; telefono obbligatorio, email facoltativa
     await dialog.getByRole('button', { name: 'Avanti' }).click();
     await expect(dialog.getByLabel('Nome')).toHaveAttribute('aria-invalid', 'true');
     await expect(dialog.getByLabel('Nome')).toBeFocused();
+    await expect(dialog.locator('#bk-phone-err')).toContainText('Il telefono è obbligatorio');
     await dialog.getByLabel('Nome').fill('Prova');
-    await dialog.getByLabel('Telefono o email').fill('non-valido');
+    await dialog.getByLabel('Telefono', { exact: true }).fill('non-valido');
     await dialog.getByRole('button', { name: 'Avanti' }).click();
-    await expect(dialog.locator('#bk-contact-err')).toContainText('Controlla il recapito');
-    await dialog.getByLabel('Telefono o email').fill('prova@example.invalid');
+    await expect(dialog.locator('#bk-phone-err')).toContainText('Controlla il numero');
+    await dialog.getByLabel('Telefono', { exact: true }).fill(testPhone());
     await dialog.getByLabel(/Ho letto l'informativa/).check();
     await dialog.getByRole('button', { name: 'Avanti' }).click();
     // passo 5: riepilogo con modifica
@@ -116,11 +118,13 @@ test.describe('Area pubblica — desktop', () => {
     await dialog.getByRole('button', { name: 'Avanti' }).click();
     await dialog.getByRole('button', { name: 'Avanti' }).click();
     await expect(dialog.locator('.booking-recap')).toContainText('4');
-    await dialog.getByRole('button', { name: 'Invia la richiesta (simulata)' }).click();
-    // passo 6: conferma simulata, senza falsa prenotazione
-    const done = page.getByRole('dialog', { name: 'Richiesta simulata' });
-    await expect(done).toContainText('Nessuna prenotazione è stata effettuata.');
-    await expect(done).toContainText('nessun dato è stato inviato');
+    await dialog.getByRole('button', { name: 'Invia la richiesta' }).click();
+    // esito: richiesta salvata in attesa, mai presentata come prenotazione confermata
+    const done = page.getByRole('dialog', { name: 'Richiesta inviata' });
+    await expect(done).toContainText('Richiesta ricevuta: non è ancora una prenotazione.');
+    await expect(done).toContainText('riservato solo dopo la conferma del locale');
+    await expect(done.locator('.booking-ref')).toHaveText(/^FF-[A-Z0-9]{6}$/);
+    await expect(done).toContainText('In attesa di conferma');
     await done.getByRole('button', { name: 'Chiudi' }).first().click();
     await expect(done).toBeHidden();
   });
@@ -220,7 +224,7 @@ test.describe('Area gestori', () => {
     await expect(page.locator('.menu-item', { hasText: 'Tagliere FireFlies' }).locator('.badge--demo')).toHaveCount(0);
   });
 
-  test('eventi: nuova bozza con validazione, richieste: cambio stato', async ({ page }) => {
+  test('eventi: nuova bozza con validazione', async ({ page }) => {
     await signIn(page);
     await go(page, '/gestione/eventi/nuovo');
     await page.getByRole('button', { name: 'Pubblica' }).click();
@@ -230,12 +234,6 @@ test.describe('Area gestori', () => {
     await expect(page.getByText('Per pubblicare una serata serve la data')).toBeVisible();
     await page.getByRole('button', { name: 'Salva bozza' }).click();
     await expect(page.getByRole('heading', { level: 2, name: 'Serata di prova' })).toBeVisible();
-
-    await go(page, '/gestione/richieste');
-    await page.getByLabel('Cambia stato della richiesta di Cliente demo A').selectOption('confermata');
-    await expect(page.getByRole('status')).toContainText('SMS di conferma SIMULATO');
-    await page.getByRole('button', { name: /^Nuova/ }).click();
-    await expect(page.locator('tbody tr')).toHaveCount(1);
   });
 
   test('impostazioni: orari verificati tolgono l’etichetta dal sito', async ({ page }) => {
@@ -456,7 +454,7 @@ test.describe('Revisione 19/10', () => {
     await go(page, '/');
     await page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click();
     const d = page.getByRole('dialog');
-    await d.getByRole('radiogroup', { name: 'Prossimi 14 giorni' }).getByRole('radio').nth(3).click();
+    await d.locator('#bk-date').fill(bookableDay());
     await d.getByRole('button', { name: 'Avanti' }).click();
     await d.getByRole('radio', { name: '19:30' }).click();
     await d.getByRole('button', { name: 'Avanti' }).click();
@@ -464,7 +462,7 @@ test.describe('Revisione 19/10', () => {
     for (const withErrors of [false, true]) {
       if (withErrors) await d.getByRole('button', { name: 'Avanti' }).click();
       const a = (await d.getByLabel('Nome').boundingBox())!;
-      const b = (await d.getByLabel('Telefono o email').boundingBox())!;
+      const b = (await d.getByLabel('Telefono', { exact: true }).boundingBox())!;
       expect(Math.abs(a.y - b.y)).toBeLessThan(1);
       expect(Math.abs(a.height - b.height)).toBeLessThan(1);
     }
@@ -481,15 +479,5 @@ test.describe('Revisione 19/10', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.locator('.login__media')).toBeHidden();
     await expect(page.getByRole('button', { name: 'Accedi' })).toBeVisible();
-  });
-
-  test('richieste: «confermata» mostra l’SMS simulato (telefono) o l’assenza di SMS (email)', async ({ page }) => {
-    await signIn(page);
-    await go(page, '/gestione/richieste');
-    await page.getByLabel('Cambia stato della richiesta di Cliente demo A').selectOption('confermata');
-    await expect(page.getByRole('status')).toContainText('SMS di conferma SIMULATO a +39 000 000 0001');
-    await expect(page.getByRole('row', { name: /Cliente demo A/ })).toContainText(/SMS simulato · \d\d:\d\d/);
-    await page.getByLabel('Cambia stato della richiesta di Cliente demo B').selectOption('confermata');
-    await expect(page.getByRole('row', { name: /Cliente demo B/ })).toContainText('Nessun SMS: recapito email');
   });
 });

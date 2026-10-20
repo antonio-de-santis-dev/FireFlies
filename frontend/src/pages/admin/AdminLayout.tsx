@@ -1,8 +1,9 @@
-import { CalendarDays, ExternalLink, Images, Inbox, LayoutDashboard, LogOut, Megaphone, Palette, Settings, UtensilsCrossed } from 'lucide-react';
+import { Armchair, CalendarDays, ExternalLink, Images, Inbox, LayoutDashboard, LogOut, Megaphone, Palette, Settings, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { logout as serverLogout } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import { loadAdminMenu, loadAnnouncements, loadLibrary, loadSettings, loadSiteContent } from '../../api/content';
+import { listReservations } from '../../api/reservations';
 import { Toast } from '../../components/PublicLayout';
 import { Img } from '../../components/ui';
 import { logo } from '../../data/assets';
@@ -15,6 +16,7 @@ export const ADMIN_NAV = [
   { to: '/gestione/menu', label: 'Menu e prezzi', icon: UtensilsCrossed, owner: false },
   { to: '/gestione/eventi', label: 'Eventi', icon: CalendarDays, owner: false },
   { to: '/gestione/richieste', label: 'Richieste', icon: Inbox, owner: false },
+  { to: '/gestione/capienza', label: 'Capienza e tavoli', icon: Armchair, owner: false },
   { to: '/gestione/foto', label: 'Foto', icon: Images, owner: false },
   { to: '/gestione/comunicazioni', label: 'Comunicazioni', icon: Megaphone, owner: false },
   { to: '/gestione/sito', label: 'Personalizza il sito', icon: Palette, owner: true },
@@ -54,10 +56,32 @@ function useAdminData() {
   return ready;
 }
 
+/** Conta le richieste «in attesa» (contatore nel menu). Silenziosa: un errore non deve disturbare la pagina. */
+export function refreshPending(dispatch: ReturnType<typeof useStore>['dispatch']) {
+  return listReservations({ status: ['PENDING'], size: 1 })
+    .then((r) => dispatch({ type: 'requests/pending', count: r.total }))
+    .catch(() => undefined);
+}
+
+function usePendingCount() {
+  const { dispatch, role } = useStore();
+  useEffect(() => {
+    if (!role) return;
+    void refreshPending(dispatch);
+    const timer = window.setInterval(() => void refreshPending(dispatch), 60_000);
+    const onFocus = () => void refreshPending(dispatch);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [role, dispatch]);
+}
+
 export function AdminLayout({ children }: { children: ReactNode }) {
-  const { dispatch, requests, role } = useStore();
+  const { dispatch, pendingRequests: fresh, role } = useStore();
   const ready = useAdminData();
-  const fresh = requests.filter((r) => r.status === 'nuova').length;
+  usePendingCount();
   const logout = async () => {
     try {
       await serverLogout();
@@ -73,7 +97,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         Vai al contenuto
       </a>
       <div className="demo-bar demo-bar--admin" role="note">
-        <span><strong>Area gestori</strong><span className="demo-bar__more"> · menu, foto, testi, orari e avvisi si salvano sul server; eventi e richieste sono ancora dimostrativi</span></span>
+        <span><strong>Area gestori</strong><span className="demo-bar__more"> · menu, foto, testi, orari, avvisi e prenotazioni si salvano sul server; gli eventi sono ancora dimostrativi</span></span>
       </div>
       <div className="admin__shell">
         <aside className="admin__side">
@@ -89,7 +113,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                     <Icon size={20} aria-hidden="true" />
                     <span>{label}</span>
                     {to === '/gestione/richieste' && fresh > 0 && (
-                      <span className="admin__count" aria-label={`${fresh} nuove`}>{fresh}</span>
+                      <span className="admin__count" aria-label={`${fresh} in attesa`}>{fresh}</span>
                     )}
                   </Link>
                 </li>

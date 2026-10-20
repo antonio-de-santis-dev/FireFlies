@@ -7,7 +7,6 @@ import { photos, type Asset } from './data/assets';
 import type { Announcement, MediaItem, SiteContent } from './data/content';
 import { events as seedEvents, type FireEvent } from './data/events';
 import type { Category, MenuItem } from './data/menu';
-import { demoRequests, type BookingRequest, type RequestStatus } from './data/requests';
 import { defaultSettings, type SiteSettings } from './data/site';
 import { navigate } from './router';
 
@@ -20,7 +19,8 @@ type State = {
   categories: Category[];
   allergens: { code: string; name: string }[];
   events: FireEvent[];
-  requests: BookingRequest[];
+  /** Richieste tavolo «in attesa» (dal backend): contatore nel menu dell'area gestori. */
+  pendingRequests: number;
   settings: SiteSettings;
   content: SiteContent;
   media: MediaItem[]; // sito pubblico: le foto della galleria; area gestori: l'intera libreria
@@ -42,7 +42,7 @@ type Action =
   | { type: 'menu/save'; item: MenuItem }
   | { type: 'menu/remove'; id: string }
   | { type: 'event/save'; event: FireEvent }
-  | { type: 'request/status'; id: string; status: RequestStatus; notice?: BookingRequest['notice'] }
+  | { type: 'requests/pending'; count: number }
   | { type: 'settings/save'; settings: SiteSettings }
   | { type: 'content/save'; content: SiteContent; mediaIndex?: Record<string, Asset> }
   | { type: 'media/add'; item: MediaItem }
@@ -85,8 +85,8 @@ function reducer(state: State, action: Action): State {
       return { ...state, menu: state.menu.filter((m) => m.id !== action.id) };
     case 'event/save':
       return { ...state, events: upsert(state.events, action.event) };
-    case 'request/status':
-      return { ...state, requests: state.requests.map((r) => (r.id === action.id ? { ...r, status: action.status, notice: action.notice ?? r.notice } : r)) };
+    case 'requests/pending':
+      return { ...state, pendingRequests: action.count };
     case 'settings/save':
       return { ...state, settings: action.settings };
     case 'content/save':
@@ -155,7 +155,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     categories: [],
     allergens: [],
     events: seedEvents,
-    requests: demoRequests,
+    pendingRequests: 0,
     settings: { ...defaultSettings, hours: defaultSettings.hours.map((h) => ({ ...h, open: null, close: null })) },
     content: emptyContent,
     media: [],

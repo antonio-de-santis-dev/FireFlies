@@ -1,0 +1,192 @@
+// Prenotazioni V1 (FASE 5): richieste dal sito, area gestori, configurazione di zone, fasce e tavoli.
+// Il backend è l'unica fonte di verità: qui solo forme delle risposte e chiamate.
+import { api } from './client';
+
+export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
+export type ReservationSource = 'WEB' | 'PHONE' | 'EMAIL';
+
+export const STATUS_LABEL: Record<ReservationStatus, string> = {
+  PENDING: 'In attesa',
+  CONFIRMED: 'Confermata',
+  REJECTED: 'Rifiutata',
+  CANCELLED: 'Annullata',
+  COMPLETED: 'Completata',
+  NO_SHOW: 'Non presentato',
+};
+
+export const SOURCE_LABEL: Record<ReservationSource, string> = { WEB: 'Sito', PHONE: 'Telefono', EMAIL: 'Email' };
+
+export const REASON_LABEL: Record<string, string> = {
+  NO_CAPACITY: 'Posti esauriti',
+  VENUE_DECISION: 'Decisione del locale',
+  DUPLICATE: 'Richiesta doppia',
+  OTHER: 'Altro',
+  CUSTOMER_REQUEST: 'Richiesta del cliente',
+  EXPIRED: 'Scaduta senza risposta',
+};
+
+/** «19:00:00» → «19:00» */
+export const hhmm = (t: string | null | undefined) => (t ?? '').slice(0, 5);
+
+/** Chiave casuale per l'intestazione Idempotency-Key (anche fuori da HTTPS, dove crypto.randomUUID manca). */
+export function newIdempotencyKey(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
+// --- pubblico -------------------------------------------------------------------------------------------------
+
+export type SlotReason = 'TOO_EARLY' | 'DAY_CLOSED' | 'FULL' | 'EVENT' | null;
+export type BookingOptions = {
+  webBookingEnabled: boolean; maxPartySize: number; maxAdvanceDays: number; minLeadMinutes: number;
+  firstDate: string | null; lastDate: string | null; date: string | null;
+  groups: { name: string; slots: { time: string; available: boolean; reason: SlotReason }[] }[];
+};
+export type Receipt = { reference: string; status: ReservationStatus; date: string; time: string; guests: number; message: string };
+export type WebRequest = {
+  date: string; time: string; guests: number; name: string; phone: string; email: string; notes: string;
+  privacyAccepted: boolean; website: string;
+};
+
+export const bookingOptions = (date?: string, guests?: number) => {
+  const q = new URLSearchParams();
+  if (date) q.set('date', date);
+  if (guests) q.set('guests', String(guests));
+  const qs = q.toString();
+  return api.get<BookingOptions>(`/public/booking-options${qs ? `?${qs}` : ''}`);
+};
+
+export const sendRequest = (body: WebRequest, idempotencyKey: string) =>
+  api.post<Receipt>('/public/reservations', body, { 'Idempotency-Key': idempotencyKey });
+
+// --- area gestori ---------------------------------------------------------------------------------------------
+
+export type Summary = {
+  id: string; reference: string; status: ReservationStatus; statusReason: string | null; source: ReservationSource;
+  date: string; time: string; endTime: string; guests: number; customerName: string; customerPhone: string;
+  customerEmail: string | null; notes: string | null; needsCallback: boolean; zoneId: string | null; tables: string[];
+  createdAt: string; version: number;
+};
+export type Action = 'CONFIRM' | 'REJECT' | 'CANCEL' | 'EDIT' | 'TABLES' | 'COMPLETE' | 'NO_SHOW' | 'CORRECT' | 'NOTES';
+export type Detail = {
+  summary: Summary; notes: string | null; internalNote: string | null; zoneName: string | null; durationMinutes: number;
+  createdBy: string | null; handledBy: string | null; confirmedAt: string | null; closedAt: string | null; updatedAt: string;
+  tables: { tableId: string; code: string; area: string; maxSeats: number; seatsOverride: boolean; overrideReason: string | null }[];
+  history: { fromStatus: ReservationStatus | null; toStatus: ReservationStatus; reason: string | null; note: string | null; by: string | null; at: string }[];
+  changes: { action: string; by: string | null; at: string; details: Record<string, unknown> }[];
+  notifications: { template: string; channel: 'EMAIL' | 'SMS'; recipient: 'CUSTOMER' | 'STAFF'; state: string; skipReason: string | null; delivered: boolean; createdAt: string }[];
+  capacity: { zoneId: string; capacity: number; minFree: number; pendingOthers: number; eventBlocks: boolean; fits: boolean } | null;
+  actions: Action[];
+  warnings: string[];
+};
+export type ListResult = { items: Summary[]; total: number; page: number; size: number; counts: Partial<Record<ReservationStatus, number>> };
+export type ListFilter = { from?: string; to?: string; status?: ReservationStatus[]; source?: ReservationSource | ''; q?: string; needsCallback?: boolean; size?: number };
+
+export function listReservations(f: ListFilter) {
+  const q = new URLSearchParams();
+  if (f.from) q.set('from', f.from);
+  if (f.to) q.set('to', f.to);
+  if (f.status?.length) q.set('status', f.status.join(','));
+  if (f.source) q.set('source', f.source);
+  if (f.q?.trim()) q.set('q', f.q.trim());
+  if (f.needsCallback) q.set('needsCallback', 'true');
+  q.set('size', String(f.size ?? 100));
+  return api.get<ListResult>(`/admin/reservations?${q}`);
+}
+
+export const getReservation = (id: string) => api.get<Detail>(`/admin/reservations/${id}`);
+
+export type StatusChange = {
+  version: number; status: ReservationStatus; reason?: string; note?: string; tableIds?: string[];
+  overrideSeats?: boolean; overrideReason?: string;
+};
+export const changeStatus = (id: string, body: StatusChange) => api.patch<Detail>(`/admin/reservations/${id}/status`, body);
+
+export type ReservationUpdate = {
+  version: number; date?: string; time?: string; durationMinutes?: number; guests?: number; name?: string; phone?: string;
+  email?: string; notes?: string; internalNote?: string; needsCallback?: boolean;
+};
+export const updateReservation = (id: string, body: ReservationUpdate) => api.patch<Detail>(`/admin/reservations/${id}`, body);
+
+export const changeTables = (id: string, body: { version: number; tableIds: string[]; overrideSeats?: boolean; overrideReason?: string }) =>
+  api.put<Detail>(`/admin/reservations/${id}/tables`, body);
+
+export type ManualRequest = {
+  source: 'PHONE' | 'EMAIL'; date: string; time: string; durationMinutes?: number; guests: number; name: string; phone: string;
+  email?: string; notes?: string; internalNote?: string; confirmNow: boolean; needsCallback: boolean; tableIds?: string[];
+};
+export const createManual = (body: ManualRequest) => api.post<Detail>('/admin/reservations', body);
+
+export type DayCapacity = {
+  date: string;
+  zones: { zoneId: string; name: string; physicalCapacity: number; quanta: { time: string; capacity: number; confirmed: number; pending: number; event: boolean }[] }[];
+};
+export const dayCapacity = (date: string) => api.get<DayCapacity>(`/admin/capacity?date=${date}`);
+
+// --- configurazione (lettura: staff e titolare; scrittura: solo titolare) ------------------------------------
+
+export type Zone = { id: string; name: string; physicalCapacity: number; active: boolean; sortOrder: number; version: number };
+export type Area = { id: string; zoneId: string; name: string; active: boolean; sortOrder: number };
+export type Table = { id: string; areaId: string; zoneId: string; code: string; minSeats: number; maxSeats: number; active: boolean; sortOrder: number };
+export type ServiceWindow = {
+  id: string; zoneId: string; isoDay: number; name: string; firstStart: string; lastStart: string; slotMinutes: number;
+  defaultDurationMinutes: number; maxCovers: number | null; validFrom: string; validTo: string | null; active: boolean;
+};
+export type Policy = {
+  id: string; effectiveFrom: string; webBookingEnabled: boolean; minLeadMinutes: number; maxAdvanceDays: number;
+  maxPartySizeWeb: number; pendingExpiryMinutesBeforeStart: number;
+};
+export type BookingException = { id: string; serviceDate: string; serviceWindowId: string | null; kind: 'CLOSED' | 'CAPACITY_OVERRIDE'; capacityOverride: number | null; reason: string | null };
+export type BookingConfig = { zones: Zone[]; areas: Area[]; tables: Table[]; windows: ServiceWindow[]; policy: Policy | null; exceptions: BookingException[] };
+
+export const bookingConfig = () => api.get<BookingConfig>('/admin/booking-config');
+
+export const updateZone = (z: Zone, patch: Partial<Pick<Zone, 'name' | 'physicalCapacity' | 'active'>>) =>
+  api.put<Zone>(`/admin/capacity-zones/${z.id}`, {
+    version: z.version, name: patch.name ?? z.name, physicalCapacity: patch.physicalCapacity ?? z.physicalCapacity,
+    active: patch.active ?? z.active, sortOrder: z.sortOrder,
+  });
+
+export const savePolicy = (p: Omit<Policy, 'id' | 'effectiveFrom'>) => api.put<Policy>('/admin/booking-policy', p);
+
+export const createArea = (zoneId: string, name: string) => api.post<Area>('/admin/areas', { zoneId, name });
+export const deleteArea = (id: string) => api.del(`/admin/areas/${id}`);
+
+export type TableInput = { areaId: string; code: string; minSeats: number; maxSeats: number; active?: boolean; sortOrder?: number };
+export const createTable = (t: TableInput) => api.post<Table>('/admin/tables', t);
+export const updateTable = (id: string, t: TableInput) => api.put<Table>(`/admin/tables/${id}`, t);
+export const deleteTable = (id: string) => api.del(`/admin/tables/${id}`);
+
+export type WindowInput = Omit<ServiceWindow, 'id' | 'validFrom' | 'validTo'> & { validFrom?: string | null; validTo?: string | null };
+export const createWindow = (w: WindowInput) => api.post<ServiceWindow>('/admin/service-windows', w);
+export const updateWindow = (id: string, w: WindowInput) => api.put<ServiceWindow>(`/admin/service-windows/${id}`, w);
+export const deleteWindow = (id: string) => api.del(`/admin/service-windows/${id}`);
+
+export const addException = (e: { serviceDate: string; serviceWindowId?: string | null; kind: BookingException['kind']; capacityOverride?: number | null; reason?: string }) =>
+  api.post<BookingException>('/admin/booking-exceptions', e);
+export const deleteException = (id: string) => api.del(`/admin/booking-exceptions/${id}`);
+
+/** Testo per lo stato di una notifica: mai «inviata» se non è partita davvero. */
+export function notificationLabel(n: Detail['notifications'][number]): string {
+  if (n.delivered) return 'Inviata';
+  if (n.state === 'PENDING') return n.channel === 'EMAIL' ? 'Email preparata, non inviata' : 'Preparata, non inviata';
+  if (n.skipReason === 'SMS_DISABLED') return 'SMS non previsto (canale spento)';
+  if (n.skipReason === 'NO_RECIPIENT') return n.recipient === 'STAFF' ? "Non preparata: manca l'email del locale" : 'Non preparata: nessuna email del cliente';
+  if (n.skipReason === 'SUPERSEDED') return 'Superata da un aggiornamento';
+  if (n.state === 'FAILED' || n.state === 'DEAD') return 'Invio non riuscito';
+  return 'Non inviata';
+}
+
+export const TEMPLATE_LABEL: Record<string, string> = {
+  RESERVATION_RECEIVED: 'Ricevuta della richiesta',
+  RESERVATION_NEW_FOR_VENUE: 'Avviso al locale',
+  RESERVATION_CONFIRMED: 'Conferma',
+  RESERVATION_REJECTED: 'Rifiuto',
+  RESERVATION_CANCELLED: 'Annullamento',
+  RESERVATION_UPDATED: 'Modifica',
+  RESERVATION_EXPIRED: 'Scadenza',
+};

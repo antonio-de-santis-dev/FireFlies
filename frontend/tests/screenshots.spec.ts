@@ -90,14 +90,14 @@ test.describe('desktop', () => {
     await page.waitForTimeout(200);
     await shot(page, 'desktop', '13-prenotazione-errori.png', '/eventi/dj-set-esempio (dialog)', 'Passo 4: errori di compilazione');
     await dialog.getByLabel('Nome').fill('Mario');
-    await dialog.getByLabel('Telefono o email').fill('mario@example.invalid');
+    await dialog.getByLabel('Telefono', { exact: true }).fill('300 000 0000');
     await dialog.getByLabel(/Ho letto l'informativa/).check();
     await dialog.getByRole('button', { name: 'Avanti' }).click();
     await page.waitForTimeout(200);
     await shot(page, 'desktop', '14-prenotazione-riepilogo.png', '/eventi/dj-set-esempio (dialog)', 'Passo 5: riepilogo modificabile');
-    await dialog.getByRole('button', { name: 'Invia la richiesta (simulata)' }).click();
+    await dialog.getByRole('button', { name: 'Invia la richiesta' }).click();
     await page.waitForTimeout(300);
-    await shot(page, 'desktop', '15-prenotazione-conferma-simulata.png', '/eventi/dj-set-esempio (dialog)', 'Passo 6: conferma simulata, nessuna prenotazione effettuata');
+    await shot(page, 'desktop', '15-prenotazione-conferma-simulata.png', '/eventi/dj-set-esempio (dialog)', 'Esito: richiesta ricevuta «in attesa», non ancora una prenotazione');
     await page.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).first().click();
 
     await go(page, '/locale');
@@ -224,15 +224,15 @@ test.describe('smartphone', () => {
     await shot(page, 'mobile', '12-prenotazione-persone.png', '/eventi (dialog)', 'Passo 3: persone');
     await dialog.getByRole('button', { name: 'Avanti' }).click();
     await dialog.getByLabel('Nome').fill('Giulia');
-    await dialog.getByLabel('Telefono o email').fill('333 000 0000');
+    await dialog.getByLabel('Telefono', { exact: true }).fill('300 000 0001');
     await dialog.getByLabel(/Ho letto l'informativa/).check();
     await shot(page, 'mobile', '13-prenotazione-dati.png', '/eventi (dialog)', 'Passo 4: dati');
     await dialog.getByRole('button', { name: 'Avanti' }).click();
     await page.waitForTimeout(200);
     await shot(page, 'mobile', '14-prenotazione-riepilogo.png', '/eventi (dialog)', 'Passo 5: riepilogo');
-    await dialog.getByRole('button', { name: 'Invia la richiesta (simulata)' }).click();
+    await dialog.getByRole('button', { name: 'Invia la richiesta' }).click();
     await page.waitForTimeout(300);
-    await shot(page, 'mobile', '15-prenotazione-conferma.png', '/eventi (dialog)', 'Passo 6: conferma simulata');
+    await shot(page, 'mobile', '15-prenotazione-conferma.png', '/eventi (dialog)', 'Esito: richiesta ricevuta «in attesa»');
     await page.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).first().click();
 
     await go(page, '/galleria');
@@ -300,10 +300,10 @@ test.describe('revisione 19/10 — schermate modificate', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await signIn(page);
     await go(page, '/gestione/richieste');
-    await page.getByLabel('Cambia stato della richiesta di Cliente demo A').selectOption('confermata');
-    await page.waitForTimeout(200);
-    await shot(page, 'desktop', '39-richieste-sms-simulato.png', '/gestione/richieste', 'Stato «Confermata»: SMS simulato (avviso e nota nella riga)');
-    await page.getByRole('status').filter({ hasText: 'SIMULATO' }).waitFor({ state: 'detached' }).catch(() => {});
+    await page.getByRole('button', { name: /^Gestisci la richiesta/ }).first().click();
+    await page.waitForTimeout(300);
+    await shot(page, 'desktop', '39-richieste-dettaglio.png', '/gestione/richieste (dialog)', 'Dettaglio richiesta: posti, azioni, notifiche preparate e storico');
+    await page.keyboard.press('Escape');
     await page.waitForTimeout(4400);
     await go(page, '/gestione/sito');
     await loadAllImages(page);

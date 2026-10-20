@@ -4,11 +4,11 @@ info:
   license:
     name: Proprietario — uso riservato
     identifier: LicenseRef-Proprietary
-  version: 1.0.0-draft.4
-  summary: Contratto V1. Implementati autenticazione (FASE 3), menu, foto, contenuti e avvisi (FASE 4); prenotazioni in bozza.
+  version: 1.0.0-draft.5
+  summary: Contratto V1. Implementati autenticazione (FASE 3), menu, foto, contenuti e avvisi (FASE 4), prenotazioni (FASE 5).
   description: |
     Autenticazione, menu, foto, contenuti del sito e avvisi sono implementati e verificati dai test.
-    Le prenotazioni restano bozza di progettazione fino alla FASE 5; gli altri endpoint sono in API_CONTRACT.md.
+    Le prenotazioni (FASE 5) sono implementate; configurazione ed eventi sono descritti in API_CONTRACT.md §5–6.
     Orari locali in Europe/Rome. Errori in application/problem+json.
 servers:
   - url: /api/v1
@@ -34,9 +34,8 @@ paths:
       operationId: getBookingOptions
       summary: Fasce e slot prenotabili di un giorno
       parameters:
-        - { name: date, in: query, required: true, schema: { type: string, format: date } }
-        - { name: eventId, in: query, required: false, schema: { type: string, format: uuid } }
-        - { name: guests, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 50, default: 2 } }
+        - { name: date, in: query, required: false, schema: { type: string, format: date } }
+        - { name: guests, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 50, default: 1 } }
       responses:
         '200':
           description: Opzioni del giorno
@@ -61,12 +60,7 @@ paths:
             schema: { $ref: '#/components/schemas/PublicReservationRequest' }
       responses:
         '201':
-          description: Richiesta creata
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PublicReservationReceipt' }
-        '200':
-          description: Ripetizione con la stessa Idempotency-Key e gli stessi dati
+          description: Richiesta creata (anche ripetendo lo stesso invio con la stessa Idempotency-Key)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PublicReservationReceipt' }
@@ -557,15 +551,14 @@ paths:
       summary: Elenco prenotazioni filtrato
       security: [{ session: [] }]
       parameters:
-        - { name: dateFrom, in: query, schema: { type: string, format: date } }
-        - { name: dateTo, in: query, schema: { type: string, format: date } }
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
         - { name: status, in: query, schema: { type: array, items: { $ref: '#/components/schemas/ReservationStatus' } }, style: form, explode: false }
         - { name: source, in: query, schema: { $ref: '#/components/schemas/ReservationSource' } }
-        - { name: eventId, in: query, schema: { type: string, format: uuid } }
         - { name: needsCallback, in: query, schema: { type: boolean } }
         - { name: q, in: query, schema: { type: string, maxLength: 80 } }
         - { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
-        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 25 } }
+        - { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
       responses:
         '200':
           description: Pagina di prenotazioni
@@ -586,7 +579,6 @@ paths:
       summary: Inserimento da telefono o email
       security: [{ session: [] }]
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/CsrfHeader'
       requestBody:
         required: true
@@ -859,96 +851,89 @@ components:
 
     BookingOptions:
       type: object
-      required: [date, webBookingEnabled, maxPartySize, windows]
+      required: [webBookingEnabled, maxPartySize, maxAdvanceDays, minLeadMinutes, groups]
       properties:
-        date: { type: string, format: date }
         webBookingEnabled: { type: boolean }
         maxPartySize: { type: integer }
-        message: { type: string }
-        windows:
+        maxAdvanceDays: { type: integer }
+        minLeadMinutes: { type: integer }
+        firstDate: { type: [string, 'null'], format: date }
+        lastDate: { type: [string, 'null'], format: date }
+        date: { type: [string, 'null'], format: date }
+        groups:
           type: array
           items:
             type: object
             required: [name, slots]
             properties:
-              windowId: { type: [string, 'null'], format: uuid }
-              eventId: { type: [string, 'null'], format: uuid }
               name: { type: string }
               slots:
                 type: array
                 items:
                   type: object
-                  required: [time, state]
+                  required: [time, available]
                   properties:
-                    time: { $ref: '#/components/schemas/LocalTime' }
-                    state: { type: string, enum: [OPEN, FULL, CLOSED, EVENT, TOO_EARLY] }
-
-    CustomerInput:
-      type: object
-      required: [name, phone]
-      properties:
-        name: { type: string, minLength: 2, maxLength: 80 }
-        phone: { $ref: '#/components/schemas/Phone' }
-        email: { type: [string, 'null'], format: email, maxLength: 254 }
+                    time: { type: string, examples: ['19:30:00'] }
+                    available: { type: boolean }
+                    reason: { type: [string, 'null'], enum: [FULL, TOO_EARLY, DAY_CLOSED, EVENT, null] }
 
     PublicReservationRequest:
       type: object
-      required: [date, time, guestCount, customer, privacyNoticeVersion, privacyAcknowledged]
-      additionalProperties: false
+      required: [date, time, guests, name, phone, privacyAccepted]
       properties:
         date: { type: string, format: date }
-        time: { $ref: '#/components/schemas/LocalTime' }
-        guestCount: { type: integer, minimum: 1, maximum: 50 }
-        eventId: { type: [string, 'null'], format: uuid }
-        areaPreferenceId: { type: [string, 'null'], format: uuid }
-        customer: { $ref: '#/components/schemas/CustomerInput' }
+        time: { type: string, examples: ['19:30'] }
+        guests: { type: integer, minimum: 1, maximum: 50 }
+        name: { type: string, minLength: 2, maxLength: 80 }
+        phone: { $ref: '#/components/schemas/Phone' }
+        email: { type: [string, 'null'], format: email, maxLength: 254 }
         notes: { type: [string, 'null'], maxLength: 500 }
-        privacyNoticeVersion: { type: string, maxLength: 20 }
-        privacyAcknowledged: { type: boolean, const: true }
+        privacyAccepted: { type: boolean, const: true }
         website: { type: string, maxLength: 0, description: 'Campo trappola anti-bot: deve restare vuoto' }
 
     PublicReservationReceipt:
       type: object
-      required: [publicRef, status, date, time, guestCount, message]
+      required: [reference, status, date, time, guests, message]
       properties:
-        publicRef: { type: string, examples: [FF-7K3Q9M] }
+        reference: { type: string, examples: [FF-7K3Q9M] }
         status: { $ref: '#/components/schemas/ReservationStatus' }
         date: { type: string, format: date }
-        time: { $ref: '#/components/schemas/LocalTime' }
-        guestCount: { type: integer }
+        time: { type: string }
+        guests: { type: integer }
         message: { type: string }
 
     ManualReservationRequest:
       type: object
-      required: [source, date, time, guestCount, customer]
-      additionalProperties: false
+      required: [source, date, time, guests, name, phone]
       properties:
         source: { type: string, enum: [PHONE, EMAIL] }
         date: { type: string, format: date }
-        time: { $ref: '#/components/schemas/LocalTime' }
-        guestCount: { type: integer, minimum: 1, maximum: 50 }
-        eventId: { type: [string, 'null'], format: uuid }
-        customer: { $ref: '#/components/schemas/CustomerInput' }
+        time: { type: string, examples: ['20:00'] }
+        guests: { type: integer, minimum: 1, maximum: 50 }
+        name: { type: string, minLength: 2, maxLength: 80 }
+        phone: { $ref: '#/components/schemas/Phone' }
+        email: { type: [string, 'null'], format: email }
         notes: { type: [string, 'null'], maxLength: 500 }
         internalNote: { type: [string, 'null'], maxLength: 500 }
-        durationMinutes: { $ref: '#/components/schemas/DurationMinutes' }
+        durationMinutes: { type: [integer, 'null'], minimum: 15, maximum: 720, multipleOf: 15 }
         zoneId: { type: [string, 'null'], format: uuid }
         confirmNow: { type: boolean, default: false }
-        tableIds: { type: array, maxItems: 6, uniqueItems: true, items: { type: string, format: uuid } }
-        overrideSeats: { type: boolean, default: false, description: Solo OWNER }
-        overrideReason: { type: [string, 'null'], maxLength: 200 }
+        needsCallback: { type: boolean, default: false }
+        tableIds: { type: array, uniqueItems: true, items: { type: string, format: uuid } }
 
     ReservationUpdate:
       type: object
       required: [version]
-      additionalProperties: false
       properties:
         version: { type: integer }
         date: { type: string, format: date }
-        time: { $ref: '#/components/schemas/LocalTime' }
-        guestCount: { type: integer, minimum: 1, maximum: 50 }
-        durationMinutes: { $ref: '#/components/schemas/DurationMinutes' }
+        time: { type: string }
+        guests: { type: integer, minimum: 1, maximum: 50 }
+        durationMinutes: { type: integer, minimum: 15, maximum: 720, multipleOf: 15 }
         zoneId: { type: string, format: uuid }
+        name: { type: string }
+        phone: { $ref: '#/components/schemas/Phone' }
+        email: { type: [string, 'null'] }
         notes: { type: [string, 'null'], maxLength: 500 }
         internalNote: { type: [string, 'null'], maxLength: 500 }
         needsCallback: { type: boolean }
@@ -956,110 +941,112 @@ components:
     StatusChange:
       type: object
       required: [version, status]
-      additionalProperties: false
       properties:
         version: { type: integer }
         status: { type: string, enum: [CONFIRMED, REJECTED, CANCELLED, COMPLETED, NO_SHOW] }
         reason: { oneOf: [ { $ref: '#/components/schemas/StatusReason' }, { type: 'null' } ] }
         note: { type: [string, 'null'], maxLength: 300 }
-        zoneId:
-          description: Solo con status CONFIRMED; obbligatorio se il locale ha più zone e la richiesta non ne indica una
-          type: [string, 'null']
-          format: uuid
-        overrideSeats: { type: boolean, default: false, description: Solo OWNER; posti tavolo inferiori alle persone }
+        zoneId: { type: [string, 'null'], format: uuid }
+        tableIds: { type: array, uniqueItems: true, items: { type: string, format: uuid } }
+        overrideSeats: { type: boolean, default: false, description: Solo OWNER }
         overrideReason: { type: [string, 'null'], maxLength: 200 }
-        tableIds:
-          description: Solo con status CONFIRMED; assegnazione manuale facoltativa nella stessa transazione
-          type: array
-          maxItems: 6
-          uniqueItems: true
-          items: { type: string, format: uuid }
 
     Reservation:
+      description: Elemento dell'elenco (Summary)
       type: object
-      required: [id, publicRef, status, version, source, date, time, endTime, guestCount, customer, needsCallback, tables, notifications, warnings]
+      required: [id, reference, status, source, date, time, endTime, guests, customerName, customerPhone, needsCallback, tables, createdAt, version]
       properties:
         id: { type: string, format: uuid }
-        publicRef: { type: string }
+        reference: { type: string }
         status: { $ref: '#/components/schemas/ReservationStatus' }
-        statusReason: { oneOf: [ { $ref: '#/components/schemas/StatusReason' }, { type: 'null' } ] }
-        version: { type: integer }
+        statusReason: { type: [string, 'null'] }
         source: { $ref: '#/components/schemas/ReservationSource' }
         date: { type: string, format: date }
-        time: { $ref: '#/components/schemas/LocalTime' }
-        endTime: { $ref: '#/components/schemas/LocalTime' }
-        occupiedUntil:
-          description: Fine effettiva dell'occupazione (anticipata da uscita anticipata o no-show); null se non confermata
-          oneOf: [ { $ref: '#/components/schemas/LocalTime' }, { type: 'null' } ]
-        guestCount: { type: integer }
-        customer:
-          type: object
-          required: [name]
-          properties:
-            name: { type: string }
-            phone: { type: [string, 'null'] }
-            email: { type: [string, 'null'] }
+        time: { type: string }
+        endTime: { type: string }
+        guests: { type: integer }
+        customerName: { type: string }
+        customerPhone: { type: string }
+        customerEmail: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        needsCallback: { type: boolean }
+        zoneId: { type: [string, 'null'], format: uuid }
+        tables: { type: array, items: { type: string } }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+
+    ReservationDetail:
+      type: object
+      required: [summary, history, changes, notifications, tables, actions, warnings]
+      properties:
+        summary: { $ref: '#/components/schemas/Reservation' }
         notes: { type: [string, 'null'] }
         internalNote: { type: [string, 'null'] }
-        needsCallback: { type: boolean }
-        zone:
-          type: [object, 'null']
-          properties:
-            id: { type: string, format: uuid }
-            name: { type: string }
-        window:
-          type: [object, 'null']
-          properties:
-            id: { type: string, format: uuid }
-            name: { type: string }
-        event:
-          type: [object, 'null']
-          properties:
-            id: { type: string, format: uuid }
-            title: { type: string }
+        zoneName: { type: [string, 'null'] }
+        durationMinutes: { type: integer }
+        createdBy: { type: [string, 'null'] }
+        handledBy: { type: [string, 'null'] }
+        confirmedAt: { type: [string, 'null'], format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        updatedAt: { type: string, format: date-time }
         tables:
           type: array
           items:
             type: object
-            required: [id, code, area, maxSeats]
             properties:
-              id: { type: string, format: uuid }
+              tableId: { type: string, format: uuid }
               code: { type: string }
               area: { type: string }
               maxSeats: { type: integer }
               seatsOverride: { type: boolean }
+              overrideReason: { type: [string, 'null'] }
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              fromStatus: { type: [string, 'null'] }
+              toStatus: { $ref: '#/components/schemas/ReservationStatus' }
+              reason: { type: [string, 'null'] }
+              note: { type: [string, 'null'] }
+              by: { type: [string, 'null'] }
+              at: { type: string, format: date-time }
+        changes:
+          type: array
+          items:
+            type: object
+            properties:
+              action: { type: string }
+              by: { type: [string, 'null'] }
+              at: { type: string, format: date-time }
+              details: { type: object }
         notifications:
           type: array
           items:
             type: object
-            required: [channel, state]
             properties:
+              template: { type: string }
               channel: { type: string, enum: [EMAIL, SMS] }
+              recipient: { type: string, enum: [CUSTOMER, STAFF] }
               state: { type: string, enum: [PENDING, SENDING, SENT, DELIVERED, UNCERTAIN, FAILED, DEAD, SKIPPED] }
-              reason: { type: [string, 'null'] }
+              skipReason: { type: [string, 'null'], enum: [NO_RECIPIENT, SMS_DISABLED, SUPERSEDED, null] }
+              delivered: { type: boolean, description: Vero solo per un invio reale; mai in V1 }
+              createdAt: { type: string, format: date-time }
+        capacity:
+          type: [object, 'null']
+          properties:
+            zoneId: { type: string, format: uuid }
+            capacity: { type: integer }
+            minFree: { type: integer }
+            pendingOthers: { type: integer }
+            eventBlocks: { type: boolean }
+            fits: { type: boolean }
+        actions:
+          type: array
+          items: { type: string, enum: [CONFIRM, REJECT, CANCEL, EDIT, TABLES, COMPLETE, NO_SHOW, CORRECT, NOTES] }
         warnings:
           type: array
-          items: { type: string, enum: [OUTSIDE_SLOTS, SHORT_NOTICE, MIN_SEATS_ABOVE_PARTY] }
-        createdAt: { type: string, format: date-time }
-
-    ReservationDetail:
-      allOf:
-        - $ref: '#/components/schemas/Reservation'
-        - type: object
-          required: [history]
-          properties:
-            history:
-              type: array
-              items:
-                type: object
-                required: [toStatus, changedAt]
-                properties:
-                  fromStatus: { oneOf: [ { $ref: '#/components/schemas/ReservationStatus' }, { type: 'null' } ] }
-                  toStatus: { $ref: '#/components/schemas/ReservationStatus' }
-                  reason: { type: [string, 'null'] }
-                  note: { type: [string, 'null'] }
-                  changedBy: { type: [string, 'null'] }
-                  changedAt: { type: string, format: date-time }
+          items: { type: string, enum: [OUTSIDE_SLOTS, DAY_CLOSED, SHORT_NOTICE, MIN_SEATS_ABOVE_PARTY] }
 
     CurrentUser:
       type: object

@@ -13,6 +13,7 @@ import { Photos } from './pages/admin/media';
 import { OwnerOnly } from './pages/admin/OwnerOnly';
 import { MenuAdmin, MenuEditor } from './pages/admin/MenuAdmin';
 import { Requests } from './pages/admin/Requests';
+import { Capacity } from './pages/admin/Capacity';
 import { Settings } from './pages/admin/Settings';
 import { Contacts } from './pages/public/Contacts';
 import { EventDetail, Events } from './pages/public/Events';
@@ -70,6 +71,7 @@ function adminPage(route: string, role: Role): ReactNode {
   const ei = match('/gestione/eventi/:id', route);
   if (ei) return <EventEditor key={ei.id} id={ei.id} />;
   if (route === '/gestione/richieste') return <Requests />;
+  if (route === '/gestione/capienza') return <Capacity />;
   if (route === '/gestione/foto') return <Photos />;
   if (route === '/gestione/comunicazioni') return <Announcements />;
   if (route === '/gestione/sito') return owner(<Customize />);

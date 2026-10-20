@@ -110,7 +110,8 @@ try {
   // Fuori da test-results/, che Playwright svuota all'avvio.
   mkdirSync(join(frontend, 'e2e-logs'), { recursive: true });
   const log = createWriteStream(join(frontend, 'e2e-logs', 'backend.log'));
-  backend = spawn('java', ['-jar', jar, `--server.port=${BACKEND_PORT}`], { env, stdio: ['ignore', 'pipe', 'pipe'] });
+  // tutte le richieste dei test arrivano da 127.0.0.1: il limite per indirizzo (5 all'ora) è provato dai test del backend
+  backend = spawn('java', ['-jar', jar, `--server.port=${BACKEND_PORT}`, '--fireflies.reservations.web-requests-per-hour=1000'], { env, stdio: ['ignore', 'pipe', 'pipe'] });
   backend.stdout.pipe(log);
   backend.stderr.pipe(log);
   // «readiness» diventa UP solo dopo il caricamento dei contenuti demo (ApplicationRunner)

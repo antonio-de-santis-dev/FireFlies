@@ -1,12 +1,46 @@
 import { CircleAlert, Save } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
 import { saveSettings } from '../../api/content';
+import { bookingConfig, savePolicy, type Policy } from '../../api/reservations';
 import type { SiteSettings } from '../../data/site';
 import { usePageMeta } from '../../router';
 import { useStore } from '../../store';
 import { AdminHead } from './AdminLayout';
 import { Switch } from './MenuAdmin';
+
+/** Interruttore delle richieste dal sito: salva subito la regola sul server (fasce e posti in «Capienza e tavoli»). */
+function BookingSwitch() {
+  const { notify } = useStore();
+  const [policy, setPolicy] = useState<Policy | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    bookingConfig().then((c) => setPolicy(c.policy)).catch(() => setPolicy(null));
+  }, []);
+  const toggle = async () => {
+    if (!policy || busy) return;
+    setBusy(true);
+    try {
+      const saved = await savePolicy({
+        webBookingEnabled: !policy.webBookingEnabled, minLeadMinutes: policy.minLeadMinutes, maxAdvanceDays: policy.maxAdvanceDays,
+        maxPartySizeWeb: policy.maxPartySizeWeb, pendingExpiryMinutesBeforeStart: policy.pendingExpiryMinutesBeforeStart,
+      });
+      setPolicy(saved);
+      notify(saved.webBookingEnabled ? 'Richieste dal sito aperte.' : 'Richieste dal sito chiuse: il modulo invita a chiamare.');
+    } catch (err) {
+      notify(err instanceof ApiError ? err.message : 'Modifica non riuscita: riprova.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  const on = !!policy?.webBookingEnabled;
+  return (
+    <>
+      <Switch checked={on} onChange={() => void toggle()} label={on ? 'Richieste tavolo attive' : 'Richieste tavolo disattivate'} />
+      <p className="hint">Vale subito per il sito. Orari prenotabili, posti e tavoli si impostano in <a href="#/gestione/capienza">Capienza e tavoli</a>.</p>
+    </>
+  );
+}
 
 export function Settings() {
   usePageMeta('Orari e contatti');
@@ -101,8 +135,7 @@ export function Settings() {
             <label htmlFor="set-ig">Instagram</label>
             <input id="set-ig" className="input" type="url" value={s.instagram} onChange={(e) => up('instagram', e.target.value)} />
           </div>
-          <Switch checked={s.bookingEnabled} onChange={() => up('bookingEnabled', !s.bookingEnabled)} label={s.bookingEnabled ? 'Richieste tavolo attive' : 'Richieste tavolo disattivate'} />
-          <p className="hint">Le richieste tavolo diventano reali con la FASE 5: per ora questo interruttore vale solo in questa scheda.</p>
+          <BookingSwitch />
         </section>
 
         <section className="panel" aria-labelledby="set-map">

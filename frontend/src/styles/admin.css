@@ -542,3 +542,26 @@
 /* FASE 4: eliminazione di una voce (in due passaggi) e azioni sulle foto salvate sul server */
 .editor__delete { margin-top: 16px; }
 .photos__replace { display: inline-flex; }
+
+/* --- Prenotazioni (FASE 5): dettaglio richiesta, capienza e tavoli ------------------------------------------ */
+.res-detail { display: grid; gap: 16px; }
+.res-detail__facts { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.res-detail__warnings { display: grid; gap: 4px; padding-left: 0; list-style: none; }
+.res-detail__capacity { padding: 10px 14px; border-radius: var(--radius-1); background: var(--ff-ink-800); }
+.res-detail__capacity.is-full { border-left: 4px solid var(--ff-warning); }
+.res-detail__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.res-detail__form { display: grid; gap: 12px; }
+.res-detail__section h3 { font-size: var(--fs-body); margin-bottom: 6px; }
+.res-detail__list { display: grid; gap: 6px; padding: 0; list-style: none; }
+.res-detail__list li { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+.res-tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.cap-fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; min-width: 0; }
+.cap-list { display: grid; gap: 8px; padding: 0; list-style: none; }
+.cap-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cap-list li > strong { min-width: 110px; }
+.cap-tag { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: var(--radius-1); background: var(--ff-ink-800); font-size: var(--fs-small); }
+.cap-form { display: grid; gap: 10px; margin-top: 12px; }
+.cap-day { display: grid; gap: 8px; }
+.table--compact td, .table--compact th { padding-block: 4px; }
+.table tr.is-full td { color: var(--ff-warning); }
+.icon-btn--sm { width: 30px; height: 30px; min-height: 30px; }

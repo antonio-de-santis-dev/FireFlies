@@ -29,7 +29,7 @@ public class ReservationViews {
 
     public record Summary(UUID id, String reference, String status, String statusReason, String source, LocalDate date,
             LocalTime time, LocalTime endTime, int guests, String customerName, String customerPhone, String customerEmail,
-            boolean hasNotes, boolean needsCallback, UUID zoneId, List<String> tables, Instant createdAt, int version) {
+            String notes, boolean needsCallback, UUID zoneId, List<String> tables, Instant createdAt, int version) {
     }
 
     public record HistoryEntry(String fromStatus, String toStatus, String reason, String note, String by, Instant at) {
@@ -83,7 +83,7 @@ public class ReservationViews {
         List<String> tables = store.assignments(r.id(), true).stream().map(ReservationStore.AssignmentRow::tableCode).toList();
         return new Summary(r.id(), r.publicRef(), r.status(), r.statusReason(), r.source(), start.toLocalDate(),
                 start.toLocalTime(), r.endsAt().atZone(BusinessTime.ZONE).toLocalTime(), r.guestCount(), r.customerName(),
-                r.customerPhone(), r.customerEmail(), r.customerNotes() != null, r.needsCallback(), r.zoneId(), tables,
+                r.customerPhone(), r.customerEmail(), r.customerNotes(), r.needsCallback(), r.zoneId(), tables,
                 r.createdAt(), r.version());
     }
 
