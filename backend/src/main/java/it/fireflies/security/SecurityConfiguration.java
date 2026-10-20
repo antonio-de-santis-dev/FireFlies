@@ -60,6 +60,7 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/csrf", "/api/v1/auth/session").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/public/reservations").permitAll() // con CSRF e Idempotency-Key
                         .requestMatchers(HttpMethod.GET, "/media/**").permitAll() // varianti delle foto (solo storage locale)
                         .requestMatchers("/api/v1/admin/users", "/api/v1/admin/users/**").hasRole("OWNER")
                         .requestMatchers("/api/v1/admin/site-content", "/api/v1/admin/site-settings").hasRole("OWNER")

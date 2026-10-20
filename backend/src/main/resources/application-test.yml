@@ -17,6 +17,8 @@ server:
         secure: false
 
 fireflies:
+  reservations:
+    expiry-sweep: PT24H # nei test la scadenza si invoca a mano
   media:
     storage: filesystem
     filesystem:

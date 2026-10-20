@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import it.fireflies.reservation.WebRequestLimiter;
 import it.fireflies.security.LoginAttemptLimiter;
 
 /**
@@ -37,6 +38,9 @@ public abstract class PostgresIntegrationTest {
     @Autowired
     protected SwitchableMediaStorage mediaStorage;
 
+    @Autowired
+    protected WebRequestLimiter webLimiter;
+
     @AfterEach
     void verifyInvariantsAndClean() {
         try {
@@ -48,6 +52,13 @@ public abstract class PostgresIntegrationTest {
                              event_media, events, dining_tables, dining_areas, service_windows
                     """).update();
             jdbc.sql("DELETE FROM capacity_zones WHERE name <> 'Locale'").update();
+            // zona e regole tornano come nel seed V7: prenotazioni dal sito chiuse, capienza da impostare
+            jdbc.sql("UPDATE capacity_zones SET physical_capacity = 0, active = false, sort_order = 1 WHERE name = 'Locale'").update();
+            jdbc.sql("DELETE FROM booking_policies WHERE effective_from <> DATE '2026-01-01'").update();
+            jdbc.sql("""
+                    UPDATE booking_policies SET web_booking_enabled = false, min_lead_minutes = 60, max_advance_days = 60,
+                           max_party_size_web = 12, pending_expiry_minutes_before_start = 60
+                    """).update();
             // contenuti e menu prima delle foto: le chiavi esterne verso media_assets sono ON DELETE RESTRICT
             jdbc.sql("""
                     TRUNCATE menu_item_allergens, menu_items, menu_categories, hero_slides, owners, staff_members,
@@ -65,6 +76,7 @@ public abstract class PostgresIntegrationTest {
             jdbc.sql("DELETE FROM audit_logs").update();
             jdbc.sql("DELETE FROM app_users").update();
             loginLimiter.clear();
+            webLimiter.clear();
         }
     }
 }

@@ -17,27 +17,29 @@ public final class ConstraintViolationTranslator {
     record Translation(HttpStatus status, String code, String title, String detail) {
     }
 
-    private static final Map<String, Translation> KNOWN = Map.of(
-            "ux_app_users_email", new Translation(HttpStatus.CONFLICT, "EMAIL_TAKEN",
-                    "Email già usata", "Esiste già un account con questa email."),
-            "ux_zone_name", new Translation(HttpStatus.CONFLICT, "NAME_TAKEN",
-                    "Nome già usato", "Esiste già una zona con questo nome."),
-            "ux_area_name", new Translation(HttpStatus.CONFLICT, "NAME_TAKEN",
-                    "Nome già usato", "Esiste già un'area con questo nome."),
-            "ux_table_code", new Translation(HttpStatus.CONFLICT, "NAME_TAKEN",
-                    "Codice già usato", "In quest'area esiste già un tavolo con questo codice."),
-            "ux_menu_category_slug", new Translation(HttpStatus.CONFLICT, "CATEGORY_SLUG_TAKEN",
-                    "Categoria già presente", "Esiste già una categoria con questo nome o identificativo."),
-            "ex_table_no_overlap", new Translation(HttpStatus.CONFLICT, "TABLE_CONFLICT",
-                    "Tavolo già occupato", "Il tavolo è già assegnato a un'altra prenotazione in quell'orario."),
-            "ux_res_web_duplicate", new Translation(HttpStatus.CONFLICT, "DUPLICATE_REQUEST",
-                    "Richiesta già inviata", "Esiste già una richiesta attiva con questo telefono per lo stesso orario."),
-            "ck_slot_not_overbooked", new Translation(HttpStatus.CONFLICT, "CAPACITY_EXCEEDED",
-                    "Posti esauriti", "Non ci sono abbastanza posti liberi in quell'orario."),
-            "ck_event_quota", new Translation(HttpStatus.CONFLICT, "EVENT_QUOTA_EXCEEDED",
-                    "Posti dell'evento esauriti", "La quota di posti dell'evento è esaurita."),
-            "ck_override_complete", new Translation(HttpStatus.UNPROCESSABLE_CONTENT, "OVERRIDE_REASON_REQUIRED",
-                    "Motivo obbligatorio", "L'eccezione sui posti del tavolo richiede autore e motivo."));
+    private static final Map<String, Translation> KNOWN = Map.ofEntries(
+            Map.entry("ux_app_users_email", new Translation(HttpStatus.CONFLICT, "EMAIL_TAKEN",
+                    "Email già usata", "Esiste già un account con questa email.")),
+            Map.entry("ux_zone_name", new Translation(HttpStatus.CONFLICT, "NAME_TAKEN",
+                    "Nome già usato", "Esiste già una zona con questo nome.")),
+            Map.entry("ux_area_name", new Translation(HttpStatus.CONFLICT, "NAME_TAKEN",
+                    "Nome già usato", "Esiste già un'area con questo nome.")),
+            Map.entry("ux_table_code", new Translation(HttpStatus.CONFLICT, "NAME_TAKEN",
+                    "Codice già usato", "In quest'area esiste già un tavolo con questo codice.")),
+            Map.entry("ux_menu_category_slug", new Translation(HttpStatus.CONFLICT, "CATEGORY_SLUG_TAKEN",
+                    "Categoria già presente", "Esiste già una categoria con questo nome o identificativo.")),
+            Map.entry("ex_table_no_overlap", new Translation(HttpStatus.CONFLICT, "TABLE_CONFLICT",
+                    "Tavolo già occupato", "Il tavolo è già assegnato a un'altra prenotazione in quell'orario.")),
+            Map.entry("ux_res_web_duplicate", new Translation(HttpStatus.CONFLICT, "DUPLICATE_REQUEST",
+                    "Richiesta già inviata", "Esiste già una richiesta attiva con questo telefono per lo stesso orario.")),
+            Map.entry("ux_res_idempotency_key", new Translation(HttpStatus.CONFLICT, "DUPLICATE_REQUEST",
+                    "Richiesta già inviata", "Questa richiesta è già in elaborazione: attendi la risposta senza reinviarla.")),
+            Map.entry("ck_slot_not_overbooked", new Translation(HttpStatus.CONFLICT, "CAPACITY_EXCEEDED",
+                    "Posti esauriti", "Non ci sono abbastanza posti liberi in quell'orario.")),
+            Map.entry("ck_event_quota", new Translation(HttpStatus.CONFLICT, "EVENT_QUOTA_EXCEEDED",
+                    "Posti dell'evento esauriti", "La quota di posti dell'evento è esaurita.")),
+            Map.entry("ck_override_complete", new Translation(HttpStatus.UNPROCESSABLE_CONTENT, "OVERRIDE_REASON_REQUIRED",
+                    "Motivo obbligatorio", "L'eccezione sui posti del tavolo richiede autore e motivo.")));
 
     /** Chiavi esterne verso le foto: cancellare una foto in uso è vietato dal database. */
     private static final Set<String> MEDIA_FOREIGN_KEYS = Set.of(

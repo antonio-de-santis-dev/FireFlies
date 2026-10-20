@@ -26,6 +26,8 @@ import org.springframework.stereotype.Component;
 import it.fireflies.audit.AuditAction;
 import it.fireflies.audit.AuditLog;
 import it.fireflies.content.ContentService;
+import it.fireflies.dining.DiningService;
+import it.fireflies.dining.DiningStore;
 import it.fireflies.media.MediaService;
 import it.fireflies.menu.MenuService;
 import tools.jackson.databind.ObjectMapper;
@@ -84,9 +86,11 @@ class DemoContentLoader implements ApplicationRunner {
     private final JdbcClient jdbc;
     private final ObjectMapper json;
     private final AuditLog audit;
+    private final DiningService dining;
 
     DemoContentLoader(DemoProperties properties, MediaService media, MenuService menu, ContentService content,
-            JdbcClient jdbc, ObjectMapper json, AuditLog audit) {
+            JdbcClient jdbc, ObjectMapper json, AuditLog audit, DiningService dining) {
+        this.dining = dining;
         this.properties = properties;
         this.media = media;
         this.menu = menu;
@@ -136,11 +140,45 @@ class DemoContentLoader implements ApplicationRunner {
         for (DemoAnnouncement a : manifest.announcements()) {
             content.createAnnouncement(null, new ContentService.AnnouncementCommand(a.text(), a.tone(), a.active(), null));
         }
+        configureBooking(manifest.hours());
         content.markDemoContent();
         audit.record(null, AuditAction.DEMO_CONTENT_LOADED, "SITE_SETTINGS", "1",
                 Map.of("photos", photos.size(), "items", manifest.items().size()));
         log.warn("Contenuti DEMO caricati ({} foto, {} voci di menu) in {} ms: database marcato come demo, "
                 + "non utilizzabile in produzione", photos.size(), manifest.items().size(), (System.nanoTime() - start) / 1_000_000);
+    }
+
+    /**
+     * Prenotazioni d'esempio: zona «Locale» con 40 posti, sala e dehors con qualche tavolo, le fasce del modulo di
+     * prenotazione approvato nei giorni di apertura, richieste dal sito aperte. Nessuna prenotazione finta.
+     */
+    private void configureBooking(List<DemoHours> hours) {
+        DiningStore.ZoneRow zone = dining.config().zones().getFirst();
+        dining.updateZone(null, zone.id(), zone.version(), new DiningService.ZoneCommand(zone.name(), 40, true, 1));
+        DiningStore.AreaRow sala = dining.saveArea(null, null, zone.id(), "Sala", true, 1);
+        DiningStore.AreaRow dehors = dining.saveArea(null, null, zone.id(), "Dehors", true, 2);
+        int[][] seats = {{2, 2}, {2, 2}, {2, 4}, {2, 4}, {4, 6}, {4, 8}};
+        for (int i = 0; i < seats.length; i++) {
+            dining.saveTable(null, null, sala.id(), "T" + (i + 1), seats[i][0], seats[i][1], true, i + 1);
+        }
+        for (int i = 0; i < 4; i++) {
+            dining.saveTable(null, null, dehors.id(), "D" + (i + 1), 2, 4, true, i + 1);
+        }
+        for (DemoHours h : hours) {
+            if (h.opensAt() == null) {
+                continue; // giorno di chiusura
+            }
+            window(zone.id(), h.isoDay(), "Colazione", "07:30", "10:30", 30, 60, 20);
+            window(zone.id(), h.isoDay(), "Pomeriggio", "15:00", "17:00", 60, 60, null);
+            window(zone.id(), h.isoDay(), "Aperitivo", "18:00", "20:30", 30, 90, null);
+            window(zone.id(), h.isoDay(), "Sera", "21:00", "22:00", 30, 60, null);
+        }
+        dining.updatePolicy(null, new DiningService.PolicyCommand(true, 60, 60, 12, 60));
+    }
+
+    private void window(UUID zoneId, int isoDay, String name, String first, String last, int step, int duration, Integer max) {
+        dining.saveWindow(null, null, new DiningService.WindowCommand(zoneId, isoDay, name, LocalTime.parse(first),
+                LocalTime.parse(last), step, duration, max, null, null, true));
     }
 
     private boolean databaseIsEmpty() {

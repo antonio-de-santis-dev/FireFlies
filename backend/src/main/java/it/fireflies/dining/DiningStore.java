@@ -28,7 +28,6 @@ public class DiningStore {
             int slotMinutes, int defaultDurationMinutes, Integer maxCovers, LocalDate validFrom, LocalDate validTo,
             boolean active) {
 
-        /** Fine dell'ultima permanenza standard: i quanti fino a qui appartengono alla fascia (BOOKING_RULES §3.2). */
         /** Minuti dall'inizio della giornata in cui finisce l'ultima permanenza standard (max 24:00). */
         public int coverageEndMinute() {
             return lastStart.toSecondOfDay() / 60 + defaultDurationMinutes;
