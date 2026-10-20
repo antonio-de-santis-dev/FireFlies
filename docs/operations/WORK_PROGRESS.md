@@ -1,36 +1,34 @@
 # WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Ultimo aggiornamento: 20/10/2026, **FASE 7 — completamento obbligatorio** (requisiti 1–14 + 15 già fatto).
+> Ultimo aggiornamento: 20/10/2026, **FASE 8 — hardening, performance, UX, preparazione al deploy** (in corso).
 
 ## Fase e branch
-- **FASE 7** sul branch `fase-7/notifiche` (creato da `fase-6/eventi-capienza` @ `6ad7e0e`). Nessun merge su `main`,
-  nessun force push, FASE 8 non avviata.
-- Mandato: «COMPLETAMENTO OBBLIGATORIO FASE 7» (requisiti 1–14), requisito 15 (locandine intere) già fatto e preservato.
+- **FASE 8** sul branch `fase-8/hardening-deploy`, creato da `fase-7/notifiche` @ `769cd1f` (FASE 7 approvata).
+- Nessun merge su `main`, nessun force push, **nessuna pubblicazione**, nessun servizio a pagamento, notifiche reali spente.
 
-## Piano di lavoro (ordine del mandato)
-| Passo | Requisiti | Stato |
-|---|---|---|
-| 1. Confronto requisiti ↔ codice | 1–15 | fatto (FASE7_REPORT §2) |
-| 2. Bug funzionali e persistenza | 4 (switch «Visibile sul sito», salvataggio atomico, nascondere, eliminare), 3 (prodotto visibile, eliminazione), 5 («Da richiamare») | fatto — commit `870450f`, `e33df45` |
-| 3. Capienza, conservazione, calendario | 8, 9, 10, 5/4/12 (pulizia notturna, statistiche anonime) | fatto (V10, `OperationsService`, `RetentionService`) |
-| 4. UX desktop e telefono | 1, 2, 5 (schede), 6 (via «Capienza e tavoli»), 7 (foto), 10 (scelta tavolo/evento) | fatto |
-| 5. Outbox e notifiche non reali | 11 | fatto (worker con gateway finti, nuovo invio manuale) |
-| 6. Test di regressione e CI | 13 | fatto — CI verde su `f9e3a8e` (backend 39443071752, frontend 39443071652) |
-| 7. Documenti, report, commit, push | 14 | fatto |
+## Piano di lavoro
+| # | Requisito | Stato | Commit |
+|---|---|---|---|
+| 1 | Editor eventi senza «Fine» e coperti (valori ricavati nel backend) | fatto | `98568bb` |
+| 2 | Filtri compatti delle Richieste sul telefono | fatto | `4e10a0d` |
+| 3 | Foto più visibili in Menu e prezzi | fatto | `4e10a0d` |
+| 4 | Telefono cliccabile e copiabile per eventi/compleanni | fatto | `4e10a0d` |
+| 5 | Sicurezza: IP dietro proxy, header, matrice permessi, .gitignore dei segreti | fatto (audit in FASE8_REPORT) | `d5468ca`, `d3eaebc` |
+| 6 | Performance: divisione del codice, indice V11, misure prima/dopo (`evidence/PERFORMANCE.md`) | fatto | (questo commit) |
+| 7 | Backup e ripristino | fatto: prova completa superata (`docs/operations/evidence/RESTORE_DRILL.md`) | `d3eaebc` |
+| 8 | Deploy: Dockerfile, Caddy, compose di produzione, proposta di hosting | file fatti; documento DEPLOY.md e costi **da fare** | `d3eaebc` |
+| 9 | Test completi e CI | in corso | — |
+| 10 | Documenti e FASE8_REPORT | da fare | — |
 
-## Test (eseguiti davvero, vedi TEST_REPORT §«FASE 7»)
-- Totali: backend 78 unità + 311 IT, Playwright 93 (482). CI verde su `f9e3a8e`.
-- Backend IT nuovi: `RetentionIT` (4), `OperationsIT` (4), `NotificationDispatcherIT` (6), `EventApiIT` +2,
-  `ReservationLifecycleIT` +1; unità: `RetentionJobTest` (4: ora legale, fasce).
-- Playwright nuovi: `event-visibility.spec` (2), `fase7.spec` (13); spec esistenti aggiornate al nuovo dialog, alle schede
-  delle richieste e alle Impostazioni.
+## Note per la ripresa
+- **Non compilare il backend mentre gira l'e2e**: `scripts/e2e.mjs` usa `backend/target/*.jar`; un `mvnw verify` in
+  parallelo lo sostituisce e i test falliscono a caso (successo il 20/10, suite fermata e rieseguita).
+- Docker Hub qui risponde 429: le immagini di produzione si verificano nella CI `images` (nessun push).
+- Dipendenze dev con avvisi (braces, esbuild, sharp): aggiornare dopo le suite (`npm audit`); produzione: 0 avvisi.
 
 ## File modificati non committati
-- Nessuno.
-
-## Errori da risolvere
-- Nessuno. Sospeso per autorizzazione: invio reale di email/SMS (V-05).
+- Nessuno dopo `d3eaebc`.
 
 ## Prossima azione esatta
-**Fermo in attesa dell'approvazione della FASE 7** (stato dei 15 requisiti in FASE7_REPORT §1). FASE 8 non avviata.
-Da ricevere: locandina verticale di riferimento, decisione su provider email/SMS e periodi di conservazione.
+Aggiornamento dipendenze dev, suite complete backend e frontend
+(in sequenza, mai in parallelo), CI, DEPLOY.md, FASE8_REPORT; poi fermarsi per il collaudo del titolare.

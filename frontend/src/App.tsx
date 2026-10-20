@@ -1,20 +1,8 @@
-import { useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { Img } from './components/ui';
 import { logo } from './data/assets';
 import { fetchSession, uiRole } from './api/auth';
 import { PublicLayout } from './components/PublicLayout';
-import { AdminLayout } from './pages/admin/AdminLayout';
-import { Announcements } from './pages/admin/Announcements';
-import { Customize } from './pages/admin/Customize';
-import { Dashboard } from './pages/admin/Dashboard';
-import { EventEditor, EventsAdmin } from './pages/admin/EventsAdmin';
-import { Login } from './pages/admin/Login';
-import { Photos } from './pages/admin/media';
-import { OwnerOnly } from './pages/admin/OwnerOnly';
-import { MenuAdmin, MenuEditor } from './pages/admin/MenuAdmin';
-import { Requests } from './pages/admin/Requests';
-import { Today } from './pages/admin/Today';
-import { Settings } from './pages/admin/Settings';
 import { Contacts } from './pages/public/Contacts';
 import { EventDetail, Events } from './pages/public/Events';
 import { Gallery } from './pages/public/Gallery';
@@ -23,7 +11,13 @@ import { Locale } from './pages/public/Locale';
 import { Menu } from './pages/public/Menu';
 import { NotFound } from './pages/public/NotFound';
 import { match, navigate, usePath } from './router';
-import { useStore, type Role } from './store';
+import { useStore } from './store';
+
+// FASE 8 (performance): l'area gestori è un file a parte, scaricato solo da chi apre /gestione. I visitatori del sito
+// non scaricano più editor, tabelle e moduli dei gestori.
+const loadAdminArea = () => import('./pages/admin/AdminArea');
+const AdminArea = lazy(loadAdminArea);
+const Login = lazy(() => import('./pages/admin/Login').then((m) => ({ default: m.Login })));
 
 /**
  * Animazione d'ingresso delle sezioni: attiva solo se supportata e se l'utente non chiede movimento ridotto.
@@ -65,24 +59,6 @@ function publicPage(path: string): ReactNode {
   return <NotFound />;
 }
 
-function adminPage(route: string, role: Role): ReactNode {
-  const owner = (page: ReactNode) => (role === 'titolare' ? page : <OwnerOnly />);
-  if (route === '/gestione') return <Dashboard />;
-  if (route === '/gestione/menu') return <MenuAdmin />;
-  const mi = match('/gestione/menu/:id', route);
-  if (mi) return <MenuEditor key={mi.id} id={mi.id} />;
-  if (route === '/gestione/eventi') return <EventsAdmin />;
-  const ei = match('/gestione/eventi/:id', route);
-  if (ei) return <EventEditor key={ei.id} id={ei.id} />;
-  if (route === '/gestione/richieste') return <Requests />;
-  if (route === '/gestione/oggi') return <Today />;
-  if (route === '/gestione/foto') return <Photos />;
-  if (route === '/gestione/comunicazioni') return <Announcements />;
-  if (route === '/gestione/sito') return owner(<Customize />);
-  if (route === '/gestione/impostazioni') return owner(<Settings />);
-  return <NotFound admin />;
-}
-
 /** Mentre arrivano i contenuti dal backend (pochi millisecondi) o se il server non risponde. */
 function ContentGate({ failed, retry }: { failed: boolean; retry: () => void }) {
   return (
@@ -112,6 +88,10 @@ export function App() {
   }, [route, openBooking]);
 
   const isAdmin = route.startsWith('/gestione');
+  // sulla pagina di accesso si scarica in anticipo l'area gestori: dopo il login è già pronta
+  useEffect(() => {
+    if (isAdmin) void loadAdminArea();
+  }, [isAdmin]);
   // Area gestori: a ogni cambio di pagina si chiede al backend se la sessione è ancora valida.
   // Il ruolo viene dal backend; se la sessione è scaduta o chiusa si torna all'accesso con un avviso.
   useEffect(() => {
@@ -164,8 +144,11 @@ export function App() {
 
   if (isAdmin) {
     if (!authChecked && route !== '/gestione/login') return null; // pochi millisecondi: nessuna pagina riservata prima della verifica
-    if (route === '/gestione/login' || !signedIn) return <Login />;
-    return <AdminLayout>{adminPage(route, role!)}</AdminLayout>;
+    return (
+      <Suspense fallback={<p className="muted" role="status">Caricamento dell'area gestori…</p>}>
+        {route === '/gestione/login' || !signedIn ? <Login /> : <AdminArea route={route} role={role!} />}
+      </Suspense>
+    );
   }
   return <PublicLayout>{publicPage(path)}</PublicLayout>;
 }

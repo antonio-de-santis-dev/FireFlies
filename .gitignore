@@ -21,3 +21,4 @@ backend/data/
 node_modules/
 dist/
 test-results/
+frontend/tests/perf-results.json

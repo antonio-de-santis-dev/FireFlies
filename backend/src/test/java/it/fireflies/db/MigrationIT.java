@@ -39,7 +39,7 @@ class MigrationIT extends PostgresIntegrationTest {
     void tutteLeMigrazioniApplicateEValide() {
         MigrationInfo[] applied = flyway.info().applied();
         assertThat(Arrays.stream(applied).map(m -> m.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
         assertThat(applied).allMatch(m -> m.getState().isApplied() && !m.getState().isFailed());
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
     }
@@ -58,7 +58,7 @@ class MigrationIT extends PostgresIntegrationTest {
                     .cleanDisabled(true).load();
             MigrateResult result = fresh.migrate();
             assertThat(result.success).isTrue();
-            assertThat(result.migrationsExecuted).isEqualTo(10);
+            assertThat(result.migrationsExecuted).isEqualTo(11);
             assertThat(fresh.migrate().migrationsExecuted).as("seconda esecuzione: niente da fare").isZero();
             assertThat(fresh.validateWithResult().validationSuccessful).isTrue();
         } finally {
