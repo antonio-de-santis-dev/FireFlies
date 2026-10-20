@@ -22,7 +22,7 @@ import tools.jackson.databind.JsonNode;
  * Base dei test delle prenotazioni: configurazione tramite le API del titolare (zona, fascia serale, regole),
  * richieste dal sito con Idempotency-Key e cambi di stato via HTTP reale. Numeri di telefono solo di prova.
  */
-abstract class ReservationTestSupport extends SecurityIntegrationTest {
+public abstract class ReservationTestSupport extends SecurityIntegrationTest {
 
     /** Giorno di servizio delle prove: fra una settimana, sempre entro i 60 giorni prenotabili. */
     protected static final LocalDate DAY = BusinessTime.serviceDate(Instant.now()).plusDays(7);
