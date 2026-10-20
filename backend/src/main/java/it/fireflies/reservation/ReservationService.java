@@ -322,7 +322,7 @@ public class ReservationService {
                 .orElseThrow(() -> ApiErrors.invalid("zoneId", "Scegli una zona attiva."));
         DiningStore.WindowRow window = calendar.windowFor(zoneRow.id(), date, time).orElseThrow(() ->
                 new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "NO_SERVICE_WINDOW", "Nessuna fascia",
-                        "Per quel giorno non è configurata nessuna fascia in questa zona: aggiungila in «Capienza e tavoli»."));
+                        "Per quel giorno non è configurata nessuna fascia in questa zona: aggiungila in Impostazioni › Capienza."));
         int minutes = durationMinutes != null ? durationMinutes : window.defaultDurationMinutes();
         if (minutes < 15 || minutes > 720 || minutes % 15 != 0) {
             throw ApiErrors.invalid("durationMinutes", "La durata va da 15 minuti a 12 ore, a passi di 15 minuti.");
@@ -759,16 +759,16 @@ public class ReservationService {
         String key = "RES:" + row.id() + ":" + template + ":" + suffix;
         if (template.equals("RESERVATION_NEW_FOR_VENUE")) {
             outbox.enqueue(key + ":EMAIL", AGGREGATE, row.id(), NotificationOutbox.Channel.EMAIL,
-                    NotificationOutbox.Recipient.STAFF, views.venueEmail(), template, payload);
+                    NotificationOutbox.Recipient.STAFF, views.venueEmail(), template, payload, row.endsAt());
             return;
         }
         if (row.customerEmail() != null) {
             outbox.enqueue(key + ":EMAIL", AGGREGATE, row.id(), NotificationOutbox.Channel.EMAIL,
-                    NotificationOutbox.Recipient.CUSTOMER, row.customerEmail(), template, payload);
+                    NotificationOutbox.Recipient.CUSTOMER, row.customerEmail(), template, payload, row.endsAt());
         }
         if (!template.equals("RESERVATION_RECEIVED")) {
             outbox.enqueue(key + ":SMS", AGGREGATE, row.id(), NotificationOutbox.Channel.SMS,
-                    NotificationOutbox.Recipient.CUSTOMER, row.customerPhone(), template, payload);
+                    NotificationOutbox.Recipient.CUSTOMER, row.customerPhone(), template, payload, row.endsAt());
         }
     }
 

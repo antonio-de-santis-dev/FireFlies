@@ -31,6 +31,8 @@ const env = {
   FIREFLIES_MEDIA_DIR: mediaDir,
   FIREFLIES_DEMO_SEED: 'true',
   FIREFLIES_DEMO_ASSETS_DIR: join(frontend, 'public', 'assets', 'fireflies'),
+  // worker delle notifiche spento: i test vedono le notifiche «preparate, non inviate» (il worker è provato negli IT)
+  FIREFLIES_NOTIFICATIONS_WORKER_ENABLED: 'false',
   E2E_OWNER_EMAIL: 'titolare.e2e@example.invalid',
   E2E_OWNER_PASSWORD: secret(),
   E2E_STAFF_EMAIL: 'staff.e2e@example.invalid',

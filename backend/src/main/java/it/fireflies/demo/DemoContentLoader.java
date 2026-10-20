@@ -146,6 +146,8 @@ class DemoContentLoader implements ApplicationRunner {
         }
         configureBooking(manifest.hours());
         createEvents(photos);
+        // modelli dei messaggi attivi solo nei dati demo: il worker locale li «invia» ai gateway finti (nessun invio reale)
+        jdbc.sql("UPDATE notification_templates SET active = true").update();
         content.markDemoContent();
         audit.record(null, AuditAction.DEMO_CONTENT_LOADED, "SITE_SETTINGS", "1",
                 Map.of("photos", photos.size(), "items", manifest.items().size()));
@@ -155,7 +157,7 @@ class DemoContentLoader implements ApplicationRunner {
 
     /**
      * Prenotazioni d'esempio: zona «Locale» con 40 posti, sala e dehors con qualche tavolo, le fasce del modulo di
-     * prenotazione approvato nei giorni di apertura, richieste dal sito aperte. Nessuna prenotazione finta.
+     * prenotazione approvato, richieste dal sito aperte. Nessuna prenotazione finta.
      */
     private void configureBooking(List<DemoHours> hours) {
         DiningStore.ZoneRow zone = dining.config().zones().getFirst();
@@ -169,10 +171,9 @@ class DemoContentLoader implements ApplicationRunner {
         for (int i = 0; i < 4; i++) {
             dining.saveTable(null, null, dehors.id(), "D" + (i + 1), 2, 4, true, i + 1);
         }
+        // fasce in tutti i giorni: quelli di chiusura negli orari del sito restano chiusi alle richieste (FASE 7, req. 10),
+        // ma un'apertura straordinaria in quel giorno trova già le sue fasce
         for (DemoHours h : hours) {
-            if (h.opensAt() == null) {
-                continue; // giorno di chiusura
-            }
             window(zone.id(), h.isoDay(), "Colazione", "07:30", "10:30", 30, 60, 20);
             window(zone.id(), h.isoDay(), "Pomeriggio", "15:00", "17:00", 60, 60, null);
             window(zone.id(), h.isoDay(), "Aperitivo", "18:00", "20:30", 30, 90, null);

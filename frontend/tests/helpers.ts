@@ -2,7 +2,7 @@ import { expect, request, type Page } from '@playwright/test';
 
 export const PUBLIC_ROUTES = ['/', '/menu', '/eventi', '/eventi/dj-set-esempio', '/eventi/domeniche-del-fire', '/galleria', '/locale', '/contatti'];
 // {Nome} = voce del menu: l'id (UUID del backend) si ricava al momento dal menu pubblico
-export const ADMIN_ROUTES = ['/gestione', '/gestione/menu', '/gestione/menu/{Tagliere FireFlies}', '/gestione/eventi', '/gestione/eventi/dj-set-esempio', '/gestione/richieste', '/gestione/capienza', '/gestione/foto', '/gestione/comunicazioni', '/gestione/sito', '/gestione/impostazioni'];
+export const ADMIN_ROUTES = ['/gestione', '/gestione/menu', '/gestione/menu/{Tagliere FireFlies}', '/gestione/eventi', '/gestione/eventi/dj-set-esempio', '/gestione/richieste', '/gestione/oggi', '/gestione/foto', '/gestione/comunicazioni', '/gestione/sito', '/gestione/impostazioni'];
 
 /** Raccoglie errori di console, eccezioni e richieste fallite. */
 export function watchProblems(page: Page) {
@@ -120,4 +120,16 @@ export function bookableDay(from = 2, skip = 0): string {
 /** Numero di prova sempre diverso (il backend accetta al massimo 3 richieste al giorno dallo stesso numero). */
 export function testPhone(): string {
   return `+39 300 ${String(Date.now()).slice(-7, -4)} ${String(Date.now()).slice(-4)}`;
+}
+
+/** Apre il dialog di prenotazione dal pulsante indicato e sceglie «Prenota un tavolo» (FASE 7, req. 10). */
+export async function openTableBooking(page: Page, open: () => Promise<void>) {
+  await open();
+  await page.getByRole('dialog', { name: 'Prenota' }).getByRole('button', { name: /Prenota un tavolo/ }).click();
+  return page.getByRole('dialog', { name: 'Richiedi un tavolo' });
+}
+
+/** Una richiesta nella pagina Richieste (FASE 7: schede, non più righe di tabella). */
+export function requestCard(page: Page, name: string | RegExp) {
+  return page.getByRole('article', { name: typeof name === 'string' ? new RegExp(name) : name });
 }

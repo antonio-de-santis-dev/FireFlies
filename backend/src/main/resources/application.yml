@@ -74,7 +74,22 @@ fireflies:
       bucket: ${FIREFLIES_S3_BUCKET:}
       access-key-id: ${FIREFLIES_S3_ACCESS_KEY_ID:}
       secret-access-key: ${FIREFLIES_S3_SECRET_ACCESS_KEY:}
+  retention:
+    # pulizia notturna (FASE 7): prenotazioni finite da 1 mese, eventi da 2 mesi, notifiche finali da 90 giorni,
+    # audit da 12 mesi; statistiche anonime sempre conservate
+    enabled: ${FIREFLIES_RETENTION_ENABLED:true}
+    reservation-months: 1
+    event-months: 2
+    outbox-days: 90
+    audit-months: 12
   notifications:
+    # worker dell'outbox (FASE 7): spento per impostazione predefinita; acceso solo nel profilo local (gateway finti)
+    worker:
+      enabled: ${FIREFLIES_NOTIFICATIONS_WORKER_ENABLED:false}
+      interval: PT30S
+      batch-size: 20
+      max-attempts: 5
+      lease: PT2M
     sms:
       provider: fake
     email:

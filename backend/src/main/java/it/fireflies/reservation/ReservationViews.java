@@ -44,11 +44,12 @@ public class ReservationViews {
     }
 
     /**
-     * Notifica accodata. {@code delivered} è vero solo se un invio reale è avvenuto ({@code SENT}): in V1 non
-     * succede mai, le email restano «preparate, non inviate» e gli SMS «non previsti» (canale spento).
+     * Notifica accodata. {@code delivered} è vero solo se un provider reale ha accettato il messaggio ({@code SENT}
+     * non simulato): in questa versione non succede mai. {@code simulated}: «inviata» dal gateway finto, nessun
+     * messaggio è partito. {@code resendable}: un gestore può chiederne un nuovo invio.
      */
-    public record NotificationEntry(String template, String channel, String recipient, String state, String skipReason,
-            boolean delivered, Instant createdAt) {
+    public record NotificationEntry(UUID id, String template, String channel, String recipient, String state, String skipReason,
+            boolean delivered, boolean simulated, boolean resendable, Instant createdAt) {
     }
 
     /** Posti nell'intervallo della prenotazione: minimo libero tra i quanti, e persone di altre richieste in attesa. */
@@ -97,8 +98,13 @@ public class ReservationViews {
                         h.changedBy() == null ? null : h.changedByName(), h.changedAt()))
                 .toList();
         List<NotificationEntry> notifications = outbox.forAggregate(ReservationService.AGGREGATE, r.id()).stream()
-                .map(n -> new NotificationEntry(n.templateCode(), n.channel(), n.recipientKind(), n.state(), n.skipReason(),
-                        "SENT".equals(n.state()), n.createdAt()))
+                .map(n -> {
+                    boolean simulated = "SENT".equals(n.state()) && "fake".equals(n.provider());
+                    boolean resendable = List.of("FAILED", "DEAD", "UNCERTAIN").contains(n.state())
+                            && n.manualResends() < it.fireflies.notification.NotificationDispatcher.MAX_MANUAL_RESENDS;
+                    return new NotificationEntry(n.id(), n.templateCode(), n.channel(), n.recipientKind(), n.state(), n.skipReason(),
+                            "SENT".equals(n.state()) && !simulated, simulated, resendable, n.createdAt());
+                })
                 .toList();
         return new Detail(summary(r), r.customerNotes(), r.internalNote(), zoneName(r.zoneId()),
                 (int) Duration.between(r.startsAt(), r.endsAt()).toMinutes(), userName(r.createdBy()), userName(r.handledBy()),

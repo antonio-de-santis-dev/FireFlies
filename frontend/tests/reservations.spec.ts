@@ -2,7 +2,7 @@
 // Ogni test usa nomi, giorni e numeri di prova diversi: le prenotazioni restano nel database come per i gestori veri.
 import { expect, request, test, type Page } from '@playwright/test';
 import { ownerApi } from './baseline';
-import { bookableDay, go, signIn, testPhone, watchProblems } from './helpers';
+import { bookableDay, go, openTableBooking, requestCard, signIn, testPhone, watchProblems } from './helpers';
 
 const BACKEND = () => process.env.FIREFLIES_BACKEND_URL ?? 'http://localhost:18080';
 
@@ -26,7 +26,7 @@ async function webRequest(body: { date: string; time: string; guests: number; na
 async function openRequest(page: Page, name: string) {
   await go(page, '/gestione/richieste');
   await page.getByLabel('Cerca').fill(name);
-  const row = page.getByRole('row', { name: new RegExp(name) });
+  const row = requestCard(page, name);
   await expect(row).toHaveCount(1);
   await row.getByRole('button', { name: `Gestisci la richiesta di ${name}` }).click();
   return page.getByRole('dialog', { name: new RegExp(name) });
@@ -40,8 +40,7 @@ test.describe('Prenotazioni', () => {
     const name = `Cliente E2E ${Date.now()}`;
     const day = bookableDay(3, 0);
     await go(page, '/');
-    await page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click();
-    const d = page.getByRole('dialog', { name: 'Richiedi un tavolo' });
+    const d = await openTableBooking(page, () => page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click());
     await d.locator('#bk-date').fill(day);
     await d.getByRole('button', { name: 'Avanti' }).click();
     await d.getByRole('radio', { name: '20:00' }).click();
@@ -75,12 +74,12 @@ test.describe('Prenotazioni', () => {
     await expect(detail).not.toContainText('Inviata');
     await expect(detail.getByRole('button', { name: 'Conferma', exact: true })).toHaveCount(0);
     await detail.getByRole('button', { name: 'Chiudi' }).first().click();
-    await expect(page.getByRole('row', { name: new RegExp(name) })).toContainText('Confermata');
+    await expect(requestCard(page, name)).toContainText('Confermata');
 
     // salvato davvero: dopo il ricaricamento resta confermata
     await page.reload();
     await page.getByLabel('Cerca').fill(name);
-    await expect(page.getByRole('row', { name: new RegExp(name) })).toContainText('Confermata');
+    await expect(requestCard(page, name)).toContainText('Confermata');
     expect(problems).toEqual([]);
   });
 
@@ -105,12 +104,18 @@ test.describe('Prenotazioni', () => {
     await detail.getByRole('button', { name: 'Conferma', exact: true }).click();
     await expect(detail.locator('.res-detail__facts')).toContainText('Confermata');
     await detail.getByRole('button', { name: 'Chiudi' }).first().click();
-    await go(page, '/gestione/capienza');
-    await page.getByLabel('Giorno', { exact: true }).fill(day);
-    const at = page.getByRole('row', { name: /^19:00/ }).first();
-    await expect(at.getByRole('cell').nth(2)).toHaveText(/^\d+$/);
-    const before = Number(await at.getByRole('cell').nth(2).textContent());
+    // persone confermate nel riepilogo per giorno e fascia (Impostazioni › Capienza, solo titolare)
+    const persons = async () => {
+      await signIn(page);
+      await go(page, '/gestione/impostazioni');
+      await page.getByLabel('Dal', { exact: true }).fill(day);
+      const row = page.locator('.cap-summary tbody tr', { hasText: 'Aperitivo' }).first();
+      await expect(row.locator('td[data-label="Persone"]')).toHaveText(/^\d+$/);
+      return Number(await row.locator('td[data-label="Persone"]').textContent());
+    };
+    const before = await persons();
     expect(before).toBeGreaterThanOrEqual(10);
+    await signIn(page, 'Staff');
 
     detail = await openRequest(page, cancelled);
     await detail.getByRole('button', { name: 'Annulla' }).click();
@@ -119,9 +124,7 @@ test.describe('Prenotazioni', () => {
     await expect(page.locator('.toast')).toContainText('i posti sono di nuovo liberi');
     await expect(detail.locator('.res-detail__list').last()).toContainText('Confermata → Annullata');
     await detail.getByRole('button', { name: 'Chiudi' }).first().click();
-    await go(page, '/gestione/capienza');
-    await page.getByLabel('Giorno', { exact: true }).fill(day);
-    await expect(page.getByRole('row', { name: /^19:00/ }).first().getByRole('cell').nth(2)).toHaveText(String(before - 10));
+    expect(await persons()).toBe(before - 10);
   });
 
   test('inserimento manuale da telefono: conferma immediata, avviso fuori orario, dati obbligatori', async ({ page }) => {
@@ -166,42 +169,31 @@ test.describe('Prenotazioni', () => {
     await expect(detail.locator('.res-detail__facts')).toContainText('Rifiutata');
   });
 
-  test('titolare: aggiunge un tavolo e lo assegna a mano a una prenotazione confermata', async ({ page }) => {
-    const name = `Tavolo E2E ${Date.now()}`;
-    const code = `E${String(Date.now()).slice(-4)}`;
+  test('niente più tavoli: nessuna pagina «Capienza e tavoli», nessuna assegnazione nel dettaglio', async ({ page }) => {
+    const name = `Senza tavoli E2E ${Date.now()}`;
     await webRequest({ date: bookableDay(7, 0), time: '20:30', guests: 6, name });
     await signIn(page);
+    await expect(page.getByRole('navigation', { name: 'Area gestori' }).getByRole('link', { name: /Capienza e tavoli/ })).toHaveCount(0);
     await go(page, '/gestione/capienza');
-    const form = page.getByRole('form', { name: 'Nuovo tavolo' });
-    await form.getByLabel('Codice').fill(code);
-    await form.getByLabel('Posti min').fill('2');
-    await form.getByLabel('Posti max').fill('4');
-    await form.getByRole('button', { name: 'Aggiungi il tavolo' }).click();
-    await expect(page.locator('.toast')).toContainText(`Tavolo ${code} aggiunto`);
-    await expect(page.locator('.cap-tag', { hasText: code })).toBeVisible();
-
+    await expect(page.getByRole('heading', { level: 1 })).not.toHaveText(/Capienza e tavoli/);
     const detail = await openRequest(page, name);
     await detail.getByRole('button', { name: 'Conferma', exact: true }).click();
     await expect(detail.locator('.res-detail__facts')).toContainText('Confermata');
-    await detail.getByRole('button', { name: 'Tavoli' }).click();
-    await detail.getByLabel(new RegExp(`^${code} ·`)).check();
-    await expect(detail).toContainText('Posti scelti: 4');
-    // 4 posti per 6 persone: il titolare può fare un'eccezione motivata
-    await detail.getByLabel(/Eccezione del titolare/).check();
-    await detail.getByLabel("Motivo dell'eccezione").fill('Aggiungiamo due sgabelli');
-    await detail.getByRole('button', { name: 'Assegna i tavoli' }).click();
-    await expect(page.locator('.toast')).toContainText('Tavoli aggiornati');
-    await expect(detail.locator('.res-detail__facts')).toContainText(`${code} (4 posti, eccezione)`);
+    await expect(detail.getByRole('button', { name: 'Tavoli' })).toHaveCount(0);
+    await expect(detail.locator('.res-detail__facts')).not.toContainText('tavol');
   });
 
-  test('staff: vede i posti del giorno ma non può cambiare la configurazione', async ({ page }) => {
+  test('staff: la capienza la cambia solo il titolare', async ({ page }) => {
     await signIn(page, 'Staff');
-    await go(page, '/gestione/capienza');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Capienza e tavoli');
-    await expect(page.getByRole('heading', { name: 'Posti del giorno' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Salva le regole' })).toHaveCount(0);
-    await expect(page.getByRole('form', { name: 'Nuovo tavolo' })).toHaveCount(0);
-    await expect(page.getByLabel('Persone massime dal sito')).toBeDisabled();
+    await expect(page.getByRole('navigation', { name: 'Area gestori' }).getByRole('link', { name: 'Impostazioni' })).toHaveCount(0);
+    await go(page, '/gestione/impostazioni');
+    await expect(page.getByRole('heading', { name: /Persone al massimo per giorno e fascia/ })).toHaveCount(0);
+    const status = await page.evaluate(async () => {
+      const csrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
+      const r = await fetch('/api/v1/admin/capacity-matrix', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrf }, body: JSON.stringify({ cells: [] }) });
+      return r.status;
+    });
+    expect(status, 'il backend rifiuta lo staff').toBe(403);
   });
 
   test('richieste dal sito chiuse dal titolare: il modulo invita a chiamare', async ({ page }) => {

@@ -18,6 +18,10 @@ server:
         secure: false
 
 fireflies:
+  # worker delle notifiche acceso in locale: solo gateway finti, le notifiche risultano «simulate, non consegnate»
+  notifications:
+    worker:
+      enabled: ${FIREFLIES_NOTIFICATIONS_WORKER_ENABLED:true}
   media:
     filesystem:
       root: ${FIREFLIES_MEDIA_DIR:./data/media} # ignorata da git

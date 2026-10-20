@@ -1,6 +1,6 @@
 // Test funzionali del walkthrough: ogni interazione richiesta dal brief deve funzionare davvero.
 import { expect, test } from '@playwright/test';
-import { bookableDay, go, signIn, stubGoogleMaps, testPhone, watchProblems } from './helpers';
+import { bookableDay, go, openTableBooking, signIn, stubGoogleMaps, testPhone, watchProblems } from './helpers';
 import { keepBaseline, photoSrc } from './baseline';
 
 test.describe('Area pubblica — desktop', () => {
@@ -79,8 +79,7 @@ test.describe('Area pubblica — desktop', () => {
 
   test('richiesta tavolo in 5 passi: validazione, riepilogo modificabile, invio reale «in attesa»', async ({ page }) => {
     await go(page, '/');
-    await page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Richiedi un tavolo' });
+    const dialog = await openTableBooking(page, () => page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click());
     await expect(dialog.getByText('Passo 1 di 5')).toBeVisible();
     // passo 1: giorno obbligatorio
     await dialog.getByRole('button', { name: 'Avanti' }).click();
@@ -178,8 +177,7 @@ test.describe('Area pubblica — mobile', () => {
 
   test('CTA sticky apre la richiesta tavolo a tutto schermo', async ({ page }) => {
     await go(page, '/menu');
-    await page.locator('.mobile-cta').getByRole('button', { name: 'Richiedi un tavolo' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Richiedi un tavolo' });
+    const dialog = await openTableBooking(page, () => page.locator('.mobile-cta').getByRole('button', { name: 'Richiedi un tavolo' }).click());
     await expect(dialog).toBeVisible();
     const box = await dialog.boundingBox();
     expect(box?.width).toBe(390);
@@ -244,7 +242,7 @@ test.describe('Area gestori', () => {
     await signIn(page);
     await go(page, '/gestione/impostazioni');
     await page.getByLabel(/Orari verificati dal gestore/).check();
-    await page.getByRole('button', { name: 'Salva' }).click();
+    await page.getByRole('button', { name: 'Salva', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Impostazioni salvate');
     await go(page, '/');
     await expect(page.locator('.hero').getByText('orari da confermare')).toHaveCount(0);
@@ -339,7 +337,7 @@ test.describe('Mappa e area del titolare', () => {
     await signIn(page, 'Staff');
     const nav = page.getByRole('navigation', { name: 'Area gestori' });
     await expect(nav.getByRole('link', { name: 'Personalizza il sito' })).toHaveCount(0);
-    await expect(nav.getByRole('link', { name: 'Orari e contatti' })).toHaveCount(0);
+    await expect(nav.getByRole('link', { name: 'Impostazioni' })).toHaveCount(0);
     await go(page, '/gestione/sito');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Riservato al titolare');
   });
@@ -456,8 +454,7 @@ test.describe('Revisione 19/10', () => {
 
   test('prenotazione: nel passo dati i campi sono allineati anche con errori', async ({ page }) => {
     await go(page, '/');
-    await page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click();
-    const d = page.getByRole('dialog');
+    const d = await openTableBooking(page, () => page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click());
     await d.locator('#bk-date').fill(bookableDay());
     await d.getByRole('button', { name: 'Avanti' }).click();
     await d.getByRole('radio', { name: '19:30' }).click();

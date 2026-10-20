@@ -68,12 +68,14 @@ class DemoContentLoaderIT extends PostgresIntegrationTest {
         assertThat(content.hasDemoContent()).isTrue();
         assertThat(content.publicSite().content().owners()).hasSize(3);
         assertThat(content.publicSite().content().menuHero().photos()).hasSize(5);
-        // prenotazioni d'esempio: capienza, tavoli e fasce nei giorni di apertura, nessuna prenotazione finta
+        // prenotazioni d'esempio: capienza, tavoli e fasce in tutti i giorni; il mercoledì resta chiuso dagli orari del sito
         DiningService.Config booking = dining.config();
         assertThat(booking.zones().getFirst().physicalCapacity()).isEqualTo(40);
         assertThat(booking.zones().getFirst().active()).isTrue();
         assertThat(booking.tables()).hasSize(10);
-        assertThat(booking.windows()).hasSize(6 * 4).noneMatch(w -> w.isoDay() == 3);
+        assertThat(booking.windows()).hasSize(7 * 4);
+        assertThat(jdbc.sql("SELECT bool_and(closed) FROM opening_hours WHERE iso_day = 3").query(Boolean.class).single())
+                .as("mercoledì chiuso: nessuna richiesta dal sito").isTrue();
         assertThat(booking.policy().webBookingEnabled()).isTrue();
         assertThat(jdbc.sql("SELECT count(*) FROM reservations").query(Long.class).single()).isZero();
         // eventi d'esempio: format e serata pubblicati, una bozza; la serata riserva in esclusiva i suoi quanti

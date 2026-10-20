@@ -58,7 +58,7 @@ const contentBody = (c: Json) => ({
   menuHeroIntervalSec: c.menuHero.intervalSec,
 });
 
-const settingsBody = (s: Json) => ({
+export const settingsBody = (s: Json) => ({
   addressLine: s.addressLine, addressConfirmed: s.addressConfirmed, mapQuery: s.mapQuery, mapMode: s.mapMode, phone: s.phone,
   email: s.email, instagramUrl: s.instagramUrl, hoursConfirmed: s.hoursConfirmed,
   hours: s.hours.map((h: Json) => (h.closed ? { isoDay: h.isoDay, closed: true }

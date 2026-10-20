@@ -2,6 +2,7 @@ package it.fireflies.dining;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -60,6 +61,15 @@ class DiningController {
 
     record ExceptionRequest(@NotNull LocalDate serviceDate, UUID serviceWindowId, @NotNull String kind,
             Integer capacityOverride, String reason) {
+    }
+
+    record CapacityCellRequest(@NotNull Integer isoDay, @NotNull String band, Integer maxCovers) {
+    }
+
+    record CapacityMatrixRequest(@NotNull List<@Valid CapacityCellRequest> cells) {
+    }
+
+    record OpeningExceptionRequest(@NotNull LocalDate day, @NotNull Boolean closed, LocalTime opensAt, LocalTime closesAt, String note) {
     }
 
     private final DiningService dining;
@@ -169,6 +179,35 @@ class DiningController {
     @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<Void> deleteException(@AuthenticationPrincipal GestoreDetails actor, @PathVariable UUID id) {
         dining.deleteException(actor.id(), id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/api/v1/admin/capacity-matrix")
+    @PreAuthorize("hasRole('STAFF')")
+    DiningService.CapacityMatrix capacityMatrix() {
+        return dining.capacityMatrix();
+    }
+
+    @PutMapping("/api/v1/admin/capacity-matrix")
+    @PreAuthorize("hasRole('OWNER')")
+    DiningService.CapacityMatrix saveCapacityMatrix(@AuthenticationPrincipal GestoreDetails actor,
+            @Valid @RequestBody CapacityMatrixRequest body) {
+        return dining.saveCapacityMatrix(actor.id(), body.cells().stream()
+                .map(c -> new DiningService.CapacityCell(c.isoDay(), Band.parse(c.band()), true, c.maxCovers())).toList());
+    }
+
+    @PostMapping("/api/v1/admin/opening-exceptions")
+    @PreAuthorize("hasRole('OWNER')")
+    ResponseEntity<java.util.Map<String, Object>> addOpeningException(@AuthenticationPrincipal GestoreDetails actor,
+            @Valid @RequestBody OpeningExceptionRequest body) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(dining.addOpeningException(actor.id(), body.day(), body.closed(),
+                body.opensAt(), body.closesAt(), body.note()));
+    }
+
+    @DeleteMapping("/api/v1/admin/opening-exceptions/{id}")
+    @PreAuthorize("hasRole('OWNER')")
+    ResponseEntity<Void> deleteOpeningException(@AuthenticationPrincipal GestoreDetails actor, @PathVariable UUID id) {
+        dining.deleteOpeningException(actor.id(), id);
         return ResponseEntity.noContent().build();
     }
 }

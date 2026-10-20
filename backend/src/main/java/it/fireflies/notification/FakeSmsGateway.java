@@ -21,10 +21,26 @@ public class FakeSmsGateway implements SmsGateway {
     }
 
     private final Map<String, String> idByKey = new ConcurrentHashMap<>();
+    /** Esiti forzati per i test (errore temporaneo, rifiuto, esito ignoto): si consumano uno per invio. */
+    private final java.util.Queue<SendResult.Outcome> scripted = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+    public void script(SendResult.Outcome... outcomes) {
+        scripted.addAll(List.of(outcomes));
+    }
+
+    public void reset() {
+        scripted.clear();
+        idByKey.clear();
+        delivered.clear();
+    }
     private final List<FakeSms> delivered = new CopyOnWriteArrayList<>();
 
     @Override
     public SendResult send(String toE164, String text, String idempotencyKey) {
+        SendResult.Outcome forced = scripted.poll();
+        if (forced != null && forced != SendResult.Outcome.ACCEPTED) {
+            return new SendResult(forced, null, "FAKE_" + forced.name());
+        }
         String id = idByKey.computeIfAbsent(idempotencyKey, key -> {
             String newId = "fake-sms-" + UUID.randomUUID();
             delivered.add(new FakeSms(toE164, text, key, newId));

@@ -23,8 +23,13 @@ import it.fireflies.dining.DiningStore;
 @Service
 public class BookingOptionsService {
 
+    /**
+     * {@code closedDates}: giorni tra {@code firstDate} e {@code lastDate} in cui dal sito non si può chiedere nulla
+     * (locale chiuso per orario settimanale o data straordinaria, chiusura di tutto il giorno, nessuna fascia): il
+     * calendario del sito li disabilita, il backend li rifiuta comunque ({@code DAY_CLOSED}).
+     */
     public record Options(boolean webBookingEnabled, int maxPartySize, int maxAdvanceDays, int minLeadMinutes,
-            LocalDate firstDate, LocalDate lastDate, LocalDate date, List<Group> groups) {
+            LocalDate firstDate, LocalDate lastDate, LocalDate date, List<Group> groups, List<LocalDate> closedDates) {
     }
 
     public record Group(String name, List<Slot> slots) {
@@ -50,12 +55,13 @@ public class BookingOptionsService {
         LocalDate today = BusinessTime.serviceDate(now);
         DiningStore.PolicyRow policy = calendar.policy(today).orElse(null);
         if (policy == null || !policy.webBookingEnabled()) {
-            return new Options(false, 0, 0, 0, null, null, date, List.of());
+            return new Options(false, 0, 0, 0, null, null, date, List.of(), List.of());
         }
         LocalDate last = today.plusDays(policy.maxAdvanceDays());
+        List<LocalDate> closedDates = calendar.closedDays(today, last);
         if (date == null || date.isBefore(today) || date.isAfter(last)) {
             return new Options(true, policy.maxPartySizeWeb(), policy.maxAdvanceDays(), policy.minLeadMinutes(), today, last,
-                    date, List.of());
+                    date, List.of(), closedDates);
         }
         int party = guests == null ? 1 : Math.max(1, guests);
         Instant earliest = now.plus(Duration.ofMinutes(policy.minLeadMinutes()));
@@ -89,6 +95,6 @@ public class BookingOptionsService {
             groups.add(new Group(w.name(), slots));
         }
         return new Options(true, policy.maxPartySizeWeb(), policy.maxAdvanceDays(), policy.minLeadMinutes(), today, last, date,
-                groups);
+                groups, closedDates);
     }
 }

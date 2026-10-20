@@ -13,7 +13,7 @@
  "desktop #/gestione/menu/{Tagliere FireFlies}": [],
  "desktop #/gestione/eventi": [],
  "desktop #/gestione/richieste": [],
- "desktop #/gestione/capienza": [],
+ "desktop #/gestione/oggi": [],
  "desktop #/gestione/foto": [],
  "desktop #/gestione/sito": [],
  "desktop #/gestione/impostazioni": [],
@@ -31,7 +31,7 @@
  "mobile #/gestione/menu/{Tagliere FireFlies}": [],
  "mobile #/gestione/eventi": [],
  "mobile #/gestione/richieste": [],
- "mobile #/gestione/capienza": [],
+ "mobile #/gestione/oggi": [],
  "mobile #/gestione/foto": [],
  "mobile #/gestione/sito": [],
  "mobile #/gestione/impostazioni": []

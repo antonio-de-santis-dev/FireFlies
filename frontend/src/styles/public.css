@@ -1374,3 +1374,27 @@ a.cal__day.has-event:hover { background: #a50d4f; }
 .booking-fields .check { align-items: flex-start; padding: 12px 14px; border-radius: var(--radius-1); background: var(--ff-ink-800); }
 .booking-fields .check input { margin-top: 2px; }
 .booking-nav { padding-top: 16px; margin-top: 4px; }
+
+/* FASE 7, req. 10: prima scelta del dialog (tavolo o evento privato / compleanno) */
+.booking-choice { display: grid; gap: 12px; }
+.booking-choice__opt {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 72px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-2, 12px);
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.booking-choice__opt:hover, .booking-choice__opt:focus-visible { border-color: var(--accent); }
+.booking-choice__opt svg { flex: none; width: 28px; height: 28px; color: var(--accent); }
+.booking-choice__opt span { display: grid; gap: 4px; min-width: 0; }
+.booking-choice__opt small { color: var(--ff-muted); font-size: 0.9375rem; line-height: 1.4; }
+.booking-choice__call { justify-self: start; }
+.day-chip:disabled { cursor: not-allowed; opacity: 0.45; }

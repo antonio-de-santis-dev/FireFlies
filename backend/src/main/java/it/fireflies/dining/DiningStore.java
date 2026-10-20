@@ -53,6 +53,10 @@ public class DiningStore {
             String reason) {
     }
 
+    /** Chiusura o apertura straordinaria del locale in una data (tabella {@code opening_exceptions} della V2). */
+    public record OpeningExceptionRow(UUID id, LocalDate day, boolean closed, LocalTime opensAt, LocalTime closesAt, String note) {
+    }
+
     private final JdbcClient jdbc;
 
     DiningStore(JdbcClient jdbc) {
@@ -253,6 +257,48 @@ public class DiningStore {
 
     void deleteException(UUID id) {
         jdbc.sql("DELETE FROM booking_exceptions WHERE id = ?").param(id).update();
+    }
+
+    // --- giorni di apertura (orari settimanali del sito e date straordinarie) -----------------------------------
+
+    /** Giorno della settimana chiuso negli orari del sito; senza orari inseriti nessun giorno è chiuso. */
+    boolean weeklyClosed(int isoDay) {
+        return jdbc.sql("SELECT coalesce(bool_and(closed), false) FROM opening_hours WHERE iso_day = ?").param(isoDay)
+                .query(Boolean.class).single();
+    }
+
+    List<OpeningExceptionRow> openingExceptionsBetween(LocalDate from, LocalDate to) {
+        return jdbc.sql("SELECT id, day, closed, opens_at, closes_at, note FROM opening_exceptions WHERE day BETWEEN ? AND ? ORDER BY day")
+                .params(from, to).query(DiningStore::openingException).list();
+    }
+
+    Optional<OpeningExceptionRow> openingException(LocalDate day) {
+        return jdbc.sql("SELECT id, day, closed, opens_at, closes_at, note FROM opening_exceptions WHERE day = ?")
+                .param(day).query(DiningStore::openingException).optional();
+    }
+
+    Optional<OpeningExceptionRow> openingException(UUID id) {
+        return jdbc.sql("SELECT id, day, closed, opens_at, closes_at, note FROM opening_exceptions WHERE id = ?")
+                .param(id).query(DiningStore::openingException).optional();
+    }
+
+    UUID insertOpeningException(LocalDate day, boolean closed, LocalTime opensAt, LocalTime closesAt, String note) {
+        return jdbc.sql("INSERT INTO opening_exceptions (day, closed, opens_at, closes_at, note) VALUES (?, ?, ?, ?, ?) RETURNING id")
+                .params(day, closed, opensAt, closesAt, note).query(UUID.class).single();
+    }
+
+    long activeReservationsOn(LocalDate day) {
+        return jdbc.sql("SELECT count(*) FROM reservations WHERE reservation_date = ? AND status IN ('PENDING', 'CONFIRMED')")
+                .param(day).query(Long.class).single();
+    }
+
+    void deleteOpeningException(UUID id) {
+        jdbc.sql("DELETE FROM opening_exceptions WHERE id = ?").param(id).update();
+    }
+
+    private static OpeningExceptionRow openingException(ResultSet rs, int n) throws SQLException {
+        return new OpeningExceptionRow(rs.getObject(1, UUID.class), rs.getObject(2, LocalDate.class), rs.getBoolean(3),
+                rs.getObject(4, LocalTime.class), rs.getObject(5, LocalTime.class), rs.getString(6));
     }
 
     private static ZoneRow zone(ResultSet rs, int n) throws SQLException {

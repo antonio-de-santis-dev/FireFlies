@@ -7,9 +7,10 @@ import type { SiteSettings } from '../../data/site';
 import { usePageMeta } from '../../router';
 import { useStore } from '../../store';
 import { AdminHead } from './AdminLayout';
+import { CapacitySettings } from './CapacitySettings';
 import { Switch } from './MenuAdmin';
 
-/** Interruttore delle richieste dal sito: salva subito la regola sul server (fasce e posti in «Capienza e tavoli»). */
+/** Interruttore delle richieste dal sito: salva subito la regola sul server (fasce e persone nella sezione «Capienza»). */
 function BookingSwitch() {
   const { notify } = useStore();
   const [policy, setPolicy] = useState<Policy | null>(null);
@@ -37,13 +38,13 @@ function BookingSwitch() {
   return (
     <>
       <Switch checked={on} onChange={() => void toggle()} label={on ? 'Richieste tavolo attive' : 'Richieste tavolo disattivate'} />
-      <p className="hint">Vale subito per il sito. Orari prenotabili, posti e tavoli si impostano in <a href="#/gestione/capienza">Capienza e tavoli</a>.</p>
+      <p className="hint">Vale subito per il sito. Persone per fascia, chiusure e limiti si impostano qui sotto, in <a href="#capienza" onClick={(e) => { e.preventDefault(); document.getElementById('capienza')?.scrollIntoView(); }}>Capienza</a>.</p>
     </>
   );
 }
 
 export function Settings() {
-  usePageMeta('Orari e contatti');
+  usePageMeta('Impostazioni');
   const { settings, dispatch, notify } = useStore();
   const [s, setS] = useState<SiteSettings>(settings);
   const up = <K extends keyof SiteSettings>(k: K, v: SiteSettings[K]) => setS((x) => ({ ...x, [k]: v }));
@@ -71,8 +72,9 @@ export function Settings() {
   };
 
   return (
+    <>
     <form className="editor" noValidate onSubmit={save}>
-      <AdminHead title="Orari e contatti" lead="Orari, contatti, mappa e richieste tavolo. Riservato al titolare.">
+      <AdminHead title="Impostazioni" lead="Orari, indirizzo, contatti, mappa e capienza. Riservato al titolare.">
         <button type="submit" className="btn btn--action" disabled={busy}><Save size={18} aria-hidden="true" /> {busy ? 'Salvataggio…' : 'Salva'}</button>
       </AdminHead>
       {failure && <p className="error" role="alert"><CircleAlert size={16} aria-hidden="true" /> {failure}</p>}
@@ -161,5 +163,7 @@ export function Settings() {
         </section>
       </div>
     </form>
+    <CapacitySettings />
+    </>
   );
 }

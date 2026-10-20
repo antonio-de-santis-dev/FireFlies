@@ -2,7 +2,7 @@
 // prenotazioni ordinarie e dalla serata demo; titoli e numeri sempre diversi.
 import { expect, request, test, type Page } from '@playwright/test';
 import { ownerApi } from './baseline';
-import { bookableDay, go, signIn, testPhone, watchProblems } from './helpers';
+import { bookableDay, go, openTableBooking, requestCard, signIn, testPhone, watchProblems } from './helpers';
 
 const BACKEND = () => process.env.FIREFLIES_BACKEND_URL ?? 'http://localhost:18080';
 
@@ -61,7 +61,7 @@ test.describe('Eventi', () => {
     await signIn(page, 'Staff');
     await go(page, '/gestione/richieste');
     await page.getByLabel('Cerca').fill(name);
-    const row = page.getByRole('row', { name: new RegExp(name) });
+    const row = requestCard(page, name);
     await expect(row).toContainText('Serata «DJ set al Fire»');
     await row.getByRole('button', { name: `Gestisci la richiesta di ${name}` }).click();
     const detail = page.getByRole('dialog', { name: new RegExp(name) });
@@ -124,8 +124,7 @@ test.describe('Eventi', () => {
     await page.getByRole('link', { name: 'Vedi il sito' }).click();
     await page.getByRole('navigation', { name: 'Principale' }).getByRole('link', { name: 'Eventi', exact: true }).click();
     await expect(page.locator('.event-row', { hasText: title })).toBeVisible();
-    await page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click();
-    const d = page.getByRole('dialog', { name: 'Richiedi un tavolo' });
+    const d = await openTableBooking(page, () => page.getByRole('banner').getByRole('button', { name: 'Richiedi un tavolo' }).click());
     await d.locator('#bk-date').fill(day);
     await d.getByRole('button', { name: 'Avanti' }).click();
     await expect(d.getByRole('radio', { name: /^20:00, evento/ })).toBeDisabled();

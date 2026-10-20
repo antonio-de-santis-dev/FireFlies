@@ -161,7 +161,7 @@ function ReplaceButton({ item, onError }: { item: MediaItem; onError: (msg: stri
     <span className="photos__replace">
       <input id={id} type="file" accept={ALLOWED_UPLOAD.join(',')} className="sr-only" disabled={busy} onChange={(e) => onFile(e.currentTarget)} />
       <label htmlFor={id} className="btn btn--quiet btn--sm" aria-label={`Sostituisci il file: ${item.asset.alt}`}>
-        <RefreshCw size={16} aria-hidden="true" /> {busy ? 'Caricamento…' : 'Sostituisci'}
+        <RefreshCw size={16} aria-hidden="true" /> <span className="photos__btn-text">{busy ? 'Caricamento…' : 'Sostituisci'}</span>
       </label>
     </span>
   );
@@ -227,7 +227,7 @@ export function Photos() {
       <ul className="photos">
         {media.map((m, i) => (
           <li key={m.id} className="photos__item">
-            <Img asset={m.asset} className="photos__img" decorative sizes="(min-width: 1200px) 320px, (min-width: 640px) 45vw, 100vw" />
+            <Img asset={m.asset} className="photos__img" decorative sizes="(min-width: 1200px) 320px, (min-width: 640px) 45vw, 50vw" />
             <div className="photos__body">
               {m.uploaded ? <span className="badge badge--action">Caricata ora</span> : <span className="badge badge--neutral">Foto del locale</span>}
               <AltField key={m.asset.alt} item={m} />
@@ -240,8 +240,8 @@ export function Photos() {
                   <ArrowDown size={18} aria-hidden="true" />
                 </button>
                 <ReplaceButton item={m} onError={setBlocked} />
-                <button type="button" className="btn btn--quiet btn--sm photos__del" onClick={() => remove(m)}>
-                  <Trash2 size={16} aria-hidden="true" /> Elimina
+                <button type="button" className="btn btn--quiet btn--sm photos__del" onClick={() => remove(m)} aria-label={`Elimina la foto: ${m.asset.alt}`}>
+                  <Trash2 size={16} aria-hidden="true" /> <span className="photos__btn-text">Elimina</span>
                 </button>
               </div>
             </div>

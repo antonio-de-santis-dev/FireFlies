@@ -1,5 +1,5 @@
-import { Armchair, CalendarDays, ExternalLink, Images, Inbox, LayoutDashboard, LogOut, Megaphone, Palette, Settings, UtensilsCrossed } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { CalendarCheck, CalendarDays, ExternalLink, Images, Inbox, LayoutDashboard, LogOut, Megaphone, Menu as MenuIcon, Palette, Settings, UtensilsCrossed, X } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { logout as serverLogout } from '../../api/auth';
 import { ApiError } from '../../api/client';
 import { loadAdminMenu, loadAnnouncements, loadLibrary, loadSettings, loadSiteContent } from '../../api/content';
@@ -7,21 +7,28 @@ import { listReservations } from '../../api/reservations';
 import { Toast } from '../../components/PublicLayout';
 import { Img } from '../../components/ui';
 import { logo } from '../../data/assets';
-import { Link, navigate } from '../../router';
+import { Link, navigate, usePath } from '../../router';
 import { useStore } from '../../store';
 
 // `owner: true` = visibile solo al titolare. È solo comodità: i permessi veri li controlla il backend su ogni API.
+// Ordine della FASE 7 (req. 2); «Capienza e tavoli» non esiste più: la capienza è in Impostazioni.
 export const ADMIN_NAV = [
   { to: '/gestione', label: 'Panoramica', icon: LayoutDashboard, owner: false },
   { to: '/gestione/menu', label: 'Menu e prezzi', icon: UtensilsCrossed, owner: false },
+  { to: '/gestione/oggi', label: 'Calendario prenotazioni oggi', icon: CalendarCheck, owner: false },
   { to: '/gestione/eventi', label: 'Eventi', icon: CalendarDays, owner: false },
   { to: '/gestione/richieste', label: 'Richieste', icon: Inbox, owner: false },
-  { to: '/gestione/capienza', label: 'Capienza e tavoli', icon: Armchair, owner: false },
   { to: '/gestione/foto', label: 'Foto', icon: Images, owner: false },
   { to: '/gestione/comunicazioni', label: 'Comunicazioni', icon: Megaphone, owner: false },
   { to: '/gestione/sito', label: 'Personalizza il sito', icon: Palette, owner: true },
-  { to: '/gestione/impostazioni', label: 'Orari e contatti', icon: Settings, owner: true },
+  { to: '/gestione/impostazioni', label: 'Impostazioni', icon: Settings, owner: true },
 ];
+
+/** Voce attiva: la pagina o una sua sottopagina (es. /gestione/eventi/123 → Eventi). */
+export function activeNav(path: string) {
+  const route = path.split('?')[0];
+  return [...ADMIN_NAV].sort((a, b) => b.to.length - a.to.length).find((n) => route === n.to || route.startsWith(`${n.to}/`)) ?? ADMIN_NAV[0];
+}
 
 /**
  * Dati dell'area gestori dal backend: menu, libreria foto e avvisi per tutti; testi e impostazioni solo per il
@@ -78,10 +85,49 @@ function usePendingCount() {
   }, [role, dispatch]);
 }
 
+/**
+ * Menu dei telefoni (FASE 7, req. 2): un pulsante apre l'elenco completo sopra la pagina. Si chiude con il pulsante,
+ * con Esc, scegliendo una voce o toccando fuori; aprendolo il focus va sulla voce attiva, chiudendolo torna al pulsante.
+ */
+function useMobileNav(path: string) {
+  const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => setOpen(false), [path]);
+  useEffect(() => {
+    if (!open) return;
+    const focusFrame = requestAnimationFrame(() => {
+      const nav = navRef.current;
+      (nav?.querySelector<HTMLAnchorElement>('a[aria-current="page"]') ?? nav?.querySelector<HTMLAnchorElement>('a'))?.focus();
+    });
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        toggleRef.current?.focus();
+      }
+    };
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!navRef.current?.contains(t) && !toggleRef.current?.contains(t)) setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('mousedown', onClick);
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('mousedown', onClick);
+    };
+  }, [open]);
+  return { open, setOpen, toggleRef, navRef };
+}
+
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { dispatch, pendingRequests: fresh, role } = useStore();
   const ready = useAdminData();
   usePendingCount();
+  const path = usePath();
+  const current = activeNav(path);
+  const mobile = useMobileNav(path);
   const logout = async () => {
     try {
       await serverLogout();
@@ -105,7 +151,12 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <Img asset={logo.mark} decorative eager />
             <span>Gestione<small>{role === 'titolare' ? 'Titolare' : 'Staff'}</small></span>
           </Link>
-          <nav aria-label="Area gestori" className="admin__nav">
+          <button ref={mobile.toggleRef} type="button" className="admin__menu-btn" aria-expanded={mobile.open} aria-controls="admin-nav"
+            aria-label={`Menu, pagina attuale: ${current.label}`} onClick={() => mobile.setOpen(!mobile.open)}>
+            {mobile.open ? <X size={22} aria-hidden="true" /> : <MenuIcon size={22} aria-hidden="true" />}
+            <span className="admin__menu-label" aria-hidden="true">{current.label}</span>
+          </button>
+          <nav ref={mobile.navRef} id="admin-nav" aria-label="Area gestori" className={`admin__nav${mobile.open ? ' is-open' : ''}`}>
             <ul>
               {ADMIN_NAV.filter((n) => !n.owner || role === 'titolare').map(({ to, label, icon: Icon }) => (
                 <li key={to}>

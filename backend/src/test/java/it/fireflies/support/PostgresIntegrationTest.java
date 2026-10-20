@@ -52,7 +52,8 @@ public abstract class PostgresIntegrationTest {
             jdbc.sql("""
                     TRUNCATE reservation_table_assignments, reservation_status_history, reservations,
                              notification_attempts, notification_outbox, capacity_slots, booking_exceptions,
-                             event_media, events, dining_tables, dining_areas, service_windows
+                             event_media, events, dining_tables, dining_areas, service_windows, reservation_stats,
+                             maintenance_runs
                     """).update();
             jdbc.sql("DELETE FROM capacity_zones WHERE name <> 'Locale'").update();
             // zona e regole tornano come nel seed V7: prenotazioni dal sito chiuse, capienza da impostare

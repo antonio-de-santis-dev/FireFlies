@@ -15,8 +15,8 @@ import tools.jackson.databind.ObjectMapper;
 
 /**
  * Accodamento delle notifiche nell'outbox (ADR-0005), nella stessa transazione del fatto che le genera.
- * In V1 non esiste ancora il worker di invio (FASE 7): le email restano {@code PENDING} («preparate, non inviate») e
- * gli SMS vengono registrati come {@code SKIPPED} finché il canale è spento. Nessun messaggio parte da qui.
+ * L'invio lo fa {@link NotificationDispatcher} (FASE 7), solo con gateway finti: senza worker acceso le email restano
+ * {@code PENDING} («preparate, non inviate»); gli SMS sono {@code SKIPPED} finché il canale è spento.
  * Regola privacy: nel payload mai le note libere del cliente.
  */
 @Service
@@ -26,8 +26,9 @@ public class NotificationOutbox {
 
     public enum Recipient { CUSTOMER, STAFF }
 
+    /** {@code provider}: chi ha gestito l'ultimo tentativo ({@code fake} = invio simulato, nessun messaggio reale). */
     public record Entry(UUID id, String templateCode, String channel, String recipientKind, String state, String skipReason,
-            Instant createdAt, Instant sentAt) {
+            Instant createdAt, Instant sentAt, String provider, int manualResends) {
     }
 
     private final JdbcClient jdbc;
@@ -45,6 +46,13 @@ public class NotificationOutbox {
     @Transactional(propagation = Propagation.MANDATORY)
     public void enqueue(String businessKey, String aggregateType, UUID aggregateId, Channel channel, Recipient recipientKind,
             String recipient, String templateCode, Map<String, ?> payload) {
+        enqueue(businessKey, aggregateType, aggregateId, channel, recipientKind, recipient, templateCode, payload, null);
+    }
+
+    /** Come sopra, con la scadenza: dopo {@code expiresAt} il messaggio non si manda più (SKIPPED, motivo EXPIRED). */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void enqueue(String businessKey, String aggregateType, UUID aggregateId, Channel channel, Recipient recipientKind,
+            String recipient, String templateCode, Map<String, ?> payload, Instant expiresAt) {
         String skip = null;
         if (recipient == null || recipient.isBlank()) {
             skip = "NO_RECIPIENT";
@@ -53,13 +61,14 @@ public class NotificationOutbox {
         }
         jdbc.sql("""
                 INSERT INTO notification_outbox (business_event_key, aggregate_type, aggregate_id, channel, recipient_kind,
-                                                 recipient, template_code, payload, state, skip_reason)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?)
+                                                 recipient, template_code, payload, state, skip_reason, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?)
                 ON CONFLICT (business_event_key) DO NOTHING
                 """)
                 .params(businessKey, aggregateType, aggregateId, channel.name(), recipientKind.name(),
                         recipient == null || recipient.isBlank() ? null : recipient, templateCode,
-                        json.writeValueAsString(payload), skip == null ? "PENDING" : "SKIPPED", skip)
+                        json.writeValueAsString(payload), skip == null ? "PENDING" : "SKIPPED", skip,
+                        expiresAt == null ? null : expiresAt.atOffset(java.time.ZoneOffset.UTC))
                 .update();
     }
 
@@ -68,20 +77,23 @@ public class NotificationOutbox {
     public int supersede(String aggregateType, UUID aggregateId, List<String> templateCodes) {
         return jdbc.sql("""
                 UPDATE notification_outbox SET state = 'SKIPPED', skip_reason = 'SUPERSEDED'
-                 WHERE aggregate_type = ? AND aggregate_id = ? AND state = 'PENDING' AND template_code = ANY (?)
+                 WHERE aggregate_type = ? AND aggregate_id = ? AND state IN ('PENDING', 'FAILED') AND template_code = ANY (?)
                 """)
                 .params(aggregateType, aggregateId, templateCodes.toArray(String[]::new)).update();
     }
 
     public List<Entry> forAggregate(String aggregateType, UUID aggregateId) {
         return jdbc.sql("""
-                SELECT id, template_code, channel, recipient_kind, state, skip_reason, created_at, sent_at
-                  FROM notification_outbox WHERE aggregate_type = ? AND aggregate_id = ? ORDER BY created_at, id
+                SELECT o.id, o.template_code, o.channel, o.recipient_kind, o.state, o.skip_reason, o.created_at, o.sent_at,
+                       (SELECT a.provider FROM notification_attempts a WHERE a.outbox_id = o.id ORDER BY a.attempt_no DESC LIMIT 1),
+                       o.manual_resend_count
+                  FROM notification_outbox o WHERE o.aggregate_type = ? AND o.aggregate_id = ? ORDER BY o.created_at, o.id
                 """)
                 .params(aggregateType, aggregateId)
                 .query((rs, n) -> new Entry(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
                         rs.getString(5), rs.getString(6), rs.getObject(7, OffsetDateTime.class).toInstant(),
-                        rs.getObject(8, OffsetDateTime.class) == null ? null : rs.getObject(8, OffsetDateTime.class).toInstant()))
+                        rs.getObject(8, OffsetDateTime.class) == null ? null : rs.getObject(8, OffsetDateTime.class).toInstant(),
+                        rs.getString(9), rs.getInt(10)))
                 .list();
     }
 

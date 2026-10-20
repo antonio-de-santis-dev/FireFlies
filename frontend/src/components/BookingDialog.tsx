@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, CalendarDays, CircleAlert, Clock3, Info, Minus, Pencil, Plus, ShieldCheck, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarDays, CircleAlert, Clock3, Info, Minus, PartyPopper, Pencil, Phone, Plus, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import { bookingOptions, hhmm, newIdempotencyKey, sendRequest, type BookingOptions, type Receipt } from '../api/reservations';
@@ -43,6 +43,8 @@ export function BookingDialog() {
   // serata prenotabile (FASE 6): giorno e orario sono quelli dell'evento, si parte dalle persone
   const eventMode = !!(event?.uuid && event.bookable);
   const [step, setStep] = useState(eventMode ? 2 : event?.date ? 1 : 0);
+  // FASE 7, req. 10: prima della data si sceglie tra tavolo ed evento privato / compleanno (non per le serate in calendario)
+  const [choice, setChoice] = useState<'ask' | 'table' | 'party'>(event ? 'table' : 'ask');
   const [values, setValues] = useState<Values>({
     date: event?.date ?? '', time: eventMode ? event?.time ?? '' : '', guests: 2, name: '', phone: '', email: '', notes: '',
     privacy: false, website: '',
@@ -77,19 +79,16 @@ export function BookingDialog() {
 
   const maxParty = general?.maxPartySize || 12;
 
+  // giorni chiusi: li dice il backend (orari settimanali, chiusure e aperture straordinarie); il server li rifiuta comunque
+  const closedDates = useMemo(() => new Set(general?.closedDates ?? []), [general]);
+  const isClosed = (iso: string) => (general?.closedDates ? closedDates.has(iso)
+    : !settings.hours[(new Date(`${iso}T12:00:00`).getDay() + 6) % 7]?.open);
+
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    const idx = (d.getDay() + 6) % 7;
-    return { iso: isoOf(d), d, closed: !settings.hours[idx]?.open, today: i === 0 };
-  }), [settings.hours]);
-
-  const closedDay = useMemo(() => {
-    if (!values.date) return null;
-    const idx = (new Date(`${values.date}T12:00:00`).getDay() + 6) % 7;
-    const h = settings.hours[idx];
-    return h && !h.open ? h.day : null;
-  }, [values.date, settings.hours]);
+    return { iso: isoOf(d), d, today: i === 0 };
+  }), []);
 
   // a ogni cambio di passo il focus va al titolo del passo (annunciato dagli screen reader)
   useEffect(() => {
@@ -102,6 +101,7 @@ export function BookingDialog() {
       if (!v.date) e.date = 'Scegli il giorno in cui vorresti venire.';
       else if (v.date < todayIso()) e.date = 'La data è già passata: scegline una da oggi in poi.';
       else if (general?.lastDate && v.date > general.lastDate) e.date = `Si può chiedere un tavolo al massimo ${general.maxAdvanceDays} giorni prima.`;
+      else if (!eventMode && isClosed(v.date)) e.date = 'Quel giorno il locale è chiuso: scegli un altro giorno.';
     }
     if (s === 1 && !v.time) e.time = 'Scegli uno degli orari disponibili.';
     if (s === 2 && (v.guests < 1 || v.guests > maxParty)) e.guests = `Indica da 1 a ${maxParty} persone. Per gruppi più grandi chiamaci.`;
@@ -193,6 +193,39 @@ export function BookingDialog() {
     );
   }
 
+  if (choice !== 'table') {
+    const tel = settings.phone ? `tel:${settings.phone.replace(/[^\d+]/g, '')}` : null;
+    return (
+      <Dialog title={choice === 'party' ? 'Organizza un evento o un compleanno' : 'Prenota'} onClose={closeBooking}>
+        {choice === 'ask' ? (
+          <div className="booking-choice" role="group" aria-label="Cosa vuoi prenotare?">
+            <p className="booking-step__title">Cosa vuoi prenotare?</p>
+            <button type="button" className="booking-choice__opt" onClick={() => setChoice('table')}>
+              <UtensilsCrossed aria-hidden="true" />
+              <span><strong>Prenota un tavolo</strong><small>Scegli giorno, orario e persone: il locale conferma la richiesta.</small></span>
+            </button>
+            <button type="button" className="booking-choice__opt" onClick={() => setChoice('party')}>
+              <PartyPopper aria-hidden="true" />
+              <span><strong>Organizza un evento / compleanno</strong><small>Feste private e compleanni si organizzano parlando con il locale.</small></span>
+            </button>
+          </div>
+        ) : (
+          <div className="booking-choice">
+            <p className="booking-step__title">Contattaci per organizzare il tuo evento o compleanno</p>
+            {tel ? (
+              <a className="btn btn--primary booking-choice__call" href={tel}><Phone size={20} aria-hidden="true" /> Chiama {settings.phone}</a>
+            ) : (
+              <p className="hint warn" role="note"><Info size={16} aria-hidden="true" /> Il numero di telefono del locale non è ancora disponibile: scrivici su Instagram oppure passa a trovarci.</p>
+            )}
+            <div className="booking-actions">
+              <button type="button" className="btn btn--quiet" onClick={() => setChoice('ask')}><ArrowLeft size={20} aria-hidden="true" /> Indietro</button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+    );
+  }
+
   const when = values.date ? formatEventDate({ date: values.date, time: values.time || null }) : '—';
   const groups = options?.date === values.date ? options.data?.groups ?? null : null;
 
@@ -237,21 +270,24 @@ export function BookingDialog() {
                   <legend className="booking-step__title" tabIndex={-1} data-step-title><CalendarDays aria-hidden="true" /> Quando vuoi venire?</legend>
                   {err('date')}
                   <div className="day-chips" role="radiogroup" aria-label="Prossimi 14 giorni">
-                    {days.map((d) => (
-                      <button key={d.iso} type="button" role="radio" aria-checked={values.date === d.iso}
-                        className={`day-chip${d.closed ? ' is-closed' : ''}`} onClick={() => set('date', d.iso)}
-                        aria-label={`${capitalize(new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).format(d.d))}${d.closed ? ', chiuso secondo gli orari' : ''}`}>
-                        <span className="day-chip__dow">{d.today ? 'Oggi' : capitalize(dayFmt.format(d.d))}</span>
-                        <span className="day-chip__num">{numFmt.format(d.d)}</span>
-                        <span className="day-chip__mon">{d.closed ? 'chiuso*' : monFmt.format(d.d)}</span>
-                      </button>
-                    ))}
+                    {days.map((d) => {
+                      const closed = isClosed(d.iso);
+                      return (
+                        <button key={d.iso} type="button" role="radio" aria-checked={values.date === d.iso} disabled={closed}
+                          className={`day-chip${closed ? ' is-closed' : ''}`} onClick={() => set('date', d.iso)}
+                          aria-label={`${capitalize(new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).format(d.d))}${closed ? ', chiuso' : ''}`}>
+                          <span className="day-chip__dow">{d.today ? 'Oggi' : capitalize(dayFmt.format(d.d))}</span>
+                          <span className="day-chip__num">{numFmt.format(d.d)}</span>
+                          <span className="day-chip__mon">{closed ? 'chiuso' : monFmt.format(d.d)}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                   <label className="small" htmlFor="bk-date">Oppure scegli un'altra data</label>
                   <input id="bk-date" className="input input--date" type="date" min={todayIso()} max={general?.lastDate ?? undefined} value={values.date}
                     onChange={(e) => set('date', e.target.value)} {...aria('date')} />
-                  {closedDay && (
-                    <p className="hint warn"><Info size={16} aria-hidden="true" /> Di {closedDay.toLowerCase()} il locale risulta chiuso: al passo successivo vedrai se ci sono orari disponibili.</p>
+                  {values.date && isClosed(values.date) && !errors.date && (
+                    <p className="hint warn"><Info size={16} aria-hidden="true" /> Quel giorno il locale è chiuso: scegli un altro giorno.</p>
                   )}
                 </fieldset>
               )}
@@ -385,6 +421,11 @@ export function BookingDialog() {
             </div>
 
             <div className="booking-nav">
+              {step === 0 && !event && (
+                <button type="button" className="btn btn--quiet" disabled={sending} onClick={() => { setErrors({}); setChoice('ask'); }}>
+                  <ArrowLeft size={20} aria-hidden="true" /> Indietro
+                </button>
+              )}
               {step > (eventMode ? 2 : 0) && (
                 <button type="button" className="btn btn--quiet" disabled={sending} onClick={() => { setErrors({}); setStep((s) => s - 1); }}>
                   <ArrowLeft size={18} aria-hidden="true" /> Indietro

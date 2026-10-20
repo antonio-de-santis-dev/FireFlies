@@ -45,6 +45,8 @@ export type BookingOptions = {
   webBookingEnabled: boolean; maxPartySize: number; maxAdvanceDays: number; minLeadMinutes: number;
   firstDate: string | null; lastDate: string | null; date: string | null;
   groups: { name: string; slots: { time: string; available: boolean; reason: SlotReason }[] }[];
+  /** Giorni senza arrivi possibili dal sito (chiusura settimanale o straordinaria, nessuna fascia): il calendario li disabilita. */
+  closedDates?: string[];
 };
 export type Receipt = { reference: string; status: ReservationStatus; date: string; time: string; guests: number; message: string };
 export type WebRequest = {
@@ -78,7 +80,10 @@ export type Detail = {
   tables: { tableId: string; code: string; area: string; maxSeats: number; seatsOverride: boolean; overrideReason: string | null }[];
   history: { fromStatus: ReservationStatus | null; toStatus: ReservationStatus; reason: string | null; note: string | null; by: string | null; at: string }[];
   changes: { action: string; by: string | null; at: string; details: Record<string, unknown> }[];
-  notifications: { template: string; channel: 'EMAIL' | 'SMS'; recipient: 'CUSTOMER' | 'STAFF'; state: string; skipReason: string | null; delivered: boolean; createdAt: string }[];
+  notifications: {
+    id: string; template: string; channel: 'EMAIL' | 'SMS'; recipient: 'CUSTOMER' | 'STAFF'; state: string; skipReason: string | null;
+    delivered: boolean; simulated: boolean; resendable: boolean; createdAt: string;
+  }[];
   capacity: { zoneId: string; capacity: number; minFree: number; pendingOthers: number; eventBlocks: boolean; fits: boolean } | null;
   actions: Action[];
   warnings: string[];
@@ -171,14 +176,52 @@ export const addException = (e: { serviceDate: string; serviceWindowId?: string 
   api.post<BookingException>('/admin/booking-exceptions', e);
 export const deleteException = (id: string) => api.del(`/admin/booking-exceptions/${id}`);
 
+// --- FASE 7: capienza per giorno e fascia, riepilogo, calendario di oggi, date straordinarie ----------------
+
+export type Band = 'COLAZIONE' | 'POMERIGGIO' | 'APERITIVO' | 'SERA';
+export const BANDS: { id: Band; label: string }[] = [
+  { id: 'COLAZIONE', label: 'Colazione' }, { id: 'POMERIGGIO', label: 'Pomeriggio' },
+  { id: 'APERITIVO', label: 'Aperitivo' }, { id: 'SERA', label: 'Sera' },
+];
+
+export type CapacityCell = { isoDay: number; band: Band; offered: boolean; maxCovers: number | null };
+export type OpeningException = { id: string; day: string; closed: boolean; opensAt: string | null; closesAt: string | null; note: string | null };
+export type CapacityMatrix = { physicalCapacity: number; cells: CapacityCell[]; exceptions: BookingException[]; openingExceptions: OpeningException[] };
+export const capacityMatrix = () => api.get<CapacityMatrix>('/admin/capacity-matrix');
+export const saveCapacityMatrix = (cells: { isoDay: number; band: Band; maxCovers: number | null }[]) =>
+  api.put<CapacityMatrix>('/admin/capacity-matrix', { cells });
+
+export type SummaryRow = {
+  date: string; band: Band; label: string; closed: boolean; requests: number; pending: number; confirmed: number; guests: number;
+  capacity: number | null; available: number | null; fromStatistics: boolean;
+};
+export const capacitySummary = (from: string, to: string) =>
+  api.get<{ from: string; to: string; rows: SummaryRow[] }>(`/admin/capacity-summary?from=${from}&to=${to}`);
+
+export type TodayItem = { id: string; reference: string; time: string; name: string | null; guests: number; band: Band; bandLabel: string; event: string | null };
+export type Today = { date: string; band: Band | null; items: TodayItem[]; bands: { band: Band; label: string; reservations: number; guests: number }[]; reservations: number; guests: number };
+export const todayReservations = (band: Band | null) => api.get<Today>(`/admin/reservations/today${band ? `?band=${band}` : ''}`);
+
+export const addOpeningException = (e: { day: string; closed: boolean; opensAt?: string | null; closesAt?: string | null; note?: string }) =>
+  api.post<{ exception: OpeningException; activeReservations: number }>('/admin/opening-exceptions', e);
+export const deleteOpeningException = (id: string) => api.del(`/admin/opening-exceptions/${id}`);
+
 /** Testo per lo stato di una notifica: mai «inviata» se non è partita davvero. */
+export const resendNotification = (id: string) => api.post<void>(`/admin/notifications/${id}/resend`, {});
+
 export function notificationLabel(n: Detail['notifications'][number]): string {
   if (n.delivered) return 'Inviata';
+  if (n.simulated) return 'Simulata: nessun messaggio reale';
+  if (n.state === 'SENDING') return 'In invio';
+  if (n.state === 'UNCERTAIN') return 'Esito incerto: verifica col cliente';
+  if (n.skipReason === 'TEMPLATE_INACTIVE') return 'Non inviata: modello non attivo';
+  if (n.skipReason === 'EXPIRED') return 'Non inviata: ormai superata dalla data';
   if (n.state === 'PENDING') return n.channel === 'EMAIL' ? 'Email preparata, non inviata' : 'Preparata, non inviata';
   if (n.skipReason === 'SMS_DISABLED') return 'SMS non previsto (canale spento)';
   if (n.skipReason === 'NO_RECIPIENT') return n.recipient === 'STAFF' ? "Non preparata: manca l'email del locale" : 'Non preparata: nessuna email del cliente';
   if (n.skipReason === 'SUPERSEDED') return 'Superata da un aggiornamento';
-  if (n.state === 'FAILED' || n.state === 'DEAD') return 'Invio non riuscito';
+  if (n.state === 'FAILED') return 'Invio non riuscito: nuovo tentativo automatico';
+  if (n.state === 'DEAD') return 'Invio non riuscito';
   return 'Non inviata';
 }
 

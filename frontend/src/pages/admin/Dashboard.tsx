@@ -1,6 +1,6 @@
-import { ArrowRight, CalendarDays, CircleAlert, Clock, Images, Inbox, Megaphone, Palette, PhoneCall, UtensilsCrossed } from 'lucide-react';
+import { ArrowRight, CalendarCheck, CalendarDays, CircleAlert, Inbox, PhoneCall, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { hhmm, listReservations, type Summary } from '../../api/reservations';
+import { hhmm, listReservations, todayReservations, type Summary } from '../../api/reservations';
 import { formatEventDate } from '../../data/events';
 import { Link, usePageMeta } from '../../router';
 import { useStore } from '../../store';
@@ -29,10 +29,23 @@ function useRequestsToHandle() {
   return state;
 }
 
+/** Prenotazioni confermate di oggi (stessa fonte del «Calendario prenotazioni oggi»). */
+function useTodayCount() {
+  const [n, setN] = useState<{ reservations: number; guests: number } | null>(null);
+  useEffect(() => {
+    let current = true;
+    todayReservations(null).then((t) => current && setN({ reservations: t.reservations, guests: t.guests })).catch(() => current && setN(null));
+    return () => { current = false; };
+  }, []);
+  return n;
+}
+
 export function Dashboard() {
   usePageMeta('Panoramica');
   const { events, menu, settings, role } = useStore();
+  // FASE 7, req. 1: niente scorciatoie che ripetono il menu di navigazione, solo indicatori e cose da fare
   const requests = useRequestsToHandle();
+  const todayCount = useTodayCount();
   const fresh = requests?.pending ?? [];
   const toCall = requests?.callbacks ?? [];
   const upcoming = events.filter((e) => e.kind === 'serata' && e.status === 'pubblicato').sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
@@ -49,25 +62,16 @@ export function Dashboard() {
     <>
       <AdminHead title="Ciao! Ecco la giornata." lead="Richieste tavolo ed eventi dal server: quello che vedi qui è quello che vede il sito." />
 
-      <nav className="quick" aria-label="Azioni rapide">
-        <ul>
-          {role === 'titolare' && (
-            <li><Link to="/gestione/sito" className="quick__item quick__item--main"><Palette aria-hidden="true" /><span><strong>Personalizza il sito</strong><small>Frase, foto di apertura, sezioni, storia e staff</small></span></Link></li>
-          )}
-          <li><Link to="/gestione/menu" className="quick__item"><UtensilsCrossed aria-hidden="true" /><span><strong>Menu e prezzi</strong><small>Voci, prezzi, allergeni, foto</small></span></Link></li>
-          <li><Link to="/gestione/foto" className="quick__item"><Images aria-hidden="true" /><span><strong>Foto</strong><small>Carica e scegli la galleria</small></span></Link></li>
-          <li><Link to="/gestione/comunicazioni" className="quick__item"><Megaphone aria-hidden="true" /><span><strong>Comunicazioni</strong><small>Avvisi in cima al sito</small></span></Link></li>
-          {role === 'titolare' && (
-            <li><Link to="/gestione/impostazioni" className="quick__item"><Clock aria-hidden="true" /><span><strong>Orari e contatti</strong><small>Orari, telefono, mappa</small></span></Link></li>
-          )}
-        </ul>
-      </nav>
-
       <ul className="stats" aria-label="Riepilogo">
         <li className="stats__item stats__item--hot">
           <Inbox aria-hidden="true" />
           <span className="stats__n">{requests ? requests.pendingTotal : '…'}</span>
           <span>richieste in attesa</span>
+        </li>
+        <li className="stats__item">
+          <CalendarCheck aria-hidden="true" />
+          <span className="stats__n">{todayCount ? todayCount.reservations : '…'}</span>
+          <span>{todayCount ? <Link to="/gestione/oggi">confermate oggi · {todayCount.guests} persone</Link> : 'confermate oggi'}</span>
         </li>
         <li className="stats__item">
           <PhoneCall aria-hidden="true" />
@@ -153,7 +157,7 @@ export function Dashboard() {
           <ul className="todo todo--plain">
             {todo.map((t) => <li key={t}>{t}</li>)}
           </ul>
-          {role === 'titolare' && <Link to="/gestione/impostazioni" className="btn btn--ghost btn--sm">Vai a orari e contatti</Link>}
+          {role === 'titolare' && <Link to="/gestione/impostazioni" className="btn btn--ghost btn--sm">Vai alle impostazioni</Link>}
         </section>
       </div>
     </>

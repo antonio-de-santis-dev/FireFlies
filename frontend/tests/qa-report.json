@@ -1,1057 +1,5 @@
 [
  {
-  "width": 360,
-  "route": "/",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Mostra foto 1 di 5: Calice decorato con ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "29 ottobre 2026: Serata E2E 179250222269",
-    "w": 41,
-    "h": 41,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "30 ottobre 2026: Condivisa E2E 179250222",
-    "w": 41,
-    "h": 41,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/eventi/domeniche-del-fire",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/galleria",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/locale",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/contatti",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/menu/{Tagliere FireFlies}",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/richieste",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "+393002239808",
-    "w": 180,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002222690",
-    "w": 180,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002219897",
-    "w": 180,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/capienza",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T5",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T6",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/foto",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/comunicazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/sito",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 360,
-  "route": "/gestione/impostazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Mostra foto 1 di 5: Calice decorato con ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "29 ottobre 2026: Serata E2E 179250222269",
-    "w": 43,
-    "h": 43,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "30 ottobre 2026: Condivisa E2E 179250222",
-    "w": 43,
-    "h": 43,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/eventi/domeniche-del-fire",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/galleria",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/locale",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/contatti",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Menu",
-    "w": 43,
-    "h": 44,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/menu/{Tagliere FireFlies}",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/richieste",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "+393002239808",
-    "w": 195,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002222690",
-    "w": 195,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002219897",
-    "w": 195,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/capienza",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T5",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T6",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/foto",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/comunicazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/sito",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 375,
-  "route": "/gestione/impostazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
   "width": 390,
   "route": "/",
   "overflow": 0,
@@ -1219,7 +167,15 @@
   "route": "/gestione",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 30,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -1227,7 +183,15 @@
   "route": "/gestione/menu",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 29,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -1235,7 +199,15 @@
   "route": "/gestione/menu/{Tagliere FireFlies}",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 29,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -1243,7 +215,15 @@
   "route": "/gestione/eventi",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 34,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -1251,7 +231,15 @@
   "route": "/gestione/eventi/dj-set-esempio",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 34,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -1261,23 +249,58 @@
   "broken": [],
   "under44": [
    {
-    "name": "+393002239808",
-    "w": 210,
-    "h": 27,
+    "name": "Panoramica area gestori",
+    "w": 31,
+    "h": 48,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393002222690",
-    "w": 210,
-    "h": 27,
+    "name": "+393006947580",
+    "w": 313,
+    "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393002219897",
-    "w": 210,
-    "h": 27,
+    "name": "+393006921451",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393006921852",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393006884469",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393006916101",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393006916172",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393006881617",
+    "w": 313,
+    "h": 32,
     "inline": false,
     "type": ""
    }
@@ -1286,10 +309,761 @@
  },
  {
   "width": 390,
-  "route": "/gestione/capienza",
+  "route": "/gestione/oggi",
   "overflow": 0,
   "broken": [],
   "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 17,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 17,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   }
+  ]
+ },
+ {
+  "width": 390,
+  "route": "/gestione/foto",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 35,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "Sposta prima: Bartender versa un cocktai",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Bartender versa un cocktail",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Bartender versa un cock",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Tagliere da aperitivo con ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Tagliere da aperitivo con p",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Tagliere da aperitivo c",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Clienti al bancone sotto l",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Clienti al bancone sotto l'",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Clienti al bancone sott",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Calice decorato con drink ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Calice decorato con drink c",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Calice decorato con dri",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: DJ set di sera davanti al ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: DJ set di sera davanti al l",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: DJ set di sera davanti ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Ospite con capelli blu ass",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Ospite con capelli blu assa",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Ospite con capelli blu ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Due ragazzi al tavolo sott",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Due ragazzi al tavolo sotto",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Due ragazzi al tavolo s",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Cocktail rosso versato in ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Cocktail rosso versato in u",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Cocktail rosso versato ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Tavolata di amici che fest",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Tavolata di amici che feste",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Tavolata di amici che f",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Cappuccino in tazza Caffè ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Cappuccino in tazza Caffè M",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Cappuccino in tazza Caf",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: DJ alla consolle davanti a",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: DJ alla consolle davanti al",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: DJ alla consolle davant",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Long drink azzurro con ros",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Long drink azzurro con rosm",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Long drink azzurro con ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Ragazza al tavolo con tagl",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Ragazza al tavolo con tagli",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Ragazza al tavolo con t",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Mani tatuate che prendono ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Mani tatuate che prendono u",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Mani tatuate che prendo",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Bartender con la maglia Fi",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Bartender con la maglia Fir",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Bartender con la maglia",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Un ragazzo dello staff por",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Un ragazzo dello staff porg",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Un ragazzo dello staff ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Furgone d’epoca di sera co",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Furgone d’epoca di sera con",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Furgone d’epoca di sera",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Cocktail ambrato in tumble",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Cocktail ambrato in tumbler",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Cocktail ambrato in tum",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Due amici in posa durante ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Due amici in posa durante u",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Due amici in posa duran",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Birra versata in un bicchi",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Birra versata in un bicchie",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Birra versata in un bic",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Ragazzi al microfono all'i",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Ragazzi al microfono all'in",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Ragazzi al microfono al",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Bicchiere con ghiaccio, sp",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Bicchiere con ghiaccio, spi",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Bicchiere con ghiaccio,",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: DJ con cappellino alla con",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: DJ con cappellino alla cons",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: DJ con cappellino alla ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Bartender con occhiali scu",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Bartender con occhiali scur",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Bartender con occhiali ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Mano sulla consolle Pionee",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Mano sulla consolle Pioneer",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Mano sulla consolle Pio",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Due ragazzi alla consolle ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Due ragazzi alla consolle p",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Due ragazzi alla consol",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Titolare con maglia gialla",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Titolare con maglia gialla ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Titolare con maglia gia",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Retro della maglia gialla:",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Retro della maglia gialla: ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Retro della maglia gial",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Titolare con maglia aranci",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Titolare con maglia arancio",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Titolare con maglia ara",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Retro della maglia arancio",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Retro della maglia arancion",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Retro della maglia aran",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Titolare con maglia verde ",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Titolare con maglia verde F",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Titolare con maglia ver",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta prima: Retro della maglia verde c",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Sposta dopo: Retro della maglia verde co",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la foto: Retro della maglia verd",
+    "w": 40,
+    "h": 40,
+    "inline": false,
+    "type": "button"
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/comunicazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 27,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/sito",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 24,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/impostazioni",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Panoramica area gestori",
+    "w": 29,
+    "h": 48,
+    "inline": false,
+    "type": ""
+   },
    {
     "name": "Elimina la fascia Colazione di lunedì",
     "w": 30,
@@ -1341,6 +1115,34 @@
    },
    {
     "name": "Elimina la fascia Sera di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di mercoledì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di mercoled",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di mercoledì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di mercoledì",
     "w": 30,
     "h": 30,
     "inline": false,
@@ -1457,1906 +1259,8 @@
     "h": 30,
     "inline": false,
     "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T5",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T6",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
    }
   ],
-  "under24": []
- },
- {
-  "width": 390,
-  "route": "/gestione/foto",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 390,
-  "route": "/gestione/comunicazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 390,
-  "route": "/gestione/sito",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 390,
-  "route": "/gestione/impostazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Mostra foto 1 di 5: Calice decorato con ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/eventi/domeniche-del-fire",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/galleria",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/locale",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/contatti",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/menu/{Tagliere FireFlies}",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/richieste",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "+393002239808",
-    "w": 114,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002222690",
-    "w": 115,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002219897",
-    "w": 110,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/capienza",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T5",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T6",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/foto",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/comunicazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/sito",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 768,
-  "route": "/gestione/impostazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Mostra foto 1 di 5: Calice decorato con ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/eventi/domeniche-del-fire",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/galleria",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/locale",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/contatti",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/menu/{Tagliere FireFlies}",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/richieste",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "+393002239808",
-    "w": 114,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002222690",
-    "w": 115,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002219897",
-    "w": 110,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/capienza",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T5",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T6",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/foto",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/comunicazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/sito",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1366,
-  "route": "/gestione/impostazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Mostra foto 1 di 5: Calice decorato con ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/eventi/domeniche-del-fire",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/galleria",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/locale",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/contatti",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/menu/{Tagliere FireFlies}",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/richieste",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "+393002239808",
-    "w": 114,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002222690",
-    "w": 115,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002219897",
-    "w": 110,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/capienza",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T5",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T6",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/foto",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/comunicazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/sito",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1440,
-  "route": "/gestione/impostazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Mostra foto 1 di 5: Calice decorato con ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 2 di 5: Tagliere da aperitiv",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 3 di 5: Cocktail rosso versa",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 4 di 5: Ragazza al tavolo co",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Mostra foto 5 di 5: Cappuccino in tazza ",
-    "w": 32,
-    "h": 32,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/eventi/domeniche-del-fire",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/galleria",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/locale",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/contatti",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/menu",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/menu/{Tagliere FireFlies}",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/eventi",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/eventi/dj-set-esempio",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/richieste",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "+393002239808",
-    "w": 114,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002222690",
-    "w": 115,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   },
-   {
-    "name": "+393002219897",
-    "w": 110,
-    "h": 27,
-    "inline": false,
-    "type": ""
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/capienza",
-  "overflow": 0,
-  "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T5",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo T6",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D1",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D2",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D3",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina il tavolo D4",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/foto",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/comunicazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/sito",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
-  "under24": []
- },
- {
-  "width": 1920,
-  "route": "/gestione/impostazioni",
-  "overflow": 0,
-  "broken": [],
-  "under44": [],
   "under24": []
  }
 ]

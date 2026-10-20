@@ -1,11 +1,11 @@
-import { CircleAlert, Inbox, Phone, Plus, RefreshCw } from 'lucide-react';
+import { CircleAlert, Inbox, Phone, Plus, RefreshCw, Users } from 'lucide-react';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
 import { listEvents, type AdminEvent } from '../../api/events';
 import {
-  bookingConfig, changeStatus, changeTables, createManual, getReservation, hhmm, listReservations, notificationLabel,
+  changeStatus, createManual, getReservation, hhmm, listReservations, notificationLabel, resendNotification,
   REASON_LABEL, SOURCE_LABEL, STATUS_LABEL, TEMPLATE_LABEL, updateReservation,
-  type BookingConfig, type Detail, type ListResult, type ReservationSource, type ReservationStatus, type StatusChange,
+  type Detail, type ListResult, type ReservationSource, type ReservationStatus, type StatusChange,
 } from '../../api/reservations';
 import { Dialog } from '../../components/Dialog';
 import { capitalize } from '../../data/events';
@@ -42,7 +42,6 @@ const WARNING_LABEL: Record<string, string> = {
   OUTSIDE_SLOTS: "L'orario non è uno degli arrivi previsti dalla fascia.",
   DAY_CLOSED: 'In quella data il locale risulta chiuso agli arrivi.',
   SHORT_NOTICE: "Arrivo a breve: meno dell'anticipo minimo previsto per il sito.",
-  MIN_SEATS_ABOVE_PARTY: 'I tavoli scelti sono pensati per più persone.',
 };
 
 /** Messaggio leggibile per un errore dell'API (il backend scrive già in italiano). */
@@ -51,7 +50,7 @@ const message = (e: unknown) => (e instanceof ApiError ? e.message : 'Si è veri
 type Period = 'upcoming' | 'day' | 'all';
 
 export function Requests() {
-  usePageMeta('Richieste tavoli');
+  usePageMeta('Richieste');
   const { dispatch } = useStore();
   const [tab, setTab] = useState<ReservationStatus | 'ALL'>('ALL');
   const [period, setPeriod] = useState<Period>('upcoming');
@@ -97,6 +96,7 @@ export function Requests() {
   const reload = useCallback(() => {
     setTick((n) => n + 1);
     void refreshPending(dispatch);
+    window.dispatchEvent(new Event('fireflies:reservations-changed')); // calendario di oggi aperto in un'altra vista
   }, [dispatch]);
 
   const counts = data?.counts ?? {};
@@ -105,7 +105,7 @@ export function Requests() {
 
   return (
     <>
-      <AdminHead title="Richieste tavoli" lead="Le richieste dal sito arrivano «In attesa»: confermale solo se c'è posto. Le notifiche ai clienti vengono preparate ma non ancora inviate.">
+      <AdminHead title="Richieste" lead="Le richieste dal sito arrivano «In attesa»: confermale solo se c'è posto. Le notifiche ai clienti vengono preparate ma non ancora inviate.">
         <button type="button" className="btn btn--action btn--sm" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" /> Nuova prenotazione</button>
       </AdminHead>
 
@@ -160,44 +160,36 @@ export function Requests() {
           <p className="muted">Quando arriva una richiesta dal sito la trovi qui. Quelle al telefono le inserisci con «Nuova prenotazione».</p>
         </div>
       ) : (
-        <div className="table-wrap" aria-busy={loading}>
-          <table className="table">
-            <caption className="sr-only">Richieste tavoli</caption>
-            <thead>
-              <tr>
-                <th scope="col">Quando</th>
-                <th scope="col">Persone</th>
-                <th scope="col">Nome</th>
-                <th scope="col">Contatto</th>
-                <th scope="col">Note</th>
-                <th scope="col">Stato</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id}>
-                  <td data-label="Quando">
-                    <strong>{fmtShort(r.date)} · {hhmm(r.time)}</strong><br />
-                    {r.eventTitle && <><span className="small">Serata «{r.eventTitle}»</span><br /></>}
-                    <span className="small muted">{SOURCE_LABEL[r.source]} · {r.reference} · ricevuta {fmtStamp(r.createdAt)}</span>
-                  </td>
-                  <td data-label="Persone">{r.guests}</td>
-                  <td data-label="Nome">{r.customerName}{r.needsCallback && <><br /><span className="badge badge--confirm">Da richiamare</span></>}</td>
-                  <td data-label="Contatto">
-                    <a href={`tel:${r.customerPhone}`}>{r.customerPhone}</a>
-                    {r.customerEmail && <><br /><span className="small">{r.customerEmail}</span></>}
-                  </td>
-                  <td data-label="Note">{r.notes || <span className="muted">—</span>}{r.tables.length > 0 && <><br /><span className="small muted">Tavoli {r.tables.join(', ')}</span></>}</td>
-                  <td data-label="Stato">
-                    <div className="status-cell">
-                      <ReservationBadge status={r.status} />
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => setOpenId(r.id)} aria-label={`Gestisci la richiesta di ${r.customerName}`}>Gestisci</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div aria-busy={loading}>
+          {/* FASE 7, req. 5: ogni richiesta è una scheda separata (righe ben distinte su desktop, schede sul telefono) */}
+          <ul className="res-list" aria-label="Richieste">
+            {rows.map((r) => (
+              <li key={r.id}>
+                <article className={`res-card res-card--${r.status.toLowerCase()}`} aria-label={`${r.customerName}, ${fmtShort(r.date)} ${hhmm(r.time)}`}>
+                  <div className="res-card__when">
+                    <strong className="res-card__time">{hhmm(r.time)}</strong>
+                    <span className="res-card__date">{fmtShort(r.date)}</span>
+                  </div>
+                  <div className="res-card__who">
+                    <h3 className="res-card__name">{r.customerName}</h3>
+                    <p className="res-card__meta small muted">{SOURCE_LABEL[r.source]} · {r.reference} · ricevuta {fmtStamp(r.createdAt)}</p>
+                    {r.eventTitle && <p className="res-card__event small">Serata «{r.eventTitle}»</p>}
+                    {r.notes && <p className="res-card__notes small">{r.notes}</p>}
+                  </div>
+                  <div className="res-card__contact">
+                    <span className="res-card__guests"><Users size={16} aria-hidden="true" /> {r.guests} {r.guests === 1 ? 'persona' : 'persone'}</span>
+                    <a href={`tel:${r.customerPhone}`} className="res-card__phone"><Phone size={14} aria-hidden="true" /> {r.customerPhone}</a>
+                    {r.customerEmail && <span className="small res-card__email">{r.customerEmail}</span>}
+                  </div>
+                  <div className="res-card__status">
+                    <ReservationBadge status={r.status} />
+                    {r.needsCallback && <span className="badge badge--confirm">Da richiamare</span>}
+                    <button type="button" className="btn btn--ghost btn--sm" onClick={() => setOpenId(r.id)} aria-label={`Gestisci la richiesta di ${r.customerName}`}>Gestisci</button>
+                  </div>
+                </article>
+              </li>
+            ))}
+          </ul>
           {data.total > rows.length && <p className="small muted">Mostrate {rows.length} di {data.total}: restringi i filtri per vedere le altre.</p>}
         </div>
       )}
@@ -213,7 +205,7 @@ export function Requests() {
 // Dettaglio e azioni
 // =============================================================================================================
 
-type Mode = 'view' | 'reject' | 'cancel' | 'edit' | 'tables';
+type Mode = 'view' | 'reject' | 'cancel' | 'edit';
 
 function ReservationDialog({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged: () => void }) {
   const { notify, role } = useStore();
@@ -282,7 +274,6 @@ function ReservationDialog({ id, onClose, onChanged }: { id: string; onClose: ()
           <div><dt>Origine</dt><dd>{SOURCE_LABEL[s.source]} · codice {s.reference}</dd></div>
           {s.eventTitle && <div><dt>Evento</dt><dd>{s.eventTitle}</dd></div>}
           <div><dt>Stato</dt><dd>{STATUS_LABEL[s.status]}{s.statusReason ? ` · ${REASON_LABEL[s.statusReason] ?? s.statusReason}` : ''}</dd></div>
-          <div><dt>Zona e tavoli</dt><dd>{detail.zoneName ?? '—'}{detail.tables.length ? ` · ${detail.tables.map((t) => `${t.code} (${t.maxSeats} posti${t.seatsOverride ? ', eccezione' : ''})`).join(', ')}` : ' · nessun tavolo'}</dd></div>
           <div><dt>Note del cliente</dt><dd>{detail.notes ?? '—'}</dd></div>
           <div><dt>Nota interna</dt><dd>{detail.internalNote ?? '—'}</dd></div>
         </dl>
@@ -314,7 +305,6 @@ function ReservationDialog({ id, onClose, onChanged }: { id: string; onClose: ()
               </button>
             )}
             {(can('EDIT') || can('NOTES')) && <button type="button" className="btn btn--quiet btn--sm" disabled={busy} onClick={() => setMode('edit')}>{can('EDIT') ? 'Modifica' : 'Modifica note e recapiti'}</button>}
-            {can('TABLES') && <button type="button" className="btn btn--quiet btn--sm" disabled={busy} onClick={() => setMode('tables')}>Tavoli</button>}
           </div>
         )}
 
@@ -327,20 +317,21 @@ function ReservationDialog({ id, onClose, onChanged }: { id: string; onClose: ()
           <EditForm detail={detail} full={can('EDIT')} busy={busy} onCancel={() => setMode('view')}
             onSubmit={(body) => run(() => updateReservation(id, { version: s.version, ...body }), 'Modifiche salvate.')} />
         )}
-        {mode === 'tables' && (
-          <TablesForm detail={detail} owner={role === 'titolare'} busy={busy} onCancel={() => setMode('view')}
-            onSubmit={(tableIds, overrideSeats, overrideReason) =>
-              run(() => changeTables(id, { version: s.version, tableIds, overrideSeats, overrideReason }), 'Tavoli aggiornati.')} />
-        )}
 
         <section className="res-detail__section" aria-labelledby="res-notif">
           <h3 id="res-notif">Notifiche</h3>
           {detail.notifications.length === 0 ? <p className="small muted">Nessuna notifica preparata.</p> : (
             <ul className="res-detail__list">
-              {detail.notifications.map((n, i) => (
-                <li key={i}>
+              {detail.notifications.map((n) => (
+                <li key={n.id}>
                   <span>{TEMPLATE_LABEL[n.template] ?? n.template} · {n.channel === 'EMAIL' ? 'email' : 'SMS'} {n.recipient === 'STAFF' ? 'al locale' : 'al cliente'}</span>
                   <span className={`badge ${n.delivered ? 'badge--success' : 'badge--neutral'}`}>{notificationLabel(n)}</span>
+                  {n.resendable && (
+                    <button type="button" className="btn btn--quiet btn--sm" disabled={busy}
+                      onClick={() => void resendNotification(n.id).then(() => { notify('Nuovo invio in coda.'); load(); }).catch((e) => setError(message(e)))}>
+                      Invia di nuovo
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -356,9 +347,9 @@ function ReservationDialog({ id, onClose, onChanged }: { id: string; onClose: ()
                 <span className="small muted">{fmtStamp(h.at)} · {h.by ?? (s.source === 'WEB' && !h.fromStatus ? 'dal sito' : 'automatico')}</span>
               </li>
             ))}
-            {detail.changes.filter((c) => c.action === 'RESERVATION_UPDATED' || c.action === 'RESERVATION_TABLES_ASSIGNED' || c.action === 'TABLE_SEATS_OVERRIDE').map((c, i) => (
+            {detail.changes.filter((c) => c.action === 'RESERVATION_UPDATED').map((c, i) => (
               <li key={`c${i}`}>
-                <span>{c.action === 'RESERVATION_UPDATED' ? 'Dati modificati' : c.action === 'TABLE_SEATS_OVERRIDE' ? 'Eccezione sui posti del tavolo' : 'Tavoli assegnati'}</span>
+                <span>Dati modificati</span>
                 <span className="small muted">{fmtStamp(c.at)} · {c.by ?? '—'}</span>
               </li>
             ))}
@@ -429,51 +420,6 @@ function EditForm({ detail, full, busy, onSubmit, onCancel }: { detail: Detail; 
       {full && s.status === 'CONFIRMED' && <p className="hint">Spostando orario o persone il sistema ricontrolla i posti: se non bastano, nulla cambia.</p>}
       <div className="res-detail__actions">
         <button type="submit" className="btn btn--action btn--sm" disabled={busy}>Salva le modifiche</button>
-        <button type="button" className="btn btn--quiet btn--sm" onClick={onCancel}>Indietro</button>
-      </div>
-    </form>
-  );
-}
-
-function TablesForm({ detail, owner, busy, onSubmit, onCancel }: { detail: Detail; owner: boolean; busy: boolean; onSubmit: (ids: string[], override: boolean, reason: string) => void; onCancel: () => void }) {
-  const [config, setConfig] = useState<BookingConfig | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [chosen, setChosen] = useState<string[]>(detail.tables.map((t) => t.tableId));
-  const [override, setOverride] = useState(detail.tables.some((t) => t.seatsOverride));
-  const [reason, setReason] = useState(detail.tables.find((t) => t.overrideReason)?.overrideReason ?? '');
-  useEffect(() => {
-    bookingConfig().then(setConfig).catch((e) => setError(message(e)));
-  }, []);
-  if (error) return <p className="error" role="alert">{error}</p>;
-  if (!config) return <p className="muted" role="status">Caricamento dei tavoli…</p>;
-  const tables = config.tables.filter((t) => t.active && t.zoneId === detail.summary.zoneId);
-  const areaName = (id: string) => config.areas.find((a) => a.id === id)?.name ?? '';
-  const seats = tables.filter((t) => chosen.includes(t.id)).reduce((n, t) => n + t.maxSeats, 0);
-  const short = chosen.length > 0 && seats < detail.summary.guests;
-  return (
-    <form className="res-detail__form" onSubmit={(e) => { e.preventDefault(); onSubmit(chosen, short && override, reason); }}>
-      {tables.length === 0 ? <p className="muted">Nessun tavolo in questa zona: il titolare li aggiunge in «Capienza e tavoli».</p> : (
-        <fieldset className="field">
-          <legend>Tavoli per {detail.summary.guests} persone (scelta manuale)</legend>
-          <div className="res-tables">
-            {tables.map((t) => (
-              <label key={t.id} className="check check--sm">
-                <input type="checkbox" checked={chosen.includes(t.id)} onChange={(e) => setChosen((c) => (e.target.checked ? [...c, t.id] : c.filter((x) => x !== t.id)))} />
-                <span>{t.code} · {areaName(t.areaId)} · {t.maxSeats} posti</span>
-              </label>
-            ))}
-          </div>
-          <p className="hint">Posti scelti: {seats}. Il sistema non assegna tavoli da solo e blocca i tavoli già occupati in quell'orario.</p>
-        </fieldset>
-      )}
-      {short && (owner ? (
-        <>
-          <label className="check"><input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} /><span>Eccezione del titolare: i posti sono meno delle persone</span></label>
-          {override && <div className="field"><label htmlFor="tb-reason">Motivo dell'eccezione</label><input id="tb-reason" className="input" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Es. aggiungiamo due sgabelli" /></div>}
-        </>
-      ) : <p className="hint warn">I posti sono meno delle persone: solo il titolare può fare un'eccezione.</p>)}
-      <div className="res-detail__actions">
-        <button type="submit" className="btn btn--action btn--sm" disabled={busy}>{chosen.length ? 'Assegna i tavoli' : 'Togli i tavoli'}</button>
         <button type="button" className="btn btn--quiet btn--sm" onClick={onCancel}>Indietro</button>
       </div>
     </form>

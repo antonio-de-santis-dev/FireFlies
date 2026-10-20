@@ -47,6 +47,14 @@ public class DiningService {
             int pendingExpiryMinutesBeforeStart) {
     }
 
+    /** Una cella della tabella «Capienza»: persone al massimo nello stesso momento in quella fascia di quel giorno. */
+    public record CapacityCell(int isoDay, Band band, boolean offered, Integer maxCovers) {
+    }
+
+    public record CapacityMatrix(int physicalCapacity, List<CapacityCell> cells, List<DiningStore.ExceptionRow> exceptions,
+            List<DiningStore.OpeningExceptionRow> openingExceptions) {
+    }
+
     private final DiningStore store;
     private final CapacityLedger ledger;
     private final AuditLog audit;
@@ -295,6 +303,104 @@ public class DiningService {
             recomputeDay(e.serviceDate(), zone);
         }
         audit(actor, "BOOKING_EXCEPTION", id, Map.of("deleted", true));
+    }
+
+    // --- capienza per giorno della settimana e fascia (FASE 7, req. 8) ----------------------------------------
+
+    /**
+     * Tabella giorni × fasce. La capienza di una fascia è il limite di presenze delle sue fasce prenotabili
+     * ({@code service_windows.max_covers}, null = capienza del locale): lo stesso valore che il registro dei posti
+     * applica a ogni quanto, quindi nessun contatore in più.
+     */
+    @Transactional(readOnly = true)
+    public CapacityMatrix capacityMatrix() {
+        LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
+        List<DiningStore.WindowRow> windows = currentWindows(today);
+        List<CapacityCell> cells = new java.util.ArrayList<>();
+        for (int day = 1; day <= 7; day++) {
+            for (Band band : Band.values()) {
+                int d = day;
+                List<DiningStore.WindowRow> of = windows.stream().filter(w -> w.isoDay() == d && Band.of(w.name(), w.firstStart()) == band).toList();
+                Integer max = of.stream().map(DiningStore.WindowRow::maxCovers).filter(java.util.Objects::nonNull).min(Integer::compare).orElse(null);
+                cells.add(new CapacityCell(day, band, !of.isEmpty(), max));
+            }
+        }
+        int physical = store.zones().stream().filter(DiningStore.ZoneRow::active).mapToInt(DiningStore.ZoneRow::physicalCapacity).sum();
+        return new CapacityMatrix(physical, cells, store.exceptionsFrom(today), store.openingExceptionsBetween(today, today.plusYears(2)));
+    }
+
+    /**
+     * Salva la tabella (solo titolare). Ogni cella aggiorna le fasce prenotabili di quel giorno e fascia; poi il
+     * registro ricalcola le capienze dei quanti futuri: se in qualche quanto ci sono più persone confermate del nuovo
+     * limite → {@code 409 CAPACITY_BELOW_CONFIRMED} e non cambia nulla.
+     */
+    @Transactional
+    public CapacityMatrix saveCapacityMatrix(UUID actor, List<CapacityCell> cells) {
+        LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
+        List<DiningStore.WindowRow> windows = currentWindows(today);
+        Set<UUID> zones = new HashSet<>();
+        int changed = 0;
+        for (CapacityCell c : cells) {
+            if (c.isoDay() < 1 || c.isoDay() > 7 || c.band() == null) {
+                throw ApiErrors.invalid("cells", "Ogni riga indica giorno della settimana (1–7) e fascia.");
+            }
+            if (c.maxCovers() != null && (c.maxCovers() < 0 || c.maxCovers() > 1000)) {
+                throw ApiErrors.invalid("maxCovers", "Il massimo di persone va da 0 a 1000 (vuoto = capienza del locale).");
+            }
+            for (DiningStore.WindowRow w : windows) {
+                if (w.isoDay() == c.isoDay() && Band.of(w.name(), w.firstStart()) == c.band()
+                        && !java.util.Objects.equals(w.maxCovers(), c.maxCovers())) {
+                    store.updateWindow(new DiningStore.WindowRow(w.id(), w.zoneId(), w.isoDay(), w.name(), w.firstStart(), w.lastStart(),
+                            w.slotMinutes(), w.defaultDurationMinutes(), c.maxCovers(), w.validFrom(), w.validTo(), w.active()));
+                    zones.add(w.zoneId());
+                    changed++;
+                }
+            }
+        }
+        zones.stream().sorted().forEach(z -> ledger.recomputeCapacities(z, Instant.now(clock)));
+        audit(actor, "CAPACITY_MATRIX", null, Map.of("windowsChanged", changed));
+        return capacityMatrix();
+    }
+
+    private List<DiningStore.WindowRow> currentWindows(LocalDate today) {
+        return store.windows().stream().filter(w -> w.active() && (w.validTo() == null || !w.validTo().isBefore(today))).toList();
+    }
+
+    // --- chiusure e aperture straordinarie del locale (FASE 7, req. 10) ---------------------------------------
+
+    /**
+     * Data straordinaria: chiusura (nessuna richiesta dal sito, anche in un giorno di solito aperto) o apertura (in un
+     * giorno di solito chiuso, con orario). Le prenotazioni già presenti in quella data non vengono toccate: il
+     * risultato dice quante sono, da gestire a mano.
+     */
+    @Transactional
+    public Map<String, Object> addOpeningException(UUID actor, LocalDate day, boolean closed, LocalTime opensAt, LocalTime closesAt,
+            String note) {
+        LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
+        if (day == null || day.isBefore(today)) {
+            throw ApiErrors.invalid("day", "Scegli una data da oggi in poi.");
+        }
+        if (!closed && (opensAt == null || closesAt == null)) {
+            throw ApiErrors.invalid("opensAt", "Per un'apertura straordinaria indica l'orario di apertura e di chiusura.");
+        }
+        String clean = note == null || note.isBlank() ? null : note.strip();
+        if (clean != null && clean.length() > 140) {
+            throw ApiErrors.invalid("note", "Nota troppo lunga (massimo 140 caratteri).");
+        }
+        if (store.openingException(day).isPresent()) {
+            throw new ApiException(HttpStatus.CONFLICT, "EXCEPTION_EXISTS", "Data già presente",
+                    "Per questa data c'è già una chiusura o un'apertura straordinaria: eliminala prima.");
+        }
+        UUID id = store.insertOpeningException(day, closed, closed ? null : opensAt, closed ? null : closesAt, clean);
+        audit(actor, "OPENING_EXCEPTION", id, Map.of("day", day.toString(), "closed", closed));
+        return Map.of("exception", store.openingException(id).orElseThrow(), "activeReservations", store.activeReservationsOn(day));
+    }
+
+    @Transactional
+    public void deleteOpeningException(UUID actor, UUID id) {
+        store.openingException(id).orElseThrow(() -> ApiErrors.notFound("La data straordinaria non esiste."));
+        store.deleteOpeningException(id);
+        audit(actor, "OPENING_EXCEPTION", id, Map.of("deleted", true));
     }
 
     private void recomputeDay(LocalDate date, UUID zoneId) {
