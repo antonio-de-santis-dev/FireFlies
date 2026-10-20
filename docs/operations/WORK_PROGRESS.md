@@ -1,40 +1,38 @@
-# Avanzamento del lavoro — checkpoint di recupero
+# WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Regola: MASTER_PLAN §19. Aggiornato durante il lavoro, non solo a fine sessione.
-> Ultimo aggiornamento: 20/10/2026, **FASE 5 completata**: test locali e CI verdi. In attesa dell'approvazione del committente.
+> Ultimo aggiornamento: 20/10/2026, FASE 6 avviata.
 
 ## Fase e branch
-- **FASE 5 — Prenotazioni V1** (autorizzata dal committente il 20/10/2026, dopo l'approvazione definitiva della FASE 4).
-- Branch: `fase-5/prenotazioni`, creato da `fase-4/menu-media` @ `7775032`. Nessun merge su `main`.
+- **FASE 6 — Eventi e capienza** (autorizzata il 20/10/2026 con l'approvazione della FASE 5, C-27).
+- Branch: `fase-6/eventi-capienza`, creato da `fase-5/prenotazioni` @ `911c5be`. Nessun merge su `main`.
 
 ## Perimetro (dal mandato)
-- Richieste dal sito (data, ora, persone, nome, telefono obbligatorio, email facoltativa, note), orari prenotabili,
-  validazione e anti-spam, stato PENDING («in attesa»), messaggio «non è ancora una conferma».
-- Area gestori: elenco reale con filtri, dettaglio, conferma/rifiuto/annullamento/modifica, inserimento manuale
-  (telefono/email), storico e audit, tavoli e zone secondo i permessi, controllo automatico della capienza.
-- Registro di occupazione della FASE 2 (unico contatore), transazioni e lock ordinati, outbox senza invii reali.
-- Fuori perimetro: assegnazione automatica dei tavoli, SMS reali, eventi (FASE 6), schermate «Account» e «Categorie».
+- Eventi reali su PostgreSQL: creazione, modifica, pubblicazione, annullamento; locandina e foto dalla libreria FASE 4.
+- Prenotazioni per eventi con conferma manuale; quota configurabile per evento (mai un secondo contatore: registro a
+  quanti della FASE 2 + quota `events.confirmed_covers`).
+- Eventi esclusivi per impostazione predefinita; non esclusivi solo se il titolare li abilita (C-18, C-28).
+- Conflitti con le prenotazioni ordinarie confermate (`EVENT_CONFLICTS`), pagina Eventi pubblica e dashboard reali.
+- OWNER/STAFF, CSRF, audit, test di concorrenza. Fuori perimetro: tavoli automatici, email/SMS reali, FASE 7.
+- Verifiche aperte V-01…V-04 annotate in DECISION_LOG §4-bis e `docs/operations/PRE_DEPLOY.md` (non da risolvere ora).
 
 ## Piano di lavoro
 | # | Attività | Stato |
 |---|---|---|
-| 1 | Backend configurazione: zone, fasce, aree e tavoli, regole, eccezioni; capienza effettiva per quanto | fatto (`c9079d6`) |
-| 2 | Backend prenotazioni: opzioni pubbliche, richiesta web, inserimento manuale, transizioni, modifica, tavoli, outbox, scadenza | fatto (`7c67958`) |
-| 3 | Test backend (creazione, ciclo di vita, capienza, concorrenza, permessi, CSRF, duplicati, riavvio) | fatto (`b991754`) |
-| 4 | Frontend: richiesta tavolo reale, pagina Richieste, inserimento manuale, capienza e tavoli; Playwright | fatto (`c344211` + correzioni QA) |
-| 5 | Documentazione, CI, report finale; stop in attesa di approvazione | fatto: CI frontend 39395689994 ✅ (`8008f78`), backend 39392817517 ✅ (`c344211`, codice backend invariato dopo) |
+| 1 | Registro: marcatura/smarcatura esclusiva dei quanti, occupazione per le prenotazioni di un evento | da fare |
+| 2 | Backend eventi: CRUD, pubblicazione con conflitti, annullamento, quota, API pubbliche, audit, media | da fare |
+| 3 | Prenotazioni per eventi (sito e gestori), quota alla conferma, rilasci | da fare |
+| 4 | Test backend (ciclo di vita, conflitti, concorrenza, permessi, riavvio) | da fare |
+| 5 | Frontend: pagina Eventi pubblica, dialog per evento, gestione eventi, richieste; Playwright | da fare |
+| 6 | Documentazione, CI, report; stop in attesa di approvazione | da fare |
 
 ## File modificati non committati
-- Nessuno dopo il commit finale della fase.
+- (aggiornato a ogni checkpoint)
 
-## Test (locali, tutti verdi)
-- Backend: 70 unità + 265 integrazione (`./mvnw -B verify`).
-- Frontend: 66 Playwright con backend e database reali (`npm run verifica`).
-- Totale 401 (FASE 4: 348).
+## Test
+- Punto di partenza: 70 + 265 backend, 66 Playwright, tutti verdi (FASE 5).
 
 ## Errori da risolvere
-- Nessuno noto. Difetti trovati e corretti in TEST_REPORT §«FASE 5».
+- Nessuno.
 
 ## Prossima azione esatta
-Nessuna: **fase ferma in attesa dell'approvazione**. La FASE 6 (eventi) non va avviata senza l'autorizzazione del
-committente.
+Estendere `CapacityLedger` con la marcatura esclusiva e l'occupazione per evento; poi il modulo `event`.

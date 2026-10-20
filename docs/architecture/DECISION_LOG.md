@@ -1,6 +1,6 @@
 # DECISION LOG — FireFlies Aperitif backend
 
-> Aggiornato: 19/10/2026 · Fase: **3, autenticazione** · Report: [FASE3_REPORT](FASE3_REPORT.md) · FASE 2 approvata ([FASE2_REPORT](FASE2_REPORT.md)).
+> Aggiornato: 20/10/2026 · Fase: **6, eventi e capienza** · FASI 2–5 approvate ([FASE5_REPORT](FASE5_REPORT.md)). Verifiche aperte prima del deploy: §4-bis e [PRE_DEPLOY](../operations/PRE_DEPLOY.md).
 > Legenda: **C** = consolidata dal committente · **A** = approvata dal master plan · **P** = proposta, **attende la tua approvazione** · **Q** = dato da chiedere ai titolari · ~~barrato~~ = superata.
 > Precedenza in caso di contrasto: decisioni consolidate > master plan > mockup > documenti precedenti.
 
@@ -34,6 +34,9 @@
 | C-24 | Il ruolo **non si sceglie al login**: lo assegna il backend dall'account | 19/10 |
 | C-25 | Primo OWNER creato con una **procedura amministrativa**; nessuna credenziale fissa nel codice | 19/10 |
 | C-26 | Area gestori non pubblicizzata con link, ma protetta dal backend | 19/10 |
+| C-27 | **FASE 5 approvata** (401 test, CI verde, ultimo commit `911c5be`); FASE 6 autorizzata: eventi reali, locandine dalla libreria della FASE 4, prenotazioni per eventi con conferma manuale, quota per evento, eventi esclusivi per impostazione predefinita | 20/10 |
+| C-28 | Evento **non esclusivo** solo se il titolare lo abilita esplicitamente e solo se la condivisione è sicura (stesso registro dei posti, mai un secondo contatore) — conferma di C-18 | 20/10 |
+| C-29 | Le quattro verifiche V-01…V-04 (§4-bis) restano aperte e sono requisiti pre-deploy; **nessun componente complesso** (Redis, Kafka) introdotto solo per risolverle | 20/10 |
 
 ## 1-bis. Strategia Git (C-21, regola definitiva)
 
@@ -208,6 +211,15 @@ Regole: verificare stato e branch prima di iniziare; branch precedente completo 
 | Capacità condivisa eventi/ordinarie (revisione) | risolta con P-06; 20 gare evento esclusivo/ordinaria con un solo vincitore |
 | Affidabilità notifiche (revisione) | ADR-0005 rev. 2; test N-1…N-15 e S-1…S-5 |
 | Tavoli sottodimensionati (revisione) | P-08; test in TEST_STRATEGY §4 |
+
+## 4-bis. Verifiche aperte — requisiti prima del deploy (C-29, dettaglio in PRE_DEPLOY.md)
+
+| ID | Verifica | Stato attuale | Cosa serve prima del deploy |
+|---|---|---|---|
+| V-01 | **IP del client dietro reverse proxy** e strategia di rate limiting in produzione | `prod` usa `forward-headers-strategy: framework`: l'IP viene da `X-Forwarded-For`, quindi è affidabile solo se il proxy davanti lo **sovrascrive** e il backend non è raggiungibile direttamente. Limiti per IP (login, richieste dal sito) in memoria, una sola istanza; limite per telefono e blocco account su PostgreSQL | scegliere il proxy (FASE 8), limitare la fiducia ai suoi indirizzi (`server.tomcat.remoteip.internal-proxies` o firewall), test con header falsificato; se servono più istanze, contatori in una tabella PostgreSQL (non Redis) |
+| V-02 | **Più richieste in attesa che competono per gli stessi posti** nella dashboard | le richieste in attesa non occupano posti; il dettaglio mostra posti liberi minimi e «altre richieste in attesa nello stesso orario»; la conferma è vincolante e transazionale (vince chi conferma per primo, gli altri ricevono `409 CAPACITY_EXCEEDED`) | prova d'uso con i gestori; valutare un segnale «non ci sta più» direttamente nell'elenco e l'ordine di gestione (per arrivo o per orario) |
+| V-03 | **Dati demo sostituiti** con capienza, tavoli, orari, contatti ed eventi reali | il caricamento demo esiste solo nel profilo `local` su database vuoto; `DemoDataGuard` blocca l'avvio in `prod` con un database marcato demo | database di produzione nuovo; inserimento dei dati reali dai titolari (Q-01…Q-05) e verifica a vista prima dell'apertura delle richieste dal sito |
+| V-04 | **Privacy**: informativa, conservazione, protezione di telefono, email e note | testo dell'informativa «da redigere»; note mai nel payload delle notifiche né nell'audit; dati personali visibili solo ai gestori autenticati; colonna `anonymized_at` pronta | testo validato da un esperto; periodo di conservazione deciso (proposta: anonimizzazione 90 giorni dopo la data); job di anonimizzazione; backup cifrati con la stessa conservazione; log senza dati personali verificati |
 
 ## 5. Dati da chiedere ai titolari (bloccano l'attivazione, non lo sviluppo)
 
