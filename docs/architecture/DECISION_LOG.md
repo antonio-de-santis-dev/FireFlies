@@ -134,6 +134,7 @@ Regole: verificare stato e branch prima di iniziare; branch precedente completo 
 | T-53 | Sito: eventi pubblicati e annullati (futuri o format), `booking: { mode, open, reason }` senza numeri di posti (P-26); un evento annullato resta visibile come tale | API_CONTRACT §2 |
 | T-54 | Orari degli eventi a passi di 15 minuti, fine ≤ inizio = giorno dopo (es. 22:30–02:00), durata massima 12 ore, quota tra 1 e la capienza fisica | §4 |
 | T-55 | Eventi demo (solo profilo `local`): «Domeniche del Fire» (format), «DJ set al Fire» pubblicato e prenotabile (sabato ad almeno 14 giorni, 22:30–02:00, dopo gli ultimi arrivi serali), «Aperitivo e vinili» bozza; l'etichetta «esempio» sul sito deriva dall'indirizzo `…-esempio` | T-45 |
+| T-56 | **FASE 7 · req. 15** — Locandine degli eventi sempre intere: `object-fit: contain` (mai `cover`), altezza automatica, riquadri centrati su `--poster-bg` (nero del tema); scheda: tutta nello schermo su desktop e tablet, a tutta larghezza su smartphone; nessuno zoom che tagli i bordi. Le varianti del backend restano solo ridotte in scala (verificato da test) | richiesta del committente dopo il collaudo della FASE 6 |
 
 ## 3. Proposte — stato dopo l'approvazione della FASE 1
 

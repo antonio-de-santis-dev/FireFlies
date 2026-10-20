@@ -1,40 +1,32 @@
 # WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Ultimo aggiornamento: 20/10/2026, **FASE 6 completata**: test locali e CI verdi. In attesa dell'approvazione del committente.
+> Ultimo aggiornamento: 20/10/2026, FASE 7 avviata solo con il requisito 15 (locandine); **in attesa del prompt della FASE 7**.
 
 ## Fase e branch
-- **FASE 6 — Eventi e capienza** (autorizzata il 20/10/2026 con l'approvazione della FASE 5, C-27).
-- Branch: `fase-6/eventi-capienza`, creato da `fase-5/prenotazioni` @ `911c5be`. Nessun merge su `main`.
-
-## Perimetro (dal mandato)
-- Eventi reali su PostgreSQL: creazione, modifica, pubblicazione, annullamento; locandina e foto dalla libreria FASE 4.
-- Prenotazioni per eventi con conferma manuale; quota configurabile per evento (mai un secondo contatore: registro a
-  quanti della FASE 2 + quota `events.confirmed_covers`).
-- Eventi esclusivi per impostazione predefinita; non esclusivi solo se il titolare li abilita (C-18, C-28).
-- Conflitti con le prenotazioni ordinarie confermate (`EVENT_CONFLICTS`), pagina Eventi pubblica e dashboard reali.
-- OWNER/STAFF, CSRF, audit, test di concorrenza. Fuori perimetro: tavoli automatici, email/SMS reali, FASE 7.
-- Verifiche aperte V-01…V-04 annotate in DECISION_LOG §4-bis e `docs/operations/PRE_DEPLOY.md` (non da risolvere ora).
+- **FASE 7 — Notifiche** (branch `fase-7/notifiche`, creato da `fase-6/eventi-capienza` @ `6ad7e0e`). Nessun merge su `main`.
+- Il committente ha inviato un'**integrazione** al prompt della FASE 7 (requisito 15, locandine intere). Il prompt
+  principale della FASE 7 (requisiti 1–14) **non è presente** in questa sessione: va richiesto prima di proseguire.
+  Il MASTER_PLAN dice solo «email avvisi; SMS solo previa conferma dei costi; fake in sviluppo; tracking stati, retry,
+  deduplica; nessun messaggio reale senza dati veri e autorizzazione».
 
 ## Piano di lavoro
 | # | Attività | Stato |
 |---|---|---|
-| 1 | Registro: marcatura/smarcatura esclusiva dei quanti, occupazione per le prenotazioni di un evento | fatto (`9ed8490`) |
-| 2 | Backend eventi: CRUD, pubblicazione con conflitti, annullamento, quota, API pubbliche, audit, media | fatto (`9ed8490`) |
-| 3 | Prenotazioni per eventi (sito e gestori), quota alla conferma, rilasci | fatto (`9ed8490`) |
-| 4 | Test backend (ciclo di vita, conflitti, concorrenza, permessi) | fatto (`1900a87`) |
-| 5 | Frontend: pagina Eventi pubblica, dialog per evento, gestione eventi, richieste; Playwright | fatto (`91850b1`) |
-| 6 | Documentazione, CI, report; stop in attesa di approvazione | fatto: CI frontend 39402045306 ✅ (`91850b1`), backend 39400310406 ✅ (`1900a87`) |
+| 15 | Locandine degli eventi sempre intere (elenco, scheda, area gestori), test di regressione su 7 larghezze | fatto |
+| 1–14 | Requisiti principali della FASE 7 (notifiche) | **bloccato: prompt da ricevere** |
+| — | Locandina verticale di riferimento del committente | **da ricevere**: va messa in `frontend/tests/fixtures/locandine/` |
+| — | Report finale della FASE 7 (con il requisito 15), CI, stop | dopo i punti sopra |
 
 ## File modificati non committati
-- (aggiornato a ogni checkpoint)
+- Nessuno dopo l'ultimo commit.
 
 ## Test
-- Punto di partenza: 70 + 265 backend, 66 Playwright (FASE 5).
-- FASE 6 in locale: 70 + 294 backend, 69 Playwright, tutti verdi (totale 433).
+- FASE 6: 70 + 294 backend, 69 Playwright.
+- FASE 7 finora: backend unità 70 → 74 (`ImageProcessorTest`, varianti mai ritagliate); Playwright 69 → 78 (`posters.spec`).
 
 ## Errori da risolvere
 - Nessuno.
 
 ## Prossima azione esatta
-Nessuna: **fase ferma in attesa dell'approvazione**. La FASE 7 (email / SMS / outbox) non va avviata senza
-l'autorizzazione del committente.
+Ricevere dal committente il prompt della FASE 7 (requisiti 1–14) e la locandina di riferimento; poi implementare le
+notifiche secondo quel prompt. Nessun invio reale di email/SMS senza autorizzazione esplicita.

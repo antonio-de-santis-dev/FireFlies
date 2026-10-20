@@ -199,6 +199,22 @@ for (const [w, h] of VIEWPORTS) {
   });
 }
 
+test('altre foto della serata: miniature intere, nessuno scorrimento orizzontale', async ({ page }) => {
+  for (const [w, h] of VIEWPORTS) {
+    await page.setViewportSize({ width: w, height: h });
+    await go(page, '/eventi/domeniche-del-fire'); // format demo con locandina e due altre foto
+    const thumbs = page.locator('.event-detail__thumbs img');
+    expect(await thumbs.count(), `${w}px: miniature presenti`).toBeGreaterThan(0);
+    for (let i = 0; i < await thumbs.count(); i++) {
+      const g = await geometry(page, `.event-detail__thumbs li:nth-child(${i + 1}) img`);
+      expect(g.fit, `${w}px miniatura ${i + 1}`).toBe('contain');
+      expect(g.clippedBy, `${w}px miniatura ${i + 1}: tagliata`).toBeNull();
+      expect(Math.abs(g.content.width / g.content.height / (g.natural.w / g.natural.h) - 1)).toBeLessThan(0.02);
+    }
+    expect(await horizontalOverflow(page), `${w}px: scorrimento orizzontale`).toBeLessThanOrEqual(0);
+  }
+});
+
 test('area gestori: anteprime delle locandine intere (elenco ed editor)', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await signIn(page);
