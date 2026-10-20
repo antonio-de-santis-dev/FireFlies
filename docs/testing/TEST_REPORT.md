@@ -1,7 +1,51 @@
 # Report dei test — backend e frontend
 
-> Aggiornato in **FASE 6** (eventi e capienza) il 20/10/2026. Seguono le FASI 5, 4, 3 e, in fondo, la FASE 2.
+> Aggiornato in **FASE 7** (completamento obbligatorio) il 20/10/2026. Seguono le FASI 6, 5, 4, 3 e, in fondo, la FASE 2.
 > Ambiente: OpenJDK 21.0.12, Maven 3.9.11, Node 22, Playwright 1.56.1 (Chromium), Docker 29.8.2, PostgreSQL **17.11**.
+
+## FASE 7 — Riepilogo
+
+| Suite | Comando | Test | Esito locale |
+|---|---|---|---|
+| Backend unità e slice | `cd backend && ./mvnw -B verify` | 78 (+8 dalla FASE 6: `ImageProcessorTest` +4, `RetentionJobTest` 4) | ✅ 78/78 |
+| Backend integrazione (PostgreSQL 17 reale) | stesso comando | 311 (+17) | 310/311 al primo giro completo; l'unico fallimento (isolamento: modelli dei messaggi accesi dal caricamento demo) corretto e le due classi coinvolte rieseguite ✅ |
+| Frontend Playwright con backend e DB reali | `cd frontend && npm run verifica` | 93 (+24: `posters` 9, `event-visibility` 2, `fase7` 13) | 80/93 al primo giro completo, 5 falliti e 8 non eseguiti; corretti e rieseguiti i 17 test coinvolti ✅ |
+| **Totale** | | **482** | ✅ suite complete verdi in CI su `f9e3a8e` (qui sotto) |
+
+### Verifiche richieste dal mandato (req. 13)
+| Verifica | Test |
+|---|---|
+| Pubblicazione con lo switch e persistenza dopo il ricaricamento, nuova sessione e lettura pubblica | `EventApiIT.visibileSulSitoSalvataggioAtomico`; `event-visibility.spec` «switch acceso + Salva…» (ricarica, visitatore in un contesto nuovo, elenco e calendario) |
+| Nessuna bozza orfana se la pubblicazione è rifiutata | `visibileSulSitoSalvataggioAtomico` (altro esclusivo, data passata); `event-visibility.spec` «pubblicazione rifiutata» |
+| Nascondere ed eliminare un evento; pulizia degli eventi | `EventApiIT.nascondereDalSitoSoloSenzaPrenotazioniAttive`; `event-visibility.spec`; `RetentionIT.eventiDopoDueMesiSenzaPrenotazioni` |
+| Visibilità iniziale ed eliminazione dei prodotti | `content.spec` «nuova voce…»; `MenuApiIT.creaModificaNascondiEliminaUnaVoce` |
+| «Da richiamare» spento alla conferma | `ReservationLifecycleIT.daRichiamareSiSpegneAllaConfermaEAllaChiusura` |
+| Conservazione delle prenotazioni senza perdere le statistiche | `RetentionIT.prenotazioniPassateDiventanoStatisticheAnonime`, `prenotazioniFutureEInCorsoMaiToccate`, `unaSolaEsecuzioneAlGiornoAncheInParallelo`; `RetentionJobTest` (ora legale) |
+| Capienza per giorno e fascia senza overbooking | `OperationsIT.capienzaPerGiornoEFasciaSulRegistro`, `capienzaConcorrenteMaiOltreIlLimite`; `fase7.spec` «capienza per fascia…» |
+| Calendario di oggi | `OperationsIT.calendarioDiOggiSoloConfermate`; `fase7.spec` (7 larghezze) |
+| Blocco dei giorni chiusi | `OperationsIT.giorniDiChiusuraSettimanaliEStraordinari`; `fase7.spec` «giorni chiusi…» |
+| Scelta tavolo / compleanno | `fase7.spec` «sito: prima la scelta…» (con e senza telefono) |
+| Navigazione su telefono e due foto per riga | `fase7.spec` menu a 360/375/390, foto a 360/375/390 |
+| OWNER/STAFF, CSRF | `OperationsIT` (403 staff, CSRF), `NotificationDispatcherIT` (401, 403), `reservations.spec` «staff: la capienza la cambia solo il titolare», `fase7.spec` ordine e permessi |
+| Notifiche (outbox, ritentativi, incerti, dedupe, superate, audit) | `NotificationDispatcherIT` (6), `OutboxClaimIT` (4) |
+| Larghezze 360, 375, 390, 768, 1366, 1440, 1920 | `qa.spec` (7), `posters.spec` (7), `fase7.spec` «pagine nuove senza scorrimento orizzontale» e calendario di oggi |
+| Regressioni | tutte le classi e gli spec precedenti, aggiornati solo dove l'interfaccia è cambiata per mandato (dialog con la scelta, richieste a schede, Impostazioni, eventi senza «Pubblica») |
+
+### Difetti trovati dai test e corretti
+1. Menu del telefono invisibile: la regola base del pulsante veniva dopo quella per i telefoni (ordine nel CSS).
+2. Logo dell'area gestori compresso a 14–23 px di larghezza sotto i 900 px (`qa.spec`, target touch).
+3. Una prenotazione delle 21:00 risultava nella fascia «Aperitivo» (che copre fino alle 22) invece che «Sera»: ora vale
+   la fascia in cui l'orario è un arrivo (T-70).
+4. La pulizia teneva i quanti del registro sovrapposti a una richiesta in attesa (che non occupa posti).
+5. Isolamento dei test: i modelli dei messaggi accesi dai dati demo restavano accesi per la classe successiva.
+
+### CI (GitHub Actions, branch `fase-7/notifiche`)
+| Workflow | Commit | Run | Esito |
+|---|---|---|---|
+| backend | `57ad258` (checkpoint) | 39441235196 | ❌ (difetto di isolamento n. 5, corretto in `f9e3a8e`) |
+| frontend | `57ad258` (checkpoint) | 39441235090 | ❌ (difetti n. 2 e selettori, corretti in `f9e3a8e`) |
+| backend (`./mvnw -B verify`, 78 + 311 test) | `f9e3a8e` | 39443071752 | ✅ success |
+| frontend (`npm run verifica`, 93 test) | `f9e3a8e` | 39443071652 | ✅ success |
 
 ## FASE 6 — Riepilogo
 
