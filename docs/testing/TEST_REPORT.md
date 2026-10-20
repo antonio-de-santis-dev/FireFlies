@@ -1,7 +1,58 @@
 # Report dei test — backend e frontend
 
-> Aggiornato in **FASE 4** (menu, contenuti, foto) il 19/10/2026. Seguono la FASE 3 e, in fondo, la FASE 2.
+> Aggiornato in **FASE 5** (prenotazioni V1) il 20/10/2026. Seguono la FASE 4, la FASE 3 e, in fondo, la FASE 2.
 > Ambiente: OpenJDK 21.0.12, Maven 3.9.11, Node 22, Playwright 1.56.1 (Chromium), Docker 29.8.2, PostgreSQL **17.11**.
+
+## FASE 5 — Riepilogo
+
+| Suite | Comando | Test | Esito |
+|---|---|---|---|
+| Backend unità e slice | `cd backend && ./mvnw -B verify` | 70 (+4) | ✅ 70/70 |
+| Backend integrazione, sicurezza, concorrenza, riavvio (PostgreSQL reale) | stesso comando | 265 (+43) | ✅ 265/265 |
+| Frontend Playwright con backend e DB reali (funzionali 26 + accesso 10 + contenuti 12 + prenotazioni 7 + QA 9 + axe 2) | `cd frontend && npm run verifica` | 66 (+6) | ✅ 66/66 |
+| **Totale** | | **401** | ✅ 401/401 |
+
+**Regressioni FASI 2–4**: tutti i test precedenti sono presenti e verdi. Attese cambiate per effetto voluto e dichiarate:
+`DemoContentLoaderIT` verifica anche la configurazione demo delle prenotazioni; `PersistenceAfterRestartIT` aggiunge una
+prenotazione confermata e i posti occupati dopo il riavvio; in Playwright il flusso «prenotazione in 6 passi… conferma
+simulata» è diventato «richiesta tavolo in 5 passi… invio reale «in attesa»», il campo «Telefono o email» è diviso in
+«Telefono» ed «Email», i due test sulle richieste dimostrative (cambio di stato con SMS simulato) sono sostituiti da
+`reservations.spec.ts`.
+
+### Verifiche obbligatorie della FASE 5
+
+| Verifica | Test | Esito |
+|---|---|---|
+| Creazione e validazione | `WebReservationIT.richiestaValidaRestaInAttesaENonOccupaPosti` (PENDING, telefono E.164, nessun posto occupato, storico, audit, notifiche senza note del cliente), `validazioniDeiCampi`, `regoleDiPrenotabilita` (arrivo fuori fascia, giorno senza fasce, persone, troppo lontano, anticipo minimo, chiusura, richieste chiuse), `orariPrenotabiliDelGiorno`; `navigation.spec` «richiesta tavolo in 5 passi»; `reservations.spec` «il cliente chiede un tavolo…» | ✅ |
+| Conferma e rifiuto | `ReservationLifecycleIT.confermaOccupaIPostiEPreparaLeNotifiche` (quanti occupati esattamente 19:00–21:00, doppio clic senza effetti, versione vecchia `409`), `rifiutoEAnnullamento` (motivo obbligatorio, stato finale); `reservations.spec` conferma e rifiuto dalla UI | ✅ |
+| Modifica e annullamento | `ReservationLifecycleIT.modificaDiUnaConfermata` (posti insufficienti → nulla cambia; spostamento libera e rioccupa), `rifiutoEAnnullamento` (posti liberati, notifica di conferma superata), `arrivoAssenzaECorrezioneDelTitolare` (dopo l'inizio non si annulla, uscita anticipata, non presentato, correzione solo titolare entro 48 h); `reservations.spec` «rifiuto con motivo e annullamento: storico e posti liberati» | ✅ |
+| Capienza e sovrapposizioni orarie | `ReservationLifecycleIT.capienzaESovrapposizioni` (18–20 e 19–21 non stanno in 15 posti, 20–22 sì; posti liberi minimi nel dettaglio; posti del giorno; capienza sotto i confermati `409`), `WebReservationIT.orarioCompletoNelRegistroBloccaLaRichiesta` (`FULLY_BOOKED` e orari barrati); `CapacityLedgerIT`, `CapacityConcurrencyIT` (FASE 2) | ✅ |
+| Prenotazioni simultanee | `ReservationConcurrencyIT` (5 ripetizioni ciascuno): 8 conferme simultanee da 4 persone su 20 posti → esattamente 5; due gestori confermano/rifiutano la stessa richiesta → un solo cambio di stato e una sola notifica; stesso tavolo a due prenotazioni sovrapposte → una sola assegnazione, errore pulito, nessun deadlock; doppio invio simultaneo dal sito → una sola richiesta; conferma contro scadenza nello stesso istante. **Riconciliazione registro = prenotazioni dopo ogni test** (`Reconciliation`) | ✅ |
+| Autorizzazioni e CSRF | `ReservationLifecycleIT.permessiECsrf` (anonimo `401`, staff legge la configurazione ma non la cambia `403`, token CSRF inventato `403`), `WebReservationIT.campoNascostoCompilatoEScrittureSenzaCsrf` (anche la richiesta pubblica senza token → `403`), `tavoliAssegnatiAMano` (eccezione sui posti solo titolare); `reservations.spec` «staff: vede i posti del giorno ma non può cambiare la configurazione» | ✅ |
+| Duplicati e anti-spam | `WebReservationIT.idempotenzaEDuplicati` (stesso invio → stessa risposta e una riga; stessa chiave con dati diversi `422`; stesso telefono e orario `409`; chiave mancante o non valida), `campoNascosto…` (honeypot), `limitiPerIndirizzoEPerTelefono` (3 al giorno per telefono, 5 all'ora per indirizzo, `429` con `retryAfterSeconds`) | ✅ |
+| Scadenza delle richieste | `WebReservationIT.richiesteNonGestiteScadonoPrimaDellArrivo` (orologio dei test spostato: REJECTED/EXPIRED una sola volta, notifica e audit) | ✅ |
+| Persistenza dopo il riavvio | `PersistenceAfterRestartIT`: due avvii reali; la prenotazione confermata e i suoi posti (orario «completo» nelle opzioni pubbliche) sopravvivono; `reservations.spec` ricarica la pagina dopo la conferma | ✅ |
+| Notifiche simulate ≠ consegnate | `confermaOccupaIPostiEPreparaLeNotifiche` (email `PENDING`, SMS `SKIPPED/SMS_DISABLED`, `delivered` falso, nessun tentativo d'invio); `reservations.spec` «Email preparata, non inviata», «SMS non previsto (canale spento)», nessuna «Inviata» | ✅ |
+| Nessuna assegnazione automatica dei tavoli | `tavoliAssegnatiAMano` (dopo due conferme nessuna riga in `reservation_table_assignments`) | ✅ |
+| Regressioni FASI 2, 3 e 4 | tutte le classi precedenti (capacità, vincoli DB, migrazioni, autenticazione, account, menu, foto, contenuti, demo) e gli spec `auth`, `content`, `navigation`, `qa`, `a11y` | ✅ |
+| Playwright con frontend, backend e database reali | `scripts/e2e.mjs` + `reservations.spec.ts` (7 test: richiesta dal sito → conferma dello staff, rifiuto e annullamento con posti, inserimento da telefono, conflitto tra due gestori, tavolo creato dal titolare e assegnato con eccezione, permessi dello staff, richieste chiuse) | ✅ |
+
+### Difetti trovati dai test e corretti
+1. **Interruttore «Richieste tavolo attive» non salvava** (trovato da `reservations.spec`): la UI rimandava anche `id` ed
+   `effectiveFrom` della regola e il backend, che rifiuta i campi non previsti (`fail-on-unknown-properties`), rispondeva
+   `400`. Ora si inviano solo i campi della regola.
+2. **Sezioni della home che potevano restare invisibili** (trovato da `qa.spec` «movimento attivo»): l'animazione
+   d'ingresso registrava le sezioni 30 ms dopo il cambio di pagina; se i contenuti dal backend arrivavano più tardi, le
+   sezioni non venivano mai osservate e restavano trasparenti per chi non ha il movimento ridotto. Esisteva già dalla
+   FASE 4 e dipendeva dai tempi di risposta. Ora la registrazione si ripete quando i contenuti sono pronti.
+3. **Contrasto dei pulsanti piccoli** (axe): i nuovi pulsanti fucsia in formato compatto avevano 4,48:1; usata la
+   variante `btn--action` del design system (5,96:1), nessun colore cambiato.
+4. **Area di tocco del telefono** nelle righe delle richieste a 360–390 px (23 px): portata a 24 px.
+5. Nei test backend: la versione iniziale di una riga è 0, non 1 (attesa del test corretta); i limiti per IP vanno
+   azzerati tra i blocchi di prova di `regoleDiPrenotabilita` perché ogni tentativo conta (comportamento voluto).
+
+### CI
+(vedi sotto, aggiornato dopo la verifica su GitHub Actions)
 
 ## FASE 4 — Riepilogo
 

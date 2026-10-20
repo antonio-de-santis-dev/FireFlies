@@ -145,7 +145,7 @@ function PolicyPanel({ policy, owner, act }: { policy: Policy | null; owner: boo
           <div className="field"><label htmlFor="pol-exp">Scadenza delle richieste (minuti prima dell'arrivo)</label><input id="pol-exp" className="input" type="number" min={0} value={p.pendingExpiryMinutesBeforeStart} onChange={(e) => up('pendingExpiryMinutesBeforeStart', Number(e.target.value))} /></div>
         </div>
         <p className="hint">Una richiesta non gestita in tempo scade da sola: il cliente non resta in sospeso fino all'arrivo.</p>
-        {owner && <button type="submit" className="btn btn--primary btn--sm">Salva le regole</button>}
+        {owner && <button type="submit" className="btn btn--action btn--sm">Salva le regole</button>}
       </fieldset>
     </form>
   );
@@ -165,7 +165,7 @@ function ZonePanel({ config, owner, act }: { config: BookingConfig; owner: boole
         </div>
         <Switch checked={zone.active} onChange={() => owner && void act(() => updateZone(zone, { active: !zone.active }), zone.active ? 'Zona disattivata.' : 'Zona attiva.')} label={zone.active ? 'Zona attiva' : 'Zona non attiva'} />
         <p className="hint">Se ci sono già prenotazioni confermate oltre la nuova capienza, il sistema rifiuta la modifica.</p>
-        {owner && <button type="submit" className="btn btn--primary btn--sm">Salva la capienza</button>}
+        {owner && <button type="submit" className="btn btn--action btn--sm">Salva la capienza</button>}
       </fieldset>
     </form>
   );

@@ -214,7 +214,262 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393005709706",
+    "w": 180,
+    "h": 27,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 360,
+  "route": "/gestione/capienza",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Elimina la fascia Colazione di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T5",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T6",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   }
+  ],
   "under24": []
  },
  {
@@ -464,7 +719,262 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393005709706",
+    "w": 195,
+    "h": 27,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 375,
+  "route": "/gestione/capienza",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Elimina la fascia Colazione di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T5",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T6",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   }
+  ],
   "under24": []
  },
  {
@@ -707,7 +1217,262 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393005709706",
+    "w": 210,
+    "h": 27,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 390,
+  "route": "/gestione/capienza",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Elimina la fascia Colazione di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T5",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T6",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   }
+  ],
   "under24": []
  },
  {
@@ -887,7 +1652,262 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393005709706",
+    "w": 113,
+    "h": 27,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 768,
+  "route": "/gestione/capienza",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Elimina la fascia Colazione di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T5",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T6",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   }
+  ],
   "under24": []
  },
  {
@@ -1067,7 +2087,262 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393005709706",
+    "w": 113,
+    "h": 27,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 1366,
+  "route": "/gestione/capienza",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Elimina la fascia Colazione di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T5",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T6",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   }
+  ],
   "under24": []
  },
  {
@@ -1247,7 +2522,262 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393005709706",
+    "w": 113,
+    "h": 27,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 1440,
+  "route": "/gestione/capienza",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Elimina la fascia Colazione di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T5",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T6",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   }
+  ],
   "under24": []
  },
  {
@@ -1427,7 +2957,262 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393005709706",
+    "w": 113,
+    "h": 27,
+    "inline": false,
+    "type": ""
+   }
+  ],
+  "under24": []
+ },
+ {
+  "width": 1920,
+  "route": "/gestione/capienza",
+  "overflow": 0,
+  "broken": [],
+  "under44": [
+   {
+    "name": "Elimina la fascia Colazione di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di lunedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di martedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di giovedì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di venerdì",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di sabato",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Colazione di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Pomeriggio di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Aperitivo di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina la fascia Sera di domenica",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T5",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo T6",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D1",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D2",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D3",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   },
+   {
+    "name": "Elimina il tavolo D4",
+    "w": 30,
+    "h": 30,
+    "inline": false,
+    "type": "button"
+   }
+  ],
   "under24": []
  },
  {

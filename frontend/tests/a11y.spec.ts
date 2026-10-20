@@ -4,13 +4,13 @@ import { expect, test } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { go, loadAllImages, signIn } from './helpers';
 
-const results: Record<string, { id: string; impact: string | null | undefined; nodes: number; help: string }[]> = {};
+const results: Record<string, { id: string; impact: string | null | undefined; nodes: number; help: string; targets: string[] }[]> = {};
 test.afterAll(() => writeFileSync('tests/a11y-report.json', JSON.stringify(results, null, 1)));
 
 const audit = async (page: import('@playwright/test').Page, name: string) => {
   await page.waitForTimeout(700); // attende la fine delle animazioni d'ingresso (dialog, foto)
   const r = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
-  results[name] = r.violations.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help }));
+  results[name] = r.violations.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length, help: v.help, targets: v.nodes.map((n) => `${n.target.join(' ')} ${n.any[0]?.message ?? ''}`) }));
   return r.violations;
 };
 

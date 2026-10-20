@@ -25,9 +25,13 @@ import { NotFound } from './pages/public/NotFound';
 import { match, navigate, usePath } from './router';
 import { useStore, type Role } from './store';
 
-/** Animazione d'ingresso delle sezioni: attiva solo se supportata e se l'utente non chiede movimento ridotto. */
-function useReveal(path: string) {
+/**
+ * Animazione d'ingresso delle sezioni: attiva solo se supportata e se l'utente non chiede movimento ridotto.
+ * Si registra di nuovo quando arrivano i contenuti: prima c'è solo la schermata di attesa, senza sezioni da osservare.
+ */
+function useReveal(path: string, ready: boolean) {
   useEffect(() => {
+    if (!ready) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce || !('IntersectionObserver' in window)) return;
     document.documentElement.classList.add('reveal-ready');
@@ -45,7 +49,7 @@ function useReveal(path: string) {
       window.clearTimeout(t);
       io.disconnect();
     };
-  }, [path]);
+  }, [path, ready]);
 }
 
 function publicPage(path: string): ReactNode {
@@ -101,7 +105,7 @@ export function App() {
   const route = path.split('?')[0];
   const { role, authChecked, dispatch, openBooking, contentStatus, reloadPublic } = useStore();
   const signedIn = role != null;
-  useReveal(path);
+  useReveal(path, contentStatus === 'ready');
 
   useEffect(() => {
     if (route === '/prenota') openBooking();

@@ -105,7 +105,7 @@ export function Requests() {
   return (
     <>
       <AdminHead title="Richieste tavoli" lead="Le richieste dal sito arrivano «In attesa»: confermale solo se c'è posto. Le notifiche ai clienti vengono preparate ma non ancora inviate.">
-        <button type="button" className="btn btn--primary btn--sm" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" /> Nuova prenotazione</button>
+        <button type="button" className="btn btn--action btn--sm" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" /> Nuova prenotazione</button>
       </AdminHead>
 
       <div className="toolbar" role="search" aria-label="Filtra le richieste">
@@ -299,7 +299,7 @@ function ReservationDialog({ id, onClose, onChanged }: { id: string; onClose: ()
 
         {mode === 'view' && (
           <div className="res-detail__actions">
-            {can('CONFIRM') && <button type="button" className="btn btn--primary btn--sm" disabled={busy} onClick={() => status({ status: 'CONFIRMED' }, 'Prenotazione confermata: posti occupati. Notifica preparata, non inviata.')}>Conferma</button>}
+            {can('CONFIRM') && <button type="button" className="btn btn--action btn--sm" disabled={busy} onClick={() => status({ status: 'CONFIRMED' }, 'Prenotazione confermata: posti occupati. Notifica preparata, non inviata.')}>Conferma</button>}
             {can('REJECT') && <button type="button" className="btn btn--ghost btn--sm" disabled={busy} onClick={() => setMode('reject')}>Rifiuta</button>}
             {can('CANCEL') && <button type="button" className="btn btn--ghost btn--sm" disabled={busy} onClick={() => setMode('cancel')}>Annulla</button>}
             {can('COMPLETE') && <button type="button" className="btn btn--ghost btn--sm" disabled={busy} onClick={() => status({ status: 'COMPLETED' }, 'Segnata come completata.')}>Completata</button>}
@@ -383,7 +383,7 @@ function ReasonForm({ kind, busy, onSubmit, onCancel }: { kind: 'reject' | 'canc
         <input id="res-note" className="input" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
       </div>
       <div className="res-detail__actions">
-        <button type="submit" className="btn btn--primary btn--sm" disabled={busy}>{kind === 'reject' ? 'Rifiuta la richiesta' : 'Annulla la prenotazione'}</button>
+        <button type="submit" className="btn btn--action btn--sm" disabled={busy}>{kind === 'reject' ? 'Rifiuta la richiesta' : 'Annulla la prenotazione'}</button>
         <button type="button" className="btn btn--quiet btn--sm" onClick={onCancel}>Indietro</button>
       </div>
     </form>
@@ -425,7 +425,7 @@ function EditForm({ detail, full, busy, onSubmit, onCancel }: { detail: Detail; 
       <label className="check"><input type="checkbox" checked={v.needsCallback} onChange={(e) => up('needsCallback', e.target.checked)} /><span>Da richiamare</span></label>
       {full && s.status === 'CONFIRMED' && <p className="hint">Spostando orario o persone il sistema ricontrolla i posti: se non bastano, nulla cambia.</p>}
       <div className="res-detail__actions">
-        <button type="submit" className="btn btn--primary btn--sm" disabled={busy}>Salva le modifiche</button>
+        <button type="submit" className="btn btn--action btn--sm" disabled={busy}>Salva le modifiche</button>
         <button type="button" className="btn btn--quiet btn--sm" onClick={onCancel}>Indietro</button>
       </div>
     </form>
@@ -470,7 +470,7 @@ function TablesForm({ detail, owner, busy, onSubmit, onCancel }: { detail: Detai
         </>
       ) : <p className="hint warn">I posti sono meno delle persone: solo il titolare può fare un'eccezione.</p>)}
       <div className="res-detail__actions">
-        <button type="submit" className="btn btn--primary btn--sm" disabled={busy}>{chosen.length ? 'Assegna i tavoli' : 'Togli i tavoli'}</button>
+        <button type="submit" className="btn btn--action btn--sm" disabled={busy}>{chosen.length ? 'Assegna i tavoli' : 'Togli i tavoli'}</button>
         <button type="button" className="btn btn--quiet btn--sm" onClick={onCancel}>Indietro</button>
       </div>
     </form>
@@ -536,7 +536,7 @@ function ManualDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
         <label className="check"><input type="checkbox" checked={v.confirmNow} onChange={(e) => up('confirmNow', e.target.checked)} /><span>Conferma subito (il sistema controlla i posti)</span></label>
         <label className="check"><input type="checkbox" checked={v.needsCallback} onChange={(e) => up('needsCallback', e.target.checked)} /><span>Da richiamare</span></label>
         <div className="res-detail__actions">
-          <button type="submit" className="btn btn--primary btn--sm" disabled={busy}>{busy ? 'Salvataggio…' : 'Salva la prenotazione'}</button>
+          <button type="submit" className="btn btn--action btn--sm" disabled={busy}>{busy ? 'Salvataggio…' : 'Salva la prenotazione'}</button>
           <button type="button" className="btn btn--quiet btn--sm" onClick={onClose}>Annulla</button>
         </div>
       </form>
