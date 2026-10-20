@@ -1,7 +1,7 @@
 # Avanzamento del lavoro — checkpoint di recupero
 
 > Regola: MASTER_PLAN §19. Aggiornato durante il lavoro, non solo a fine sessione.
-> Ultimo aggiornamento: 20/10/2026, **FASE 5 completata in locale**, in attesa della CI e dell'approvazione del committente.
+> Ultimo aggiornamento: 20/10/2026, **FASE 5 completata**: test locali e CI verdi. In attesa dell'approvazione del committente.
 
 ## Fase e branch
 - **FASE 5 — Prenotazioni V1** (autorizzata dal committente il 20/10/2026, dopo l'approvazione definitiva della FASE 4).
@@ -22,7 +22,7 @@
 | 2 | Backend prenotazioni: opzioni pubbliche, richiesta web, inserimento manuale, transizioni, modifica, tavoli, outbox, scadenza | fatto (`7c67958`) |
 | 3 | Test backend (creazione, ciclo di vita, capienza, concorrenza, permessi, CSRF, duplicati, riavvio) | fatto (`b991754`) |
 | 4 | Frontend: richiesta tavolo reale, pagina Richieste, inserimento manuale, capienza e tavoli; Playwright | fatto (`c344211` + correzioni QA) |
-| 5 | Documentazione, CI, report finale; stop in attesa di approvazione | documenti fatti; CI da verificare sull'ultimo commit |
+| 5 | Documentazione, CI, report finale; stop in attesa di approvazione | fatto: CI frontend 39395689994 ✅ (`8008f78`), backend 39392817517 ✅ (`c344211`, codice backend invariato dopo) |
 
 ## File modificati non committati
 - Nessuno dopo il commit finale della fase.
@@ -36,5 +36,5 @@
 - Nessuno noto. Difetti trovati e corretti in TEST_REPORT §«FASE 5».
 
 ## Prossima azione esatta
-Verificare l'esito delle due workflow GitHub Actions sull'ultimo commit di `fase-5/prenotazioni` e riportarlo in
-TEST_REPORT §CI; poi **fermarsi**: la FASE 6 (eventi) richiede l'approvazione del committente.
+Nessuna: **fase ferma in attesa dell'approvazione**. La FASE 6 (eventi) non va avviata senza l'autorizzazione del
+committente.

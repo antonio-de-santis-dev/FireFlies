@@ -51,8 +51,15 @@ simulata» è diventato «richiesta tavolo in 5 passi… invio reale «in attesa
 5. Nei test backend: la versione iniziale di una riga è 0, non 1 (attesa del test corretta); i limiti per IP vanno
    azzerati tra i blocchi di prova di `regoleDiPrenotabilita` perché ogni tentativo conta (comportamento voluto).
 
-### CI
-(vedi sotto, aggiornato dopo la verifica su GitHub Actions)
+### CI (GitHub Actions, branch `fase-5/prenotazioni`)
+| Workflow | Commit | Run | Esito |
+|---|---|---|---|
+| frontend (`npm run verifica`, 66 test) | `8008f78` (ultimo commit con codice) | 39395689994 | ✅ success (6m35s) |
+| backend (`./mvnw -B verify`, 70 + 265 test) | `c344211` — il codice backend non cambia dopo questo commit; la workflow parte solo su `backend/**` | 39392817517 | ✅ success (3m14s) |
+
+Run intermedi falliti e già risolti: `7c67958` backend (test non compilabile: `DemoContentLoaderIT` usava il vecchio
+costruttore, corretto in `b991754`) e frontend; `c344211` frontend (contrasto, area di tocco e animazione d'ingresso,
+corretti in `8008f78`, difetti 2–4 sopra).
 
 ## FASE 4 — Riepilogo
 
