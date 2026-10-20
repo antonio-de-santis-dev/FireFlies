@@ -9,8 +9,8 @@
 |---|---|---|---|
 | Backend unità e slice | `cd backend && ./mvnw -B clean verify` | 66 | ✅ 66/66 |
 | Backend integrazione, sicurezza, concorrenza, riavvio (PostgreSQL reale) | stesso comando | 222 | ✅ 222/222 |
-| Frontend Playwright con backend e DB reali (funzionali 27 + accesso 10 + contenuti 11 + QA 9 + axe 2) | `cd frontend && npm run verifica` | 59 | ✅ 59/59 (4,7 min) |
-| **Totale** | | **347** | ✅ 347/347 |
+| Frontend Playwright con backend e DB reali (funzionali 27 + accesso 10 + contenuti 12 + QA 9 + axe 2) | `cd frontend && npm run verifica` | 60 | ✅ 60/60 (5,3 min) |
+| **Totale** | | **348** | ✅ 348/348 |
 
 CI su GitHub Actions dell'ultimo commit: vedi §«CI» in fondo a questa sezione.
 
@@ -59,17 +59,31 @@ Playwright che modificano dati li ripristinano alla fine (`tests/baseline.ts`) e
    backend e, con la macchina carica (suite backend in parallelo), il caricamento superava il margine di 1 s del test
    (58/59 in quell'esecuzione). L'app è corretta (il cambio avviene 60 s dopo l'avvio del timer): il test ora verifica
    «ferma a 55 s, cambiata entro 65 s». Esecuzione successiva completa: 59/59.
-5. **Upload di prova S3** rifiutato dal finto endpoint: l'SDK usava il caricamento «aws-chunked», non accettato da R2;
+5. **Due modifiche ravvicinate a una foto si annullavano** (difetto reale, trovato dalla CI). Run frontend
+   `39279505974` su `3e80851`: 58 superati, 1 fallito — `navigation.spec.ts` riga 302, «foto: caricamento con controlli,
+   uso nel menu e in galleria», timeout di 90 s in attesa di `.picker__opt` con «Nuovo cocktail della casa».
+   **Causa**: nella pagina Foto il testo alternativo si salva all'uscita dal campo e «In galleria» al clic, quindi
+   partono due `PATCH` quasi insieme; il frontend sostituiva l'intera foto con ogni risposta. Se il server applicava
+   prima la galleria (con la descrizione ancora vecchia) e quella risposta arrivava per ultima, lo stato del browser
+   tornava alla descrizione vecchia (il database era corretto): il selettore del menu non trovava la foto. Il test era
+   rimasto identico nelle esecuzioni verdi successive, che sono passate per l'ordine favorevole delle risposte.
+   **Correzione** (`665d840`): ogni risposta aggiorna solo il campo che ha modificato (`media/merge`).
+   **Verifica**: nuovo test `content.spec` «descrizione e galleria modificate di seguito…» che forza l'ordine sfavorevole
+   con `page.route` — **fallisce sul codice precedente** (selettore del menu con la descrizione vecchia) e passa con la
+   correzione; il test storico ora attende la conferma «Descrizione salvata» e sceglie la foto per ruolo e nome
+   accessibile (`radio`), non per testo. Nessun timeout aumentato.
+6. **Upload di prova S3** rifiutato dal finto endpoint: l'SDK usava il caricamento «aws-chunked», non accettato da R2;
    disattivato (corpo intero firmato).
 
 ### CI
 | Workflow | Commit | Run | Esito |
 |---|---|---|---|
-| frontend (`npm ci`, Playwright Chromium, `npm run verifica` con backend e PostgreSQL reali) | `0b1a065` (ultimo commit) | 39280557623 | ✅ success |
+| frontend (`npm ci`, Playwright Chromium, `npm run verifica` con backend e PostgreSQL reali) | `665d840` (ultimo commit con codice, correzione della gara) | 39386676958 | ✅ success |
+| frontend | `0b1a065` | 39280557623 | ✅ success |
 | frontend | `6406858` (ultima correzione di codice dei test) | 39280092627 | ✅ success |
 | backend (`./mvnw -B verify`) | `3e80851` (ultimo push con codice backend: `ac9c5a3`) | 39279505939 | ✅ success |
 
-| frontend | `3e80851` | 39279505974 | ❌ failure — superata: è l'esecuzione **precedente** alla correzione del test intermittente della testata (`6406858`); log e artefatti non scaricabili da questo container (storage di GitHub: `Forbidden`), quindi il test fallito non è verificabile da qui. Le due esecuzioni successive, sugli stessi test più la correzione, sono verdi |
+| frontend | `3e80851` | 39279505974 | ❌ failure storica — 58/59, `navigation.spec.ts:302` (vedi difetto 5): causa individuata e corretta in `665d840` |
 
 I commit successivi a `3e80851` non toccano `backend/`, quindi il workflow backend (filtrato per percorso) non riparte.
 

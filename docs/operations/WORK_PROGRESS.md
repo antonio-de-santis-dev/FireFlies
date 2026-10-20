@@ -28,7 +28,8 @@
 | Suite | Esito |
 |---|---|
 | Backend unità (66) + integrazione (222) | ✅ locale e CI (run 39279505939) |
-| Playwright completo (59) | ✅ locale e CI sull'ultimo commit (run 39280557623); run 39279505974 su `3e80851` (prima della correzione della testata) fallita, log non accessibile dal container |
+| Playwright completo (60) | ✅ locale e CI su `665d840` (run 39386676958) |
+| Errore storico | run 39279505974 su `3e80851`: 58/59, gara tra due modifiche della stessa foto; corretta in `665d840` con test deterministico (TEST_REPORT, difetto 5) |
 
 ## Errori da risolvere
 - Nessuno.
