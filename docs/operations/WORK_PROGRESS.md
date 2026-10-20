@@ -6,7 +6,7 @@
 ## Fase e branch
 - **FASE 4 — Menu, contenuti e gestione delle immagini** (autorizzata dal committente).
 - Branch: `fase-4/menu-media` (da `fase-3/autenticazione` @ `62eb460`). Nessun merge su `main`.
-- Ultimo commit pubblicato: vedi `git log -1` (commit di chiusura «docs: risultati finali dei test FASE 4»).
+- Ultimo commit pubblicato: vedi `git log -1` sul branch (chiusura FASE 4).
 
 ## Attività completate
 - Backend: media (storage locale e S3/R2, verifica e ricodifica, PNG8, orfani), menu, contenuti, impostazioni, avvisi,
@@ -28,7 +28,7 @@
 | Suite | Esito |
 |---|---|
 | Backend unità (66) + integrazione (222) | ✅ locale e CI (run 39279505939) |
-| Playwright completo (59) | ✅ locale e CI sull'ultimo commit (run 39280557623) |
+| Playwright completo (59) | ✅ locale e CI sull'ultimo commit (run 39280557623); run 39279505974 su `3e80851` (prima della correzione della testata) fallita, log non accessibile dal container |
 
 ## Errori da risolvere
 - Nessuno.

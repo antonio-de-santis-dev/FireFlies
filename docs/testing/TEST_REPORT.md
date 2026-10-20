@@ -69,6 +69,8 @@ Playwright che modificano dati li ripristinano alla fine (`tests/baseline.ts`) e
 | frontend | `6406858` (ultima correzione di codice dei test) | 39280092627 | ✅ success |
 | backend (`./mvnw -B verify`) | `3e80851` (ultimo push con codice backend: `ac9c5a3`) | 39279505939 | ✅ success |
 
+| frontend | `3e80851` | 39279505974 | ❌ failure — superata: è l'esecuzione **precedente** alla correzione del test intermittente della testata (`6406858`); log e artefatti non scaricabili da questo container (storage di GitHub: `Forbidden`), quindi il test fallito non è verificabile da qui. Le due esecuzioni successive, sugli stessi test più la correzione, sono verdi |
+
 I commit successivi a `3e80851` non toccano `backend/`, quindi il workflow backend (filtrato per percorso) non riparte.
 
 ---
