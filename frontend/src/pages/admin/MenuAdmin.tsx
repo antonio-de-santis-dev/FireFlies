@@ -18,6 +18,27 @@ export function Switch({ checked, onChange, label }: { checked: boolean; onChang
   );
 }
 
+/**
+ * Miniatura del prodotto (FASE 8, req. 3): riquadro fisso (nessuna riga che salta), variante piccola scelta dal browser
+ * (`srcset` + `sizes`), ritaglio leggero solo nella miniatura (gli originali non cambiano), segnaposto se manca la foto o
+ * se il caricamento fallisce. Solo per il menu: le locandine degli eventi restano sempre intere.
+ */
+function ProductThumb({ asset }: { asset: ReturnType<ReturnType<typeof useStore>['mediaAsset']> }) {
+  const [failed, setFailed] = useState(false);
+  if (!asset || failed) {
+    return (
+      <span className="product-thumb product-thumb--none" role="img" aria-label={failed ? 'Foto non caricata' : 'Nessuna foto'}>
+        <ImageOff size={22} aria-hidden="true" />
+      </span>
+    );
+  }
+  return (
+    <span className="product-thumb">
+      <Img asset={asset} decorative sizes="(max-width: 767px) 96px, 88px" onError={() => setFailed(true)} />
+    </span>
+  );
+}
+
 export function MenuAdmin() {
   usePageMeta('Gestione menu');
   const { menu, categories, allergens, dispatch, notify, mediaAsset } = useStore();
@@ -87,9 +108,9 @@ export function MenuAdmin() {
                 return (
                   <tr key={m.id} className={m.visible ? undefined : 'is-hidden'}>
                     <td data-label="Voce">
-                      <span className="cell-item">
-                        {p ? <Img asset={p} decorative className="cell-item__img" sizes="48px" /> : <span className="cell-item__img cell-item__img--none"><ImageOff size={18} aria-hidden="true" /></span>}
-                        <strong>{m.name}</strong>
+                      <span className="cell-item cell-item--menu">
+                        <ProductThumb asset={p} />
+                        <strong className="cell-item__name">{m.name}</strong>
                       </span>
                     </td>
                     <td data-label="Categoria">{categories.find((c) => c.id === m.category)?.label}</td>

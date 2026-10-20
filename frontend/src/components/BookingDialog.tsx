@@ -1,10 +1,11 @@
-import { ArrowLeft, ArrowRight, CalendarDays, CircleAlert, Clock3, Info, Minus, PartyPopper, Pencil, Phone, Plus, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, Copy, Info, Instagram, Minus, PartyPopper, Pencil, Phone, Plus, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import { bookingOptions, hhmm, newIdempotencyKey, sendRequest, type BookingOptions, type Receipt } from '../api/reservations';
 import { capitalize, formatEventDate } from '../data/events';
 import { useStore } from '../store';
 import { Dialog } from './Dialog';
+import { copyText, displayPhone, telHref } from '../lib/phone';
 import { ConfirmBadge } from './ui';
 
 // Richiesta tavolo in 5 passi + esito. La richiesta arriva al locale «in attesa»: il tavolo è riservato solo
@@ -194,7 +195,6 @@ export function BookingDialog() {
   }
 
   if (choice !== 'table') {
-    const tel = settings.phone ? `tel:${settings.phone.replace(/[^\d+]/g, '')}` : null;
     return (
       <Dialog title={choice === 'party' ? 'Organizza un evento o un compleanno' : 'Prenota'} onClose={closeBooking}>
         {choice === 'ask' ? (
@@ -212,11 +212,7 @@ export function BookingDialog() {
         ) : (
           <div className="booking-choice">
             <p className="booking-step__title">Contattaci per organizzare il tuo evento o compleanno</p>
-            {tel ? (
-              <a className="btn btn--primary booking-choice__call" href={tel}><Phone size={20} aria-hidden="true" /> Chiama {settings.phone}</a>
-            ) : (
-              <p className="hint warn" role="note"><Info size={16} aria-hidden="true" /> Il numero di telefono del locale non è ancora disponibile: scrivici su Instagram oppure passa a trovarci.</p>
-            )}
+            <PhoneCard phone={settings.phone} instagram={settings.instagram} />
             <div className="booking-actions">
               <button type="button" className="btn btn--quiet" onClick={() => setChoice('ask')}><ArrowLeft size={20} aria-hidden="true" /> Indietro</button>
             </div>
@@ -439,5 +435,47 @@ export function BookingDialog() {
         )}
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * Numero del locale ben visibile con «Chiama ora» (`tel:`) e «Copia numero» (FASE 8, req. 4). Senza un numero valido
+ * nelle impostazioni nessun pulsante né link vuoto: resta l'avviso e Instagram, se configurato.
+ */
+function PhoneCard({ phone, instagram }: { phone: string | null; instagram: string }) {
+  const shown = displayPhone(phone);
+  const href = telHref(phone);
+  const [copy, setCopy] = useState<'idle' | 'done' | 'manual'>('idle');
+  const manualRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (copy === 'manual') manualRef.current?.select();
+  }, [copy]);
+  if (!shown || !href) {
+    return (
+      <div className="phone-card phone-card--none">
+        <p className="hint warn" role="note"><Info size={16} aria-hidden="true" /> Il numero di telefono del locale non è ancora disponibile: scrivici su Instagram oppure passa a trovarci.</p>
+        {instagram && <a className="btn btn--ghost btn--sm" href={instagram} target="_blank" rel="noopener noreferrer"><Instagram size={18} aria-hidden="true" /> Scrivici su Instagram</a>}
+      </div>
+    );
+  }
+  const doCopy = async () => setCopy((await copyText(shown)) ? 'done' : 'manual');
+  return (
+    <div className="phone-card">
+      <p className="phone-card__label">Telefono del locale</p>
+      <p className="phone-card__number"><a href={href}>{shown}</a></p>
+      <div className="phone-card__actions">
+        <a className="btn btn--primary" href={href}><Phone size={20} aria-hidden="true" /> Chiama ora</a>
+        <button type="button" className="btn btn--ghost" onClick={() => void doCopy()}><Copy size={18} aria-hidden="true" /> Copia numero</button>
+      </div>
+      <p className="phone-card__status" role="status" aria-live="polite">
+        {copy === 'done' && <><Check size={16} aria-hidden="true" /> Numero copiato negli appunti.</>}
+      </p>
+      {copy === 'manual' && (
+        <div className="field">
+          <label htmlFor="phone-manual" className="small">La copia automatica non è disponibile: seleziona il numero e copialo.</label>
+          <input id="phone-manual" ref={manualRef} className="input" readOnly value={shown} onFocus={(e) => e.currentTarget.select()} />
+        </div>
+      )}
+    </div>
   );
 }

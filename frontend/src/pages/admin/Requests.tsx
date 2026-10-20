@@ -1,5 +1,5 @@
-import { CircleAlert, Inbox, Phone, Plus, RefreshCw, Users } from 'lucide-react';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { ChevronRight, CircleAlert, Inbox, Phone, Plus, RefreshCw, Search, Users } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ApiError } from '../../api/client';
 import { listEvents, type AdminEvent } from '../../api/events';
 import {
@@ -48,6 +48,39 @@ const WARNING_LABEL: Record<string, string> = {
 const message = (e: unknown) => (e instanceof ApiError ? e.message : 'Si è verificato un errore imprevisto. Riprova.');
 
 type Period = 'upcoming' | 'day' | 'all';
+
+/**
+ * Chip a scorrimento orizzontale controllato: sfumatura e freccia a destra finché c'è altro da vedere (FASE 8, req. 2).
+ * La freccia scorre di una schermata; i chip restano raggiungibili da tastiera (Tab) e al tocco.
+ */
+export function ScrollChips({ label, children }: { label: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => setMore(el.scrollWidth - el.clientWidth - el.scrollLeft > 4);
+    update();
+    el.addEventListener('scroll', update, { passive: true });
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', update);
+      ro?.disconnect();
+    };
+  }, [children]);
+  return (
+    <div className={`chips-scroll${more ? ' has-more' : ''}`}>
+      <div ref={ref} className="chips" role="group" aria-label={label}>{children}</div>
+      {more && (
+        <button type="button" className="chips-scroll__more" aria-label="Mostra gli altri filtri"
+          onClick={() => ref.current?.scrollBy({ left: ref.current.clientWidth * 0.7, behavior: 'smooth' })}>
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function Requests() {
   usePageMeta('Richieste');
@@ -105,12 +138,13 @@ export function Requests() {
 
   return (
     <>
-      <AdminHead title="Richieste" lead="Le richieste dal sito arrivano «In attesa»: confermale solo se c'è posto. Le notifiche ai clienti vengono preparate ma non ancora inviate.">
+      <AdminHead compact title="Richieste" lead="Le richieste dal sito arrivano «In attesa»: confermale solo se c'è posto. Le notifiche ai clienti vengono preparate ma non ancora inviate.">
         <button type="button" className="btn btn--action btn--sm" onClick={() => setCreating(true)}><Plus size={16} aria-hidden="true" /> Nuova prenotazione</button>
       </AdminHead>
 
-      <div className="toolbar" role="search" aria-label="Filtra le richieste">
-        <div className="field field--inline">
+      {/* FASE 8, req. 2: filtri compatti (sul telefono Periodo e Origine affiancati, ricerca con Aggiorna a icona) */}
+      <div className="toolbar toolbar--compact" role="search" aria-label="Filtra le richieste">
+        <div className="field field--compact toolbar__period">
           <label htmlFor="rq-period">Periodo</label>
           <select id="rq-period" className="select select--sm" value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
             <option value="upcoming">Da oggi in poi</option>
@@ -118,27 +152,34 @@ export function Requests() {
             <option value="all">Tutte, anche passate</option>
           </select>
         </div>
-        {period === 'day' && (
-          <div className="field field--inline">
-            <label htmlFor="rq-day">Giorno</label>
-            <input id="rq-day" className="input input--sm" type="date" value={day} onChange={(e) => setDay(e.target.value || todayIso())} />
-          </div>
-        )}
-        <div className="field field--inline">
+        <div className="field field--compact toolbar__source">
           <label htmlFor="rq-source">Origine</label>
           <select id="rq-source" className="select select--sm" value={source} onChange={(e) => setSource(e.target.value as ReservationSource | '')}>
             <option value="">Tutte</option>
             {(Object.keys(SOURCE_LABEL) as ReservationSource[]).map((s) => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>)}
           </select>
         </div>
-        <div className="field field--inline">
+        {period === 'day' && (
+          <div className="field field--compact toolbar__day">
+            <label htmlFor="rq-day">Giorno</label>
+            <input id="rq-day" className="input input--sm" type="date" value={day} onChange={(e) => setDay(e.target.value || todayIso())} />
+          </div>
+        )}
+        <div className="field field--compact toolbar__search">
           <label htmlFor="rq-q">Cerca</label>
-          <input id="rq-q" className="input input--sm" type="search" placeholder="Nome, telefono, codice" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <div className="toolbar__search-row">
+            <span className="input-icon">
+              <Search size={16} aria-hidden="true" />
+              <input id="rq-q" className="input input--sm" type="search" placeholder="Nome, telefono, codice" value={query} onChange={(e) => setQuery(e.target.value)} />
+            </span>
+            <button type="button" className="icon-btn toolbar__refresh" onClick={reload} aria-label="Aggiorna l'elenco" title="Aggiorna l'elenco">
+              <RefreshCw size={18} aria-hidden="true" className={loading ? 'spin' : undefined} />
+            </button>
+          </div>
         </div>
-        <button type="button" className="btn btn--quiet btn--sm" onClick={reload} aria-label="Aggiorna l'elenco"><RefreshCw size={16} aria-hidden="true" /> Aggiorna</button>
       </div>
 
-      <div className="chips" role="group" aria-label="Filtra per stato">
+      <ScrollChips label="Filtra per stato">
         <button type="button" className="chip" aria-pressed={tab === 'ALL'} onClick={() => setTab('ALL')}>
           Tutte<span className="count">{all}</span>
         </button>
@@ -147,7 +188,7 @@ export function Requests() {
             {STATUS_LABEL[s]}<span className="count">{counts[s] ?? 0}</span>
           </button>
         ))}
-      </div>
+      </ScrollChips>
 
       {error ? (
         <p className="error" role="alert"><CircleAlert size={16} aria-hidden="true" /> {error} <button type="button" className="btn btn--quiet btn--sm" onClick={reload}>Riprova</button></p>

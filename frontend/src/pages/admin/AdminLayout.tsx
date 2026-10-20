@@ -183,9 +183,10 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   );
 }
 
-export function AdminHead({ title, children, lead }: { title: string; lead?: string; children?: ReactNode }) {
+/** `compact`: sul telefono titolo più piccolo e senza la descrizione, per lasciare spazio ai contenuti (FASE 8). */
+export function AdminHead({ title, children, lead, compact = false }: { title: string; lead?: string; children?: ReactNode; compact?: boolean }) {
   return (
-    <header className="admin-head">
+    <header className={`admin-head${compact ? ' admin-head--compact' : ''}`}>
       <div>
         <h1>{title}</h1>
         {lead && <p className="muted">{lead}</p>}
