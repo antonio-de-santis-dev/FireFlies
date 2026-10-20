@@ -42,6 +42,19 @@ class CapacitySlotStore {
                 .optional();
     }
 
+    Optional<ZoneRow> zone(UUID zoneId) {
+        return jdbc.sql("SELECT id, physical_capacity, active FROM capacity_zones WHERE id = ?")
+                .param(zoneId).query(CapacitySlotStore::zone).optional();
+    }
+
+    List<SlotRow> readSlots(UUID zoneId, Instant fromInclusive, Instant toExclusive) {
+        return jdbc.sql("""
+                SELECT slot_start, capacity_covers, occupied_covers, exclusive_event_id
+                  FROM capacity_slots WHERE zone_id = ? AND slot_start >= ? AND slot_start < ? ORDER BY slot_start
+                """)
+                .params(zoneId, utc(fromInclusive), utc(toExclusive)).query(CapacitySlotStore::slot).list();
+    }
+
     /** Lock esclusivo per i cambi di capienza (NO KEY: non blocca le chiavi esterne verso la zona). */
     Optional<ZoneRow> lockZoneForUpdate(UUID zoneId) {
         return jdbc.sql("SELECT id, physical_capacity, active FROM capacity_zones WHERE id = ? FOR NO KEY UPDATE")

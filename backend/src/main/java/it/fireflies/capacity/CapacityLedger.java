@@ -74,12 +74,27 @@ public class CapacityLedger {
                     "La capienza deve essere tra 0 e 1000 persone.", Map.of("physicalCapacity", newCapacity));
         }
         store.lockZoneForUpdate(zoneId).orElseThrow(() -> CapacityExceptions.zoneNotFound(zoneId));
-        Instant firstQuantum = floorToQuantum(from);
+        recompute(zoneId, newCapacity, from);
+        store.updatePhysicalCapacity(zoneId, newCapacity);
+    }
 
+    /**
+     * Ricalcola la capienza effettiva dei quanti già esistenti da {@code from} in poi dopo un cambio di fasce o
+     * eccezioni (la nuova configurazione è già scritta nella stessa transazione). Stessa regola dei cambi di capienza:
+     * se i confermati superano il nuovo limite → {@code CAPACITY_BELOW_CONFIRMED} e la transazione si annulla.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void recomputeCapacities(UUID zoneId, Instant from) {
+        ZoneRow zone = store.lockZoneForUpdate(zoneId).orElseThrow(() -> CapacityExceptions.zoneNotFound(zoneId));
+        recompute(zoneId, zone.physicalCapacity(), from);
+    }
+
+    private void recompute(UUID zoneId, int physicalCapacity, Instant from) {
+        Instant firstQuantum = floorToQuantum(from);
         List<SlotConflict> conflicts = new ArrayList<>();
         Map<Instant, Integer> newCapacities = new TreeMap<>();
         for (SlotRow slot : store.lockSlotsFrom(zoneId, firstQuantum)) {
-            int capacity = capacityPolicy.capacityFor(zoneId, newCapacity, slot.slotStart());
+            int capacity = capacityPolicy.capacityFor(zoneId, physicalCapacity, slot.slotStart());
             if (slot.occupiedCovers() > capacity) {
                 conflicts.add(new SlotConflict(slot.slotStart(), slot.occupiedCovers(), capacity));
             }
@@ -88,9 +103,31 @@ public class CapacityLedger {
         if (!conflicts.isEmpty()) {
             throw new CapacityBelowConfirmedException(zoneId, conflicts);
         }
-        store.updatePhysicalCapacity(zoneId, newCapacity);
         if (!newCapacities.isEmpty()) {
             store.updateCapacities(zoneId, newCapacities);
+        }
+    }
+
+    /** Persone confermate e capienza effettiva per ogni quanto di un intervallo, senza lock (solo lettura). */
+    @Transactional(readOnly = true)
+    public List<QuantumState> read(UUID zoneId, Instant from, Instant to) {
+        ZoneRow zone = store.zone(zoneId).orElseThrow(() -> CapacityExceptions.zoneNotFound(zoneId));
+        Map<Instant, SlotRow> existing = store.readSlots(zoneId, from, to).stream()
+                .collect(Collectors.toMap(SlotRow::slotStart, Function.identity()));
+        List<QuantumState> result = new ArrayList<>();
+        for (Instant q = floorToQuantum(from); q.isBefore(to); q = q.plus(OccupancyInterval.QUANTUM)) {
+            SlotRow slot = existing.get(q);
+            int capacity = slot != null ? slot.capacityCovers() : capacityPolicy.capacityFor(zoneId, zone.physicalCapacity(), q);
+            result.add(new QuantumState(q, capacity, slot == null ? 0 : slot.occupiedCovers(),
+                    slot == null ? null : slot.exclusiveEventId()));
+        }
+        return result;
+    }
+
+    /** Stato di un quanto: capienza effettiva, persone confermate presenti, eventuale evento esclusivo. */
+    public record QuantumState(Instant slotStart, int capacityCovers, int occupiedCovers, UUID exclusiveEventId) {
+        public int free() {
+            return Math.max(0, capacityCovers - occupiedCovers);
         }
     }
 

@@ -47,6 +47,10 @@ class SecurityConfiguration {
 
     static final String SESSION_COOKIE = "FF_SESSION";
 
+    private static final String[] CONFIG_PATHS = {
+            "/api/v1/admin/capacity-zones/**", "/api/v1/admin/areas/**", "/api/v1/admin/tables/**",
+            "/api/v1/admin/service-windows/**", "/api/v1/admin/booking-policy", "/api/v1/admin/booking-exceptions/**"};
+
     @Bean
     SecurityFilterChain apiSecurity(HttpSecurity http, SecurityProblemHandlers problems, LogoutHandler auditingLogout,
             SecurityContextRepository contextRepository) throws Exception {
@@ -59,6 +63,10 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/media/**").permitAll() // varianti delle foto (solo storage locale)
                         .requestMatchers("/api/v1/admin/users", "/api/v1/admin/users/**").hasRole("OWNER")
                         .requestMatchers("/api/v1/admin/site-content", "/api/v1/admin/site-settings").hasRole("OWNER")
+                        // configurazione delle prenotazioni: la legge anche lo staff, la cambia solo il titolare
+                        .requestMatchers(HttpMethod.POST, CONFIG_PATHS).hasRole("OWNER")
+                        .requestMatchers(HttpMethod.PUT, CONFIG_PATHS).hasRole("OWNER")
+                        .requestMatchers(HttpMethod.DELETE, CONFIG_PATHS).hasRole("OWNER")
                         .requestMatchers("/api/v1/admin/**").hasRole("STAFF")
                         .requestMatchers("/api/v1/auth/**").authenticated()
                         .requestMatchers("/error").permitAll()
