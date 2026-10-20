@@ -25,9 +25,9 @@ async function fillEvent(page: Page, title: string, day: string, start: string, 
   await page.getByLabel('Titolo').fill(title);
   await page.getByLabel('Data').fill(day);
   await page.getByLabel('Orario').fill(start);
-  await page.getByLabel('Fine').fill(end);
+  void end; // FASE 8: nessun campo «Fine», la durata la ricava il backend
   await page.getByLabel('Pulsante sul sito').selectOption('REQUEST');
-  await page.getByLabel('Persone al massimo per la serata').fill(quota);
+  void quota; // FASE 8: nessun campo dei coperti, vale la capienza del locale
 }
 
 test.describe('Eventi', () => {

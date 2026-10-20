@@ -110,8 +110,8 @@ class EventApiIT extends ReservationTestSupport {
         assertThat(staff.post("/api/v1/admin/events", noTitle).code()).isEqualTo("VALIDATION_FAILED");
         assertThat(staff.post("/api/v1/admin/events", event("Storta", "19:10", "22:00", true, "NONE", null)).code())
                 .isEqualTo("NOT_ALIGNED_15_MIN");
-        assertThat(staff.post("/api/v1/admin/events", event("Senza quota", "19:00", "22:00", true, "REQUEST", null)).code())
-                .isEqualTo("VALIDATION_FAILED");
+        assertThat(create(staff, event("Senza quota", "19:00", "22:00", true, "REQUEST", null)).path("capacityCovers").asInt())
+                .as("FASE 8: senza quota vale la capienza del locale").isEqualTo(20);
         assertThat(staff.post("/api/v1/admin/events", event("Troppi", "19:00", "22:00", true, "REQUEST", 21)).code())
                 .as("quota oltre la capienza del locale").isEqualTo("QUOTA_ABOVE_CAPACITY");
         Map<String, Object> untimed = event("Senza data", "19:00", "22:00", true, "NONE", null);
@@ -145,6 +145,65 @@ class EventApiIT extends ReservationTestSupport {
         assertThat(slots.get(0).path("reason").asString()).isEqualTo("EVENT");
         assertThat(staff.delete("/api/v1/admin/events/" + undated.path("id").asString()).status()).isEqualTo(204);
         assertThat(audit("EVENT_PUBLISHED")).isEqualTo(1);
+    }
+
+    // ---- FASE 8, requisito 1: niente ora di fine né coperti nell'editor ----
+
+    private Map<String, Object> simple(String title, String start, String mode) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("title", title);
+        body.put("kind", "SERATA");
+        body.put("date", DAY.toString());
+        body.put("startTime", start);
+        body.put("bookingMode", mode);
+        return body;
+    }
+
+    private Map<String, Object> times(JsonNode e) {
+        return jdbc.sql("SELECT starts_at, ends_at, capacity_covers FROM events WHERE id = ?::uuid").param(e.path("id").asString())
+                .query().singleRow();
+    }
+
+    @Test
+    void senzaOraDiFineNeCopertiValoriRicavati() {
+        ApiClient.Response r = staff.post("/api/v1/admin/events", visible(simple("Serata semplice", "19:00", "REQUEST"), true));
+        assertThat(r.status()).as(r.raw()).isEqualTo(201);
+        JsonNode e = r.body();
+        assertThat(e.path("endTime").asString()).as("durata standard 4 ore").isEqualTo("23:00:00");
+        assertThat(e.path("capacityCovers").asInt()).as("capienza del locale").isEqualTo(20);
+        assertThat(e.path("status").asString()).isEqualTo("PUBLISHED");
+        assertThat(exclusiveSlots(e)).as("19:00–23:00 riservati").isEqualTo(16);
+        assertThat(staff.get("/api/v1/admin/events/" + e.path("id").asString()).body().path("endTime").asString()).isEqualTo("23:00:00");
+
+        // spostando l'inizio la durata resta; la quota salvata resta
+        Map<String, Object> moved = simple("Serata semplice", "18:00", "REQUEST");
+        moved.put("version", currentVersion(e));
+        ApiClient.Response m = staff.put("/api/v1/admin/events/" + e.path("id").asString(), moved);
+        assertThat(m.status()).as(m.raw()).isEqualTo(200);
+        assertThat(m.body().path("endTime").asString()).isEqualTo("22:00:00");
+        assertThat(m.body().path("capacityCovers").asInt()).isEqualTo(20);
+        assertThat(m.body().path("status").asString()).isEqualTo("PUBLISHED");
+
+        // senza prenotazione: stessa durata, nessuna quota
+        JsonNode none = create(staff, simple("Solo musica", "23:00", "NONE"));
+        assertThat(none.path("endTime").asString()).isEqualTo("03:00:00");
+        assertThat(none.path("capacityCovers").isNull()).isTrue();
+
+        // eventi già salvati con fine e quota esplicite: una modifica senza quei campi li conserva
+        JsonNode old = create(staff, event("Vecchia serata", "20:00", "21:30", true, "REQUEST", 8));
+        Map<String, Object> rename = simple("Vecchia serata rinominata", "20:00", "REQUEST");
+        rename.put("version", currentVersion(old));
+        JsonNode renamed = staff.put("/api/v1/admin/events/" + old.path("id").asString(), rename).body();
+        assertThat(renamed.path("endTime").asString()).isEqualTo("21:30:00");
+        assertThat(renamed.path("capacityCovers").asInt()).isEqualTo(8);
+        assertThat(times(old).get("capacity_covers")).isEqualTo(8);
+    }
+
+    @Test
+    void senzaCapienzaDelLocaleNienteRichiestePerEventi() {
+        jdbc.sql("UPDATE capacity_zones SET physical_capacity = 0").update();
+        assertThat(staff.post("/api/v1/admin/events", simple("Senza posti", "19:00", "REQUEST")).code()).isEqualTo("VENUE_CAPACITY_MISSING");
+        jdbc.sql("UPDATE capacity_zones SET physical_capacity = 20").update();
     }
 
     // ---- FASE 7, requisito 4: «Visibile sul sito» con un solo salvataggio atomico ----

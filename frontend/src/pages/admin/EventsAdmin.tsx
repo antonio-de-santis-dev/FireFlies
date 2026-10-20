@@ -83,25 +83,27 @@ export function EventsAdmin() {
 }
 
 type Form = {
-  title: string; kind: 'SERATA' | 'FORMAT'; date: string; startTime: string; endTime: string; artist: string; summary: string;
-  body: string; bookingMode: 'NONE' | 'REQUEST'; capacity: string; exclusive: boolean; poster: string | null; visible: boolean;
+  title: string; kind: 'SERATA' | 'FORMAT'; date: string; startTime: string; artist: string; summary: string;
+  body: string; bookingMode: 'NONE' | 'REQUEST'; exclusive: boolean; poster: string | null; visible: boolean;
 };
 
 const blank = (): Form => ({
-  title: '', kind: 'SERATA', date: '', startTime: '', endTime: '', artist: '', summary: '', body: '', bookingMode: 'NONE',
-  capacity: '', exclusive: true, poster: null, visible: false,
+  title: '', kind: 'SERATA', date: '', startTime: '', artist: '', summary: '', body: '', bookingMode: 'NONE',
+  exclusive: true, poster: null, visible: false,
 });
 
 const formOf = (e: AdminEvent): Form => ({
-  title: e.title, kind: e.kind, date: e.date ?? '', startTime: e.startTime ? hhmm(e.startTime) : '', endTime: e.endTime ? hhmm(e.endTime) : '',
+  title: e.title, kind: e.kind, date: e.date ?? '', startTime: e.startTime ? hhmm(e.startTime) : '',
   artist: e.artist ?? '', summary: e.summary ?? '', body: e.body ?? '', bookingMode: e.bookingMode,
-  capacity: e.capacityCovers == null ? '' : String(e.capacityCovers), exclusive: e.exclusive, poster: e.poster?.id ?? null,
+  exclusive: e.exclusive, poster: e.poster?.id ?? null,
   visible: e.status === 'PUBLISHED',
 });
 
+// FASE 8: ora di fine e coperti non si chiedono più; il backend li ricava (durata già salvata o standard di 4 ore,
+// quota già salvata o capienza del locale) e continua a controllare esclusività e posti sul registro (T-71, T-72).
 const input = (f: Form, existing: AdminEvent | null): EventInput => ({
-  title: f.title.trim(), kind: f.kind, date: f.date || null, startTime: f.startTime || null, endTime: f.endTime || null,
-  exclusive: f.exclusive, bookingMode: f.bookingMode, capacityCovers: f.capacity ? Number(f.capacity) : null, artist: f.artist,
+  title: f.title.trim(), kind: f.kind, date: f.date || null, startTime: f.startTime || null, endTime: null,
+  exclusive: f.exclusive, bookingMode: f.bookingMode, capacityCovers: null, artist: f.artist,
   summary: f.summary, body: f.body, posterMediaId: f.poster,
   mediaIds: [...new Set([f.poster, ...(existing?.media.map((m) => m.id) ?? [])].filter((x): x is string => !!x))],
 });
@@ -159,7 +161,8 @@ export function EventEditor({ id }: { id: string }) {
     if (busy) return;
     const next: typeof errors = {};
     if (f.title.trim().length < 2) next.title = 'Dai un titolo alla serata (almeno 2 caratteri).';
-    if (f.visible && f.kind === 'SERATA' && (!f.date || !f.startTime || !f.endTime)) next.date = 'Per mettere una serata sul sito serve la data, con ora di inizio e di fine. Senza, spegni «Visibile sul sito» e salvala come bozza.';
+    if (f.visible && f.kind === 'SERATA' && (!f.date || !f.startTime)) next.date = 'Per mettere una serata sul sito servono la data e l\'ora di inizio. Senza, spegni «Visibile sul sito» e salvala come bozza.';
+    if (!!f.date !== !!f.startTime) next.date = 'Indica sia la data sia l\'ora di inizio (oppure nessuna delle due).';
     setErrors(next);
     if (Object.keys(next).length) {
       document.getElementById(next.title ? 'ee-title' : 'ee-date')?.focus();
@@ -191,7 +194,7 @@ export function EventEditor({ id }: { id: string }) {
     } catch (err) {
       const p = problemOf(err);
       setProblem(p);
-      if (p.field) document.getElementById(`ee-${p.field === 'capacityCovers' ? 'capacity' : p.field}`)?.focus();
+      if (p.field) document.getElementById(`ee-${p.field === 'endTime' ? 'time' : p.field}`)?.focus();
     } finally {
       setBusy(false);
     }
@@ -291,12 +294,10 @@ export function EventEditor({ id }: { id: string }) {
             </div>
             <div className="field">
               <label htmlFor="ee-time">Orario</label>
-              <input id="ee-time" className="input" type="time" step={900} value={f.startTime} onChange={(e) => up('startTime', e.target.value)} />
-            </div>
-            <div className="field">
-              <label htmlFor="ee-end">Fine</label>
-              <input id="ee-end" className="input" type="time" step={900} value={f.endTime} onChange={(e) => up('endTime', e.target.value)} aria-describedby="ee-end-hint" />
-              <p className="hint" id="ee-end-hint">Prima dell'inizio = il giorno dopo (es. 22:30–02:00).</p>
+              <input id="ee-time" className="input" type="time" step={900} value={f.startTime} onChange={(e) => up('startTime', e.target.value)} aria-describedby="ee-time-hint" />
+              <p className="hint" id="ee-time-hint">{existing?.endTime
+                ? `Fine prevista alle ${hhmm(existing.endTime)}: spostando l'inizio la durata resta la stessa.`
+                : 'Una serata occupa il locale per 4 ore dall\'inizio.'}</p>
             </div>
           </div>
           <div className="field">
@@ -321,11 +322,7 @@ export function EventEditor({ id }: { id: string }) {
               </select>
             </div>
             {f.bookingMode === 'REQUEST' && (
-              <div className="field">
-                <label htmlFor="ee-capacity">Persone al massimo per la serata</label>
-                <input id="ee-capacity" className="input" type="number" min={1} value={f.capacity} onChange={(e) => up('capacity', e.target.value)}
-                  aria-invalid={problem?.field === 'capacityCovers' ? true : undefined} />
-              </div>
+              <p className="hint">I posti sono quelli del locale: ogni richiesta si conferma a mano e il sistema non supera mai la capienza.</p>
             )}
           </div>
         </fieldset>

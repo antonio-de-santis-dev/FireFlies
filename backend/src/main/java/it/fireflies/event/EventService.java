@@ -44,7 +44,10 @@ public class EventService {
     static final String AGGREGATE = "EVENT";
     private static final Duration MAX_LENGTH = Duration.ofHours(12);
 
-    /** Dati di un evento dal gestore. {@code endTime} ≤ {@code startTime} = fine il giorno dopo (es. 22:00–02:00). */
+    /**
+     * Dati di un evento dal gestore. {@code endTime} ≤ {@code startTime} = fine il giorno dopo (es. 22:00–02:00).
+     * {@code endTime} e {@code capacityCovers} sono facoltativi (FASE 8): se mancano si ricavano (T-71, T-72).
+     */
     public record EventCommand(String slug, String title, String kind, LocalDate date, LocalTime startTime, LocalTime endTime,
             UUID zoneId, Boolean exclusive, String bookingMode, Integer capacityCovers, String artist, String summary,
             String body, UUID posterMediaId, List<UUID> mediaIds) {
@@ -81,9 +84,11 @@ public class EventService {
     private final ReservationService reservations;
     private final AuditLog audit;
     private final Clock clock;
+    private final Duration defaultLength;
 
     EventService(EventStore store, CapacityLedger ledger, BookingCalendar calendar, MediaCatalog media,
-            ReservationService reservations, AuditLog audit, Clock clock) {
+            ReservationService reservations, AuditLog audit, Clock clock,
+            @org.springframework.beans.factory.annotation.Value("${fireflies.events.default-duration:PT4H}") Duration defaultLength) {
         this.store = store;
         this.ledger = ledger;
         this.calendar = calendar;
@@ -91,6 +96,11 @@ public class EventService {
         this.reservations = reservations;
         this.audit = audit;
         this.clock = clock;
+        if (defaultLength.isNegative() || defaultLength.isZero() || defaultLength.compareTo(MAX_LENGTH) > 0
+                || defaultLength.toMinutes() % 15 != 0) {
+            throw new IllegalStateException("fireflies.events.default-duration: da 15 minuti a 12 ore, a passi di 15 minuti");
+        }
+        this.defaultLength = defaultLength;
     }
 
     // =========================================================================================================
@@ -397,17 +407,21 @@ public class EventService {
         Instant start = null;
         Instant end = null;
         if (c.date() != null || c.startTime() != null || c.endTime() != null) {
-            if (c.date() == null || c.startTime() == null || c.endTime() == null) {
-                throw ApiErrors.invalid("date", "Indica giorno, ora di inizio e ora di fine (oppure nessuno dei tre).");
+            if (c.date() == null || c.startTime() == null) {
+                throw ApiErrors.invalid("date", "Indica giorno e ora di inizio (oppure nessuno dei due).");
             }
-            if (c.startTime().getMinute() % 15 != 0 || c.endTime().getMinute() % 15 != 0 || c.startTime().getSecond() != 0
-                    || c.endTime().getSecond() != 0) {
+            if (c.startTime().getMinute() % 15 != 0 || c.startTime().getSecond() != 0
+                    || (c.endTime() != null && (c.endTime().getMinute() % 15 != 0 || c.endTime().getSecond() != 0))) {
                 throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "NOT_ALIGNED_15_MIN", "Orario non valido",
                         "Gli orari degli eventi sono a passi di 15 minuti (es. 21:30, 21:45).");
             }
             start = BusinessTime.toInstant(c.date(), c.startTime());
-            LocalDate endDate = c.endTime().isAfter(c.startTime()) ? c.date() : c.date().plusDays(1);
-            end = BusinessTime.toInstant(endDate, c.endTime());
+            if (c.endTime() != null) {
+                LocalDate endDate = c.endTime().isAfter(c.startTime()) ? c.date() : c.date().plusDays(1);
+                end = BusinessTime.toInstant(endDate, c.endTime());
+            } else {
+                end = start.plus(derivedLength(previous)); // FASE 8: l'editor non chiede più l'ora di fine (T-71)
+            }
             if (Duration.between(start, end).compareTo(MAX_LENGTH) > 0) {
                 throw ApiErrors.invalid("endTime", "Un evento dura al massimo 12 ore.");
             }
@@ -432,13 +446,21 @@ public class EventService {
                         "Il locale ha una sola zona: l'evento riguarda tutto il locale.");
             }
         }
+        int physical = (zoneId != null ? active.stream().filter(z -> z.id().equals(zoneId))
+                : active.stream()).mapToInt(DiningStore.ZoneRow::physicalCapacity).sum();
         Integer capacity = c.capacityCovers();
         if (mode.equals("REQUEST") && capacity == null) {
-            throw ApiErrors.invalid("capacityCovers", "Indica quante persone al massimo possono prenotare per l'evento.");
-        }
-        if (capacity != null) {
-            int physical = (zoneId != null ? active.stream().filter(z -> z.id().equals(zoneId))
-                    : active.stream()).mapToInt(DiningStore.ZoneRow::physicalCapacity).sum();
+            // FASE 8 (T-72): l'editor non chiede più i coperti. Si tiene la quota già salvata, altrimenti la capienza
+            // fisica delle zone dell'evento: il limite vero resta il registro dei posti (esclusivo o condiviso).
+            capacity = previous != null && previous.capacityCovers() != null ? previous.capacityCovers() : physical;
+            if (capacity < 1) {
+                throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "VENUE_CAPACITY_MISSING", "Capienza del locale mancante",
+                        "Per accettare richieste per l'evento imposta prima la capienza del locale (Impostazioni › Capienza).");
+            }
+            if (previous != null && capacity < previous.confirmedCovers()) {
+                capacity = previous.confirmedCovers();
+            }
+        } else if (capacity != null) {
             if (capacity < 1 || capacity > physical) {
                 throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "QUOTA_ABOVE_CAPACITY", "Quota non valida",
                         "La quota va da 1 alla capienza " + (zoneId != null ? "della zona" : "del locale") + " (" + physical
@@ -451,6 +473,17 @@ public class EventService {
         return new EventStore.Values(slug, title, kind, start, end, zoneId, exclusive, mode, capacity,
                 optional(c.artist(), "artist", 120), optional(c.summary(), "summary", 300), optional(c.body(), "body", 5000),
                 c.posterMediaId());
+    }
+
+    /**
+     * Durata quando l'ora di fine non arriva (T-71): quella già salvata per l'evento (spostare l'inizio la conserva),
+     * altrimenti la durata standard {@code fireflies.events.default-duration} (4 ore).
+     */
+    private Duration derivedLength(EventStore.Row previous) {
+        if (previous != null && previous.timed()) {
+            return Duration.between(previous.startsAt(), previous.endsAt());
+        }
+        return defaultLength;
     }
 
     private void requireFuture(Instant start) {

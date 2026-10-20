@@ -16,7 +16,7 @@ async function fill(page: Page, title: string, start: string, end: string) {
   await page.getByLabel('Titolo').fill(title);
   await page.getByLabel('Data').fill(day);
   await page.getByLabel('Orario').fill(start);
-  await page.getByLabel('Fine').fill(end);
+  void end; // FASE 8: nessun campo «Fine»
 }
 
 const row = (page: Page, title: string) => page.locator('.ev-admin__item', { hasText: title });
@@ -112,4 +112,37 @@ test.describe('Eventi: visibile sul sito', () => {
     await expect(row(page, first)).toHaveCount(0);
     expect(await publicTitles(page)).not.toContain(first);
   });
+});
+
+// FASE 8, requisito 1: l'editor non chiede più ora di fine e coperti; dopo il ricaricamento i valori ricavati restano.
+test('editor senza «Fine» e senza coperti: durata e posti ricavati, salvati e ripresi dopo il ricaricamento', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 900 });
+  const title = `Senza fine E2E ${Date.now()}`;
+  await signIn(page);
+  await go(page, '/gestione/eventi/nuovo');
+  await expect(page.getByLabel('Fine')).toHaveCount(0);
+  await expect(page.getByLabel(/Persone al massimo/)).toHaveCount(0);
+  await page.getByLabel('Titolo').fill(title);
+  await page.getByLabel('Data').fill(day);
+  await page.getByLabel('Orario').fill('12:00');
+  await page.getByLabel('Pulsante sul sito').selectOption('REQUEST');
+  await page.getByRole('switch', { name: 'Visibile sul sito' }).click();
+  await save(page);
+  await expect(page.locator('.toast')).toContainText(`«${title}» pubblicato sul sito`);
+  await page.reload();
+  await expect(row(page, title)).toContainText('12:00 – 16:00');
+  await expect(row(page, title)).toContainText(/0\/\d+ posti confermati/);
+  await page.getByRole('link', { name: `Modifica ${title}` }).click();
+  await expect(page.locator('#ee-time-hint')).toContainText('Fine prevista alle 16:00');
+  await page.getByLabel('Orario').fill('11:00');
+  await save(page);
+  await expect(page.locator('.toast')).toContainText(`«${title}» salvato`);
+  await page.reload();
+  await expect(row(page, title)).toContainText('11:00 – 15:00');
+  await expect(row(page, title)).toContainText('Pubblicato');
+  // pulizia: l'evento senza prenotazioni si elimina
+  await page.getByRole('link', { name: `Modifica ${title}` }).click();
+  await page.getByRole('button', { name: 'Elimina evento' }).click();
+  await page.getByRole('button', { name: 'Elimina definitivamente' }).click();
+  await expect(page.locator('.toast')).toContainText('eliminato definitivamente');
 });

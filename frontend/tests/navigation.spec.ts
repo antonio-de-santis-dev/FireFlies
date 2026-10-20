@@ -232,7 +232,7 @@ test.describe('Area gestori', () => {
     await page.getByLabel('Titolo').fill('Serata di prova');
     await visible.click();
     await page.getByRole('button', { name: 'Salva', exact: true }).click();
-    await expect(page.getByText('Per mettere una serata sul sito serve la data')).toBeVisible();
+    await expect(page.getByText('Per mettere una serata sul sito servono la data')).toBeVisible();
     await visible.click();
     await page.getByRole('button', { name: 'Salva', exact: true }).click();
     await expect(page.getByRole('heading', { level: 2, name: 'Serata di prova' })).toBeVisible();
