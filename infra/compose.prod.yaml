@@ -1,0 +1,75 @@
+# Produzione su un solo server (proposta FASE 8, docs/operations/DEPLOY.md). NON avviato: serve l'autorizzazione del
+# titolare. Segreti solo in infra/.env.prod (permessi 600, mai nel repository) o nel secret manager dell'hosting.
+name: fireflies-prod
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_DB: fireflies
+      POSTGRES_USER: ${FIREFLIES_DB_USER:?}
+      POSTGRES_PASSWORD: ${FIREFLIES_DB_PASSWORD:?}
+      TZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d fireflies"]
+      interval: 10s
+      retries: 10
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    # nessuna porta pubblicata: raggiungibile solo dal backend
+
+  backend:
+    build: ../backend
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      FIREFLIES_DB_URL: jdbc:postgresql://postgres:5432/fireflies
+      FIREFLIES_DB_USER: ${FIREFLIES_DB_USER:?}
+      FIREFLIES_DB_PASSWORD: ${FIREFLIES_DB_PASSWORD:?}
+      FIREFLIES_DB_POOL_SIZE: "8"
+      FIREFLIES_MEDIA_STORAGE: s3
+      FIREFLIES_S3_ENDPOINT: ${FIREFLIES_S3_ENDPOINT:?}
+      FIREFLIES_S3_REGION: auto
+      FIREFLIES_S3_BUCKET: ${FIREFLIES_S3_BUCKET:?}
+      FIREFLIES_S3_ACCESS_KEY_ID: ${FIREFLIES_S3_ACCESS_KEY_ID:?}
+      FIREFLIES_S3_SECRET_ACCESS_KEY: ${FIREFLIES_S3_SECRET_ACCESS_KEY:?}
+      FIREFLIES_MEDIA_PUBLIC_URL: ${FIREFLIES_MEDIA_ORIGIN:?}
+      FIREFLIES_DEMO_SEED: "false"
+      # notifiche reali spente finché non si scelgono e autorizzano i fornitori (V-05)
+      FIREFLIES_NOTIFICATIONS_WORKER_ENABLED: "false"
+      FIREFLIES_RETENTION_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.0
+
+  web:
+    build: ../frontend
+    environment:
+      FIREFLIES_DOMAIN: ${FIREFLIES_DOMAIN:?}
+      FIREFLIES_ACME_EMAIL: ${FIREFLIES_ACME_EMAIL:?}
+      FIREFLIES_MEDIA_ORIGIN: ${FIREFLIES_MEDIA_ORIGIN:?}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [backend]
+    networks: [internal]
+    restart: unless-stopped
+    mem_limit: 128m
+
+networks:
+  internal: {}
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

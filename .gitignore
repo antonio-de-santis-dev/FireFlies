@@ -1,7 +1,9 @@
-# Segreti locali
+# Segreti locali e di produzione (FASE 8: anche .env.prod, .env.local, …)
 .env
 *.env
+.env.*
 !.env.example
+!.env.*.example
 
 # Build Java
 backend/target/

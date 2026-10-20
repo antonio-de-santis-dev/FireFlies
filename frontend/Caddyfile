@@ -1,0 +1,42 @@
+# Reverse proxy di produzione (FASE 8). Dominio e origine delle foto da variabili d'ambiente (infra/.env.prod).
+{
+	email {$FIREFLIES_ACME_EMAIL}
+}
+
+{$FIREFLIES_DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		# mappa di Google solo dopo il consenso (iframe), foto dal bucket R2; stili in linea usati da React
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: {$FIREFLIES_MEDIA_ORIGIN}; font-src 'self'; connect-src 'self'; frame-src https://maps.google.com https://www.google.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+		-Server
+	}
+
+	# API del backend; gli endpoint di gestione (actuator) non escono, tranne lo stato di salute
+	handle /api/* {
+		reverse_proxy backend:8080 {
+			header_up X-Forwarded-Proto https
+		}
+	}
+	handle /actuator/health {
+		reverse_proxy backend:8080
+	}
+	handle /actuator/* {
+		respond 404
+	}
+
+	# file del sito: hash nel nome → cache lunga; index.html sempre rivalidato
+	handle {
+		root * /srv
+		@assets path /assets/*.js /assets/*.css
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		header /index.html Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
