@@ -190,26 +190,24 @@ class DemoContentLoader implements ApplicationRunner {
         EventService.Actor owner = new EventService.Actor(null, true);
         LocalDate saturday = LocalDate.now(it.fireflies.common.BusinessTime.ZONE).plusDays(14)
                 .with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SATURDAY));
-        EventService.AdminEvent format = events.create(owner, new EventService.EventCommand("domeniche-del-fire",
+        events.create(owner, new EventService.EventCommand("domeniche-del-fire",
                 "Domeniche del Fire", "FORMAT", null, null, null, null, true, "NONE", null, "Line-up da annunciare di volta in volta",
                 "Il format della domenica: aperitivo lungo, musica e la solita compagnia.",
                 "Le Domeniche del Fire sono il format ricorrente del locale. Il calendario reale non è ancora stato fornito: qui non "
                         + "mostriamo date finché il gestore non le conferma.\n\nTesto da validare: durata, orari, tipo di musica e "
                         + "se serve prenotare il tavolo.",
-                photos.get("tavolataFesta"), ids(photos, "tavolataFesta", "longDrinkBlu", "amiciMaglia")));
-        events.publish(owner, format.id(), format.version(), false);
-        EventService.AdminEvent dj = events.create(owner, new EventService.EventCommand("dj-set-esempio", "DJ set al Fire",
+                photos.get("tavolataFesta"), ids(photos, "tavolataFesta", "longDrinkBlu", "amiciMaglia")), true, false);
+        events.create(owner, new EventService.EventCommand("dj-set-esempio", "DJ set al Fire",
                 "SERATA", saturday, LocalTime.of(22, 30), LocalTime.of(2, 0), null, true, "REQUEST", 30, "DJ da annunciare",
                 "Consolle all'ingresso, aperitivo dentro e fuori. Serata d'esempio per mostrare il layout.",
                 "Esempio di scheda serata: data, orario, artista, foto e azione per chiedere un tavolo.\n\nLe foto sono reali "
                         + "(DJ set davanti alla parete con la lucciola), la data e l'artista sono di esempio.",
-                photos.get("djParete"), ids(photos, "djParete", "djCappello", "consolle")));
-        events.publish(owner, dj.id(), dj.version(), false);
+                photos.get("djParete"), ids(photos, "djParete", "djCappello", "consolle")), true, false);
         events.create(owner, new EventService.EventCommand("aperitivo-vinili-esempio", "Aperitivo e vinili", "SERATA",
                 saturday.plusDays(7), LocalTime.of(22, 30), LocalTime.of(1, 0), null, true, "REQUEST", 20,
                 "Selezione musicale da definire", "Bozza non pubblicata: compare solo nell'area gestori.",
                 "Bozza di esempio per mostrare lo stato «bozza» nella gestione eventi.", photos.get("cocktailRosso"),
-                ids(photos, "cocktailRosso", "cocktailAmbrato")));
+                ids(photos, "cocktailRosso", "cocktailAmbrato")), false, false);
     }
 
     private static List<UUID> ids(Map<String, UUID> photos, String... keys) {

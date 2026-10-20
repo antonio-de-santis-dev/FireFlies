@@ -569,3 +569,6 @@
 .icon-btn--sm { width: 30px; height: 30px; min-height: 30px; }
 /* numero di telefono nelle righe: area di tocco di almeno 24 px anche quando la tabella diventa a schede */
 .table a[href^='tel:'] { display: inline-block; min-height: 24px; padding-block: 2px; }
+
+/* Conferme in linea (eliminazione definitiva): pulsanti affiancati che vanno a capo sui telefoni */
+.confirm-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }

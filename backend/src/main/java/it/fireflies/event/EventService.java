@@ -124,12 +124,19 @@ public class EventService {
     // Bozza e modifica
     // =========================================================================================================
 
+    /**
+     * Nuovo evento con un solo salvataggio atomico (FASE 7, req. 4): {@code visible} vero = pubblicato nella stessa
+     * transazione, con tutti i controlli della pubblicazione; se un controllo fallisce non resta nemmeno la bozza.
+     */
     @Transactional
-    public AdminEvent create(Actor actor, EventCommand c) {
+    public AdminEvent create(Actor actor, EventCommand c, boolean visible, boolean acknowledgePending) {
         EventStore.Values v = values(actor, c, null);
         UUID id = store.insert(v, actor.id());
         store.replaceMedia(id, mediaIds(c));
         audit.record(actor.id(), AuditAction.EVENT_CREATED, AGGREGATE, id.toString(), Map.of("kind", v.kind(), "exclusive", v.exclusive()));
+        if (visible) {
+            return publishLocked(actor, store.lock(id).orElseThrow(), acknowledgePending);
+        }
         return detail(id);
     }
 
@@ -137,15 +144,20 @@ public class EventService {
      * Modifica. Per un evento pubblicato, cambiare orario, zona o esclusività con prenotazioni confermate →
      * {@code 409 EVENT_HAS_CONFIRMED_RESERVATIONS}; altrimenti la riserva esclusiva si sposta con gli stessi controlli
      * della pubblicazione. Quota sotto i confermati → {@code 409 CAPACITY_BELOW_CONFIRMED}.
+     * {@code visible}: null = lo stato resta com'è; vero = pubblica (bozza); falso = torna bozza (pubblicato), tutto
+     * nella stessa transazione della modifica.
      */
     @Transactional
-    public AdminEvent update(Actor actor, UUID id, int version, EventCommand c, boolean acknowledgePending) {
+    public AdminEvent update(Actor actor, UUID id, int version, EventCommand c, boolean acknowledgePending, Boolean visible) {
         EventStore.Row row = store.lock(id).orElseThrow(EventService::notFound);
         if (row.version() != version) {
             throw ApiErrors.versionConflict();
         }
         if (row.status().equals("CANCELLED")) {
             throw transition("Un evento annullato non si modifica.");
+        }
+        if (Boolean.FALSE.equals(visible) && row.status().equals("PUBLISHED")) {
+            row = unpublishLocked(actor, row);
         }
         EventStore.Values v = values(actor, c, row);
         if (v.capacityCovers() != null && v.capacityCovers() < row.confirmedCovers()) {
@@ -173,18 +185,34 @@ public class EventService {
         }
         store.replaceMedia(id, mediaIds(c));
         audit.record(actor.id(), AuditAction.EVENT_UPDATED, AGGREGATE, id.toString(), Map.of("placementChanged", placementChanged));
+        if (Boolean.TRUE.equals(visible) && row.status().equals("DRAFT")) {
+            return publishLocked(actor, store.find(id).orElseThrow(), acknowledgePending);
+        }
         return admin(store.find(id).orElseThrow(), warnings);
     }
 
-    /** Elimina una bozza senza prenotazioni. */
+    /**
+     * Elimina un evento (bozza, pubblicato o annullato) che non ha prenotazioni: la riserva esclusiva nel registro si
+     * libera prima. Con prenotazioni attive → {@code 409 EVENT_HAS_ACTIVE_RESERVATIONS} (vanno annullate, oppure si
+     * annulla l'evento); con solo storico chiuso → {@code 409 EVENT_HAS_HISTORY}: lo storico resta finché la pulizia
+     * notturna non lo elimina, poi l'evento con lui.
+     */
     @Transactional
     public void delete(Actor actor, UUID id) {
         EventStore.Row row = store.lock(id).orElseThrow(EventService::notFound);
-        if (!row.status().equals("DRAFT") || store.hasReservations(id)) {
-            throw transition("Si eliminano solo le bozze senza prenotazioni: un evento pubblicato si annulla.");
+        if (!store.reservationsOf(id, List.of("PENDING", "CONFIRMED")).isEmpty()) {
+            throw new ApiException(HttpStatus.CONFLICT, "EVENT_HAS_ACTIVE_RESERVATIONS", "Ci sono prenotazioni attive",
+                    "L'evento ha prenotazioni in attesa o confermate: annullale prima, oppure annulla l'evento.");
         }
+        if (store.hasReservations(id)) {
+            throw new ApiException(HttpStatus.CONFLICT, "EVENT_HAS_HISTORY", "C'è uno storico di prenotazioni",
+                    "L'evento ha prenotazioni già chiuse: puoi nasconderlo o annullarlo. Verrà eliminato dalla pulizia "
+                            + "automatica insieme al suo storico.");
+        }
+        ledger.unmarkExclusive(id);
         store.delete(id);
-        audit.record(actor.id(), AuditAction.EVENT_DELETED, AGGREGATE, id.toString(), Map.of("title", row.title()));
+        audit.record(actor.id(), AuditAction.EVENT_DELETED, AGGREGATE, id.toString(),
+                Map.of("title", row.title(), "status", row.status()));
     }
 
     // =========================================================================================================
@@ -205,6 +233,11 @@ public class EventService {
         if (row.version() != version) {
             throw ApiErrors.versionConflict();
         }
+        return publishLocked(actor, row, acknowledgePending);
+    }
+
+    /** Pubblicazione di una riga già bloccata (dall'endpoint dedicato o dal salvataggio con «Visibile sul sito»). */
+    private AdminEvent publishLocked(Actor actor, EventStore.Row row, boolean acknowledgePending) {
         if (row.status().equals("CANCELLED")) {
             throw transition("Un evento annullato non si ripubblica: creane uno nuovo.");
         }
@@ -216,10 +249,27 @@ public class EventService {
             requireFuture(row.startsAt());
         }
         List<String> warnings = place(row, acknowledgePending);
-        store.updateStatus(id, "PUBLISHED");
-        audit.record(actor.id(), AuditAction.EVENT_PUBLISHED, AGGREGATE, id.toString(),
+        store.updateStatus(row.id(), "PUBLISHED");
+        audit.record(actor.id(), AuditAction.EVENT_PUBLISHED, AGGREGATE, row.id().toString(),
                 Map.of("exclusive", row.exclusive(), "warnings", warnings));
-        return admin(store.find(id).orElseThrow(), warnings);
+        return admin(store.find(row.id()).orElseThrow(), warnings);
+    }
+
+    /**
+     * Nasconde dal sito un evento pubblicato (torna bozza). Solo senza prenotazioni attive: chi ha una richiesta o una
+     * prenotazione per la serata la vedrebbe sparire → {@code 409 EVENT_HAS_ACTIVE_RESERVATIONS}. La riserva esclusiva
+     * nel registro si libera.
+     */
+    private EventStore.Row unpublishLocked(Actor actor, EventStore.Row row) {
+        if (!store.reservationsOf(row.id(), List.of("PENDING", "CONFIRMED")).isEmpty()) {
+            throw new ApiException(HttpStatus.CONFLICT, "EVENT_HAS_ACTIVE_RESERVATIONS", "Ci sono prenotazioni attive",
+                    "L'evento ha prenotazioni in attesa o confermate: per toglierlo dal sito annullale prima, oppure annulla "
+                            + "l'evento (resta visibile come «Annullata»).");
+        }
+        ledger.unmarkExclusive(row.id());
+        store.updateStatus(row.id(), "DRAFT");
+        audit.record(actor.id(), AuditAction.EVENT_UNPUBLISHED, AGGREGATE, row.id().toString(), Map.of());
+        return store.find(row.id()).orElseThrow();
     }
 
     /**

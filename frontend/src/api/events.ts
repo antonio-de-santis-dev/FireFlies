@@ -76,11 +76,11 @@ export async function loadPublicEvents(mediaIndex: Record<string, Asset>): Promi
 
 export const listEvents = () => api.get<AdminEvent[]>('/admin/events');
 export const getEvent = (id: string) => api.get<AdminEvent>(`/admin/events/${id}`);
-export const createEvent = (e: EventInput) => api.post<AdminEvent>('/admin/events', e);
-export const updateEvent = (id: string, version: number, e: EventInput, acknowledgePending = false) =>
-  api.put<AdminEvent>(`/admin/events/${id}`, { ...e, version, acknowledgePending });
-export const publishEvent = (id: string, version: number, acknowledgePending = false) =>
-  api.post<AdminEvent>(`/admin/events/${id}/publish`, { version, acknowledgePending });
+/** Un solo salvataggio: `visible` vero = pubblicato nella stessa transazione (se un controllo fallisce non resta nulla). */
+export const createEvent = (e: EventInput, visible: boolean, acknowledgePending = false) =>
+  api.post<AdminEvent>('/admin/events', { ...e, visible, acknowledgePending });
+export const updateEvent = (id: string, version: number, e: EventInput, visible: boolean, acknowledgePending = false) =>
+  api.put<AdminEvent>(`/admin/events/${id}`, { ...e, version, visible, acknowledgePending });
 export const cancelEvent = (id: string, version: number, cancelReservations: boolean) =>
   api.post<AdminEvent>(`/admin/events/${id}/cancel`, { version, cancelReservations });
 export const deleteEvent = (id: string) => api.del(`/admin/events/${id}`);

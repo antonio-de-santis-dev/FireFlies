@@ -2,13 +2,13 @@ import { Ban, CircleAlert, Eye, Pencil, Plus, Save, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
 import {
-  cancelEvent, createEvent, deleteEvent, EVENT_STATUS_LABEL, listEvents, publishEvent, updateEvent,
+  cancelEvent, createEvent, deleteEvent, EVENT_STATUS_LABEL, listEvents, updateEvent,
   type AdminEvent, type EventConflict, type EventInput, type EventStatus,
 } from '../../api/events';
 import { hhmm } from '../../api/reservations';
 import { Img } from '../../components/ui';
 import { formatEventDate } from '../../data/events';
-import { Link, navigate, usePageMeta } from '../../router';
+import { Link, navigate, replaceAddress, usePageMeta } from '../../router';
 import { useStore } from '../../store';
 import { AdminHead } from './AdminLayout';
 import { PhotoPicker } from './media';
@@ -40,7 +40,7 @@ export function EventsAdmin() {
   return (
     <>
       <AdminHead title="Eventi" lead="Serate e format. Le bozze non compaiono sul sito; una serata esclusiva riserva il locale nel suo orario.">
-        <Link to="/gestione/eventi/nuovo" className="btn btn--action"><Plus size={20} aria-hidden="true" /> Nuova bozza</Link>
+        <Link to="/gestione/eventi/nuovo" className="btn btn--action"><Plus size={20} aria-hidden="true" /> Nuovo evento</Link>
       </AdminHead>
       <div className="chips" role="group" aria-label="Filtra per stato">
         {(['ALL', 'PUBLISHED', 'DRAFT', 'CANCELLED'] as const).map((t) => (
@@ -84,18 +84,19 @@ export function EventsAdmin() {
 
 type Form = {
   title: string; kind: 'SERATA' | 'FORMAT'; date: string; startTime: string; endTime: string; artist: string; summary: string;
-  body: string; bookingMode: 'NONE' | 'REQUEST'; capacity: string; exclusive: boolean; poster: string | null;
+  body: string; bookingMode: 'NONE' | 'REQUEST'; capacity: string; exclusive: boolean; poster: string | null; visible: boolean;
 };
 
 const blank = (): Form => ({
   title: '', kind: 'SERATA', date: '', startTime: '', endTime: '', artist: '', summary: '', body: '', bookingMode: 'NONE',
-  capacity: '', exclusive: true, poster: null,
+  capacity: '', exclusive: true, poster: null, visible: false,
 });
 
 const formOf = (e: AdminEvent): Form => ({
   title: e.title, kind: e.kind, date: e.date ?? '', startTime: e.startTime ? hhmm(e.startTime) : '', endTime: e.endTime ? hhmm(e.endTime) : '',
   artist: e.artist ?? '', summary: e.summary ?? '', body: e.body ?? '', bookingMode: e.bookingMode,
   capacity: e.capacityCovers == null ? '' : String(e.capacityCovers), exclusive: e.exclusive, poster: e.poster?.id ?? null,
+  visible: e.status === 'PUBLISHED',
 });
 
 const input = (f: Form, existing: AdminEvent | null): EventInput => ({
@@ -124,13 +125,14 @@ export function EventEditor({ id }: { id: string }) {
   const isNew = id === 'nuovo' && !createdId;
   const { events, error: loadError, reload } = useEvents();
   const existing = events?.find((e) => e.id === (createdId ?? id) || e.slug === id) ?? null;
-  usePageMeta(isNew ? 'Nuova bozza evento' : existing ? `Modifica ${existing.title}` : 'Modifica evento');
+  usePageMeta(isNew ? 'Nuovo evento' : existing ? `Modifica ${existing.title}` : 'Modifica evento');
   const [f, setF] = useState<Form | null>(isNew ? blank() : null);
   const [errors, setErrors] = useState<{ title?: string; date?: string }>({});
   const [problem, setProblem] = useState<Problem | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [cancelReservations, setCancelReservations] = useState(true);
 
   useEffect(() => {
@@ -149,26 +151,15 @@ export function EventEditor({ id }: { id: string }) {
 
   const up = <K extends keyof Form>(k: K, v: Form[K]) => setF((s) => (s ? { ...s, [k]: v } : s));
   const locked = existing?.status === 'CANCELLED';
+  const wasPublished = existing?.status === 'PUBLISHED';
 
-  const done = (saved: AdminEvent, text: string) => {
-    reloadPublic();
-    if (saved.warnings.length) {
-      setWarnings(saved.warnings);
-      notify(`${text} Controlla gli avvisi.`);
-      setCreatedId(saved.id);
-      reload();
-      return;
-    }
-    notify(text);
-    navigate('/gestione/eventi');
-  };
-
-  const save = (publish: boolean, acknowledgePending = false) => async (e?: FormEvent) => {
+  // Un solo «Salva»: lo switch «Visibile sul sito» decide bozza o pubblicato, nella stessa richiesta (FASE 7, req. 4).
+  const save = (acknowledgePending = false) => async (e?: FormEvent) => {
     e?.preventDefault();
     if (busy) return;
     const next: typeof errors = {};
     if (f.title.trim().length < 2) next.title = 'Dai un titolo alla serata (almeno 2 caratteri).';
-    if (publish && f.kind === 'SERATA' && (!f.date || !f.startTime || !f.endTime)) next.date = 'Per pubblicare una serata serve la data, con ora di inizio e di fine. Puoi salvarla come bozza senza.';
+    if (f.visible && f.kind === 'SERATA' && (!f.date || !f.startTime || !f.endTime)) next.date = 'Per mettere una serata sul sito serve la data, con ora di inizio e di fine. Senza, spegni «Visibile sul sito» e salvala come bozza.';
     setErrors(next);
     if (Object.keys(next).length) {
       document.getElementById(next.title ? 'ee-title' : 'ee-date')?.focus();
@@ -176,22 +167,31 @@ export function EventEditor({ id }: { id: string }) {
     }
     setBusy(true);
     setProblem(null);
-    let created: AdminEvent | null = null;
     try {
-      let saved = existing
-        ? await updateEvent(existing.id, existing.version, input(f, existing), acknowledgePending)
-        : (created = await createEvent(input(f, null)));
-      if (publish && saved.status === 'DRAFT') saved = await publishEvent(saved.id, saved.version, acknowledgePending);
-      done(saved, publish ? `«${saved.title}» pubblicato sul sito.` : `Bozza «${saved.title}» salvata.`);
+      const saved = existing
+        ? await updateEvent(existing.id, existing.version, input(f, existing), f.visible, acknowledgePending)
+        : await createEvent(input(f, null), f.visible, acknowledgePending);
+      const published = saved.status === 'PUBLISHED';
+      const text = published && !wasPublished ? `«${saved.title}» pubblicato sul sito.`
+        : !published && wasPublished ? `«${saved.title}» tolto dal sito: ora è una bozza.`
+        : published ? `«${saved.title}» salvato.` : `Bozza «${saved.title}» salvata.`;
+      reloadPublic();
+      if (saved.warnings.length) {
+        // si resta sull'evento salvato (anche dopo un ricaricamento della pagina) per leggere gli avvisi
+        setWarnings(saved.warnings);
+        notify(`${text} Controlla gli avvisi.`);
+        setCreatedId(saved.id);
+        replaceAddress(`/gestione/eventi/${saved.id}`);
+        setF(formOf(saved));
+        reload();
+        return;
+      }
+      notify(text);
+      navigate('/gestione/eventi');
     } catch (err) {
       const p = problemOf(err);
       setProblem(p);
       if (p.field) document.getElementById(`ee-${p.field === 'capacityCovers' ? 'capacity' : p.field}`)?.focus();
-      // la bozza è stata creata ma non pubblicata: si continua dalla sua pagina (nessun doppione al nuovo tentativo)
-      if (created) {
-        setCreatedId(created.id);
-        reload();
-      }
     } finally {
       setBusy(false);
     }
@@ -215,12 +215,18 @@ export function EventEditor({ id }: { id: string }) {
 
   const remove = async () => {
     if (!existing) return;
+    setBusy(true);
+    setProblem(null);
     try {
       await deleteEvent(existing.id);
-      notify(`Bozza «${existing.title}» eliminata.`);
+      reloadPublic();
+      notify(`«${existing.title}» eliminato definitivamente.`);
       navigate('/gestione/eventi');
     } catch (err) {
+      setDeleting(false);
       setProblem(problemOf(err));
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -234,16 +240,11 @@ export function EventEditor({ id }: { id: string }) {
   );
 
   return (
-    <form className="editor" noValidate onSubmit={save(existing?.status === 'PUBLISHED')}>
-      <AdminHead title={isNew ? 'Nuova bozza' : `Modifica: ${existing!.title}`} lead="Compila, salva come bozza o pubblica.">
+    <form className="editor" noValidate onSubmit={save()}>
+      <AdminHead title={isNew ? 'Nuovo evento' : `Modifica: ${existing!.title}`} lead="Compila e salva. «Visibile sul sito» decide se compare nella pagina Eventi.">
         <Link to="/gestione/eventi" className="btn btn--quiet">Annulla</Link>
-        {!locked && existing?.status !== 'PUBLISHED' && (
-          <button type="button" className="btn btn--ghost" disabled={busy} onClick={save(false)}><Save size={18} aria-hidden="true" /> Salva bozza</button>
-        )}
         {!locked && (
-          <button type="button" className="btn btn--action" disabled={busy} onClick={save(true)}>
-            {existing?.status === 'PUBLISHED' ? 'Salva le modifiche' : 'Pubblica'}
-          </button>
+          <button type="submit" className="btn btn--action" disabled={busy}><Save size={18} aria-hidden="true" /> Salva</button>
         )}
       </AdminHead>
 
@@ -253,8 +254,8 @@ export function EventEditor({ id }: { id: string }) {
           {conflicts(problem.confirmed, 'Prenotazioni confermate nello stesso orario (da annullare o spostare prima):')}
           {conflicts(problem.pending, 'Richieste in attesa nello stesso orario:')}
           {problem.acknowledgeable && (
-            <button type="button" className="btn btn--ghost btn--sm" disabled={busy} onClick={save(true, true)}>
-              Pubblica comunque: quelle richieste non potranno più essere confermate
+            <button type="button" className="btn btn--ghost btn--sm" disabled={busy} onClick={save(true)}>
+              Salva comunque: quelle richieste non potranno più essere confermate
             </button>
           )}
         </div>
@@ -332,11 +333,22 @@ export function EventEditor({ id }: { id: string }) {
           <div className="panel">
             <h2 className="panel__title">Stato</h2>
             <p><StatusPill s={existing?.status ?? 'DRAFT'} /></p>
+            {!locked && (
+              <>
+                <Switch checked={f.visible} onChange={() => up('visible', !f.visible)} label="Visibile sul sito" />
+                <p className="small muted" id="ee-visible-hint">
+                  {f.visible
+                    ? 'Dopo il salvataggio compare nella pagina Eventi e nel calendario del sito.'
+                    : 'Spento: resta una bozza visibile solo ai gestori.'}
+                  {wasPublished && !f.visible && existing!.confirmedReservations + existing!.pendingReservations > 0
+                    && ' Con prenotazioni attive non si può togliere dal sito: annullale prima o annulla l\'evento.'}
+                </p>
+              </>
+            )}
             {existing?.bookingMode === 'REQUEST' && (
               <p className="small">{existing.confirmedCovers} di {existing.capacityCovers} posti confermati · {existing.pendingCovers} persone in attesa.{' '}
                 <a href="#/gestione/richieste">Vai alle richieste</a></p>
             )}
-            <p className="small muted">«Pubblica» la rende visibile nella pagina Eventi.</p>
             {existing?.status === 'PUBLISHED' && !cancelling && (
               <button type="button" className="btn btn--ghost btn--sm" onClick={() => setCancelling(true)}><Ban size={16} aria-hidden="true" /> Annulla l'evento</button>
             )}
@@ -350,8 +362,18 @@ export function EventEditor({ id }: { id: string }) {
                 <button type="button" className="btn btn--action btn--sm" disabled={busy} onClick={() => void cancel()}>Conferma l'annullamento</button>
               </div>
             )}
-            {existing?.status === 'DRAFT' && (
-              <button type="button" className="btn btn--quiet btn--sm" onClick={() => void remove()}><Trash2 size={16} aria-hidden="true" /> Elimina la bozza</button>
+            {existing && !deleting && (
+              <button type="button" className="btn btn--quiet btn--sm" onClick={() => setDeleting(true)}><Trash2 size={16} aria-hidden="true" /> Elimina evento</button>
+            )}
+            {existing && deleting && (
+              <div className="res-detail__form" role="group" aria-label="Conferma l'eliminazione">
+                <p className="small"><strong>Eliminare definitivamente «{existing.title}»?</strong> Sparisce dall'area gestori e dal sito; non si può annullare.
+                  {existing.confirmedReservations + existing.pendingReservations > 0 && ' Ha prenotazioni attive: va prima annullato.'}</p>
+                <div className="confirm-row">
+                  <button type="button" className="btn btn--quiet btn--sm" onClick={() => setDeleting(false)}>No, tienilo</button>
+                  <button type="button" className="btn btn--action btn--sm" disabled={busy} onClick={() => void remove()}>Elimina definitivamente</button>
+                </div>
+              </div>
             )}
           </div>
           {f.kind === 'SERATA' && (

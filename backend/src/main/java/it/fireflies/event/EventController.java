@@ -1,6 +1,5 @@
 package it.fireflies.event;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -36,7 +35,7 @@ class EventController {
 
     record EventBody(String slug, String title, String kind, LocalDate date, LocalTime startTime, LocalTime endTime, UUID zoneId,
             Boolean exclusive, String bookingMode, Integer capacityCovers, String artist, String summary, String body,
-            UUID posterMediaId, List<UUID> mediaIds, Integer version, Boolean acknowledgePending) {
+            UUID posterMediaId, List<UUID> mediaIds, Integer version, Boolean acknowledgePending, Boolean visible) {
 
         EventService.EventCommand command() {
             return new EventService.EventCommand(slug, title, kind, date, startTime, endTime, zoneId, exclusive, bookingMode,
@@ -58,12 +57,12 @@ class EventController {
 
     @GetMapping("/api/v1/public/events")
     ResponseEntity<List<EventService.PublicEvent>> publicEvents() {
-        return ResponseEntity.ok().cacheControl(CacheControl.maxAge(Duration.ofSeconds(60)).cachePublic()).body(events.publicEvents());
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(events.publicEvents());
     }
 
     @GetMapping("/api/v1/public/events/{slug}")
     ResponseEntity<EventService.PublicEvent> publicEvent(@PathVariable String slug) {
-        return ResponseEntity.ok().cacheControl(CacheControl.maxAge(Duration.ofSeconds(60)).cachePublic()).body(events.publicEvent(slug));
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache()).body(events.publicEvent(slug));
     }
 
     @GetMapping("/api/v1/admin/events")
@@ -81,7 +80,8 @@ class EventController {
     @PostMapping("/api/v1/admin/events")
     @PreAuthorize("hasRole('STAFF')")
     ResponseEntity<EventService.AdminEvent> create(@AuthenticationPrincipal GestoreDetails gestore, @RequestBody EventBody body) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(events.create(actor(gestore), body.command()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(events.create(actor(gestore), body.command(),
+                Boolean.TRUE.equals(body.visible()), Boolean.TRUE.equals(body.acknowledgePending())));
     }
 
     @PutMapping("/api/v1/admin/events/{id}")
@@ -90,7 +90,8 @@ class EventController {
         if (body.version() == null) {
             throw it.fireflies.common.ApiErrors.invalid("version", "Manca la versione: ricarica l'evento.");
         }
-        return events.update(actor(gestore), id, body.version(), body.command(), Boolean.TRUE.equals(body.acknowledgePending()));
+        return events.update(actor(gestore), id, body.version(), body.command(), Boolean.TRUE.equals(body.acknowledgePending()),
+                body.visible());
     }
 
     @PostMapping("/api/v1/admin/events/{id}/publish")

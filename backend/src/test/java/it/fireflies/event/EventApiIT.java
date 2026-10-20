@@ -143,10 +143,93 @@ class EventApiIT extends ReservationTestSupport {
         assertThat(web(browser(), webBody(DAY, "18:00", 2, nextPhone())).code()).as("18–20 tocca l'evento").isEqualTo("EVENT_BLOCKS_SLOT");
         JsonNode slots = browser().get("/api/v1/public/booking-options?date=" + DAY).body().path("groups").get(0).path("slots");
         assertThat(slots.get(0).path("reason").asString()).isEqualTo("EVENT");
-        assertThat(staff.delete("/api/v1/admin/events/" + draft.path("id").asString()).code())
-                .as("un evento pubblicato si annulla, non si elimina").isEqualTo("INVALID_TRANSITION");
         assertThat(staff.delete("/api/v1/admin/events/" + undated.path("id").asString()).status()).isEqualTo(204);
         assertThat(audit("EVENT_PUBLISHED")).isEqualTo(1);
+    }
+
+    // ---- FASE 7, requisito 4: «Visibile sul sito» con un solo salvataggio atomico ----
+
+    private long eventsTitled(String title) {
+        return jdbc.sql("SELECT count(*) FROM events WHERE title = ?").param(title).query(Long.class).single();
+    }
+
+    private Map<String, Object> visible(Map<String, Object> body, Boolean visible) {
+        body.put("visible", visible);
+        return body;
+    }
+
+    private Map<String, Object> edit(JsonNode event, Map<String, Object> body, Boolean visible) {
+        body.put("version", currentVersion(event));
+        return visible(body, visible);
+    }
+
+    @Test
+    void visibileSulSitoSalvataggioAtomico() {
+        ApiClient.Response draft = staff.post("/api/v1/admin/events", visible(event("Bozza visibile no", "19:00", "22:00", true, "NONE", null), false));
+        assertThat(draft.status()).isEqualTo(201);
+        assertThat(draft.body().path("status").asString()).isEqualTo("DRAFT");
+        assertThat(exclusiveSlots(draft.body())).isZero();
+
+        ApiClient.Response pub = staff.post("/api/v1/admin/events",
+                visible(event("Pubblicata subito", "19:00", "22:00", true, "REQUEST", 10), true));
+        assertThat(pub.status()).as(pub.raw()).isEqualTo(201);
+        assertThat(pub.body().path("status").asString()).isEqualTo("PUBLISHED");
+        assertThat(exclusiveSlots(pub.body())).isEqualTo(12);
+        String id = pub.body().path("id").asString();
+        assertThat(staff.get("/api/v1/admin/events/" + id).body().path("status").asString()).as("dopo una nuova lettura").isEqualTo("PUBLISHED");
+        ApiClient.Response list = browser().get("/api/v1/public/events");
+        assertThat(list.body().toString()).contains("Pubblicata subito").doesNotContain("Bozza visibile no");
+        assertThat(list.headers().get("Cache-Control").toString()).as("niente cache: si vede subito").contains("no-cache");
+
+        // stesso orario di un altro evento esclusivo: rifiutato e non resta nemmeno la bozza
+        ApiClient.Response clash = staff.post("/api/v1/admin/events", visible(event("Sovrapposta", "20:00", "23:00", true, "NONE", null), true));
+        assertThat(clash.code()).isEqualTo("EVENT_CONFLICTS");
+        assertThat(eventsTitled("Sovrapposta")).as("nessuna bozza orfana").isZero();
+        Map<String, Object> past = visible(event("Nel passato", "19:00", "22:00", true, "NONE", null), true);
+        past.put("date", DAY.minusDays(30).toString());
+        assertThat(staff.post("/api/v1/admin/events", past).code()).isEqualTo("EVENT_IN_PAST");
+        assertThat(eventsTitled("Nel passato")).isZero();
+
+        // modifica senza toccare lo switch: lo stato resta
+        Map<String, Object> renamed = edit(pub.body(), event("Pubblicata subito, rinominata", "19:00", "22:00", true, "REQUEST", 10), null);
+        assertThat(staff.put("/api/v1/admin/events/" + id, renamed).body().path("status").asString()).isEqualTo("PUBLISHED");
+        // bozza → visibile con la modifica
+        Map<String, Object> on = edit(draft.body(), event("Bozza visibile no", "23:00", "23:45", true, "NONE", null), true);
+        ApiClient.Response turnedOn = staff.put("/api/v1/admin/events/" + draft.body().path("id").asString(), on);
+        assertThat(turnedOn.status()).as(turnedOn.raw()).isEqualTo(200);
+        assertThat(turnedOn.body().path("status").asString()).isEqualTo("PUBLISHED");
+        assertThat(audit("EVENT_PUBLISHED")).isEqualTo(2);
+    }
+
+    @Test
+    void nascondereDalSitoSoloSenzaPrenotazioniAttive() {
+        JsonNode ev = published(staff, event("Da nascondere", "19:00", "22:00", true, "REQUEST", 10));
+        String id = ev.path("id").asString();
+        UUID request = eventRequest(ev, 2);
+        ApiClient.Response refused = staff.put("/api/v1/admin/events/" + id, edit(ev, event("Da nascondere", "19:00", "22:00", true, "REQUEST", 10), false));
+        assertThat(refused.code()).isEqualTo("EVENT_HAS_ACTIVE_RESERVATIONS");
+        assertThat(staff.get("/api/v1/admin/events/" + id).body().path("status").asString()).isEqualTo("PUBLISHED");
+        assertThat(exclusiveSlots(ev)).isEqualTo(12);
+
+        assertThat(changeStatus(staff, request, "CANCELLED", Map.of("reason", "CUSTOMER_REQUEST")).status()).isEqualTo(200);
+        ApiClient.Response hidden = staff.put("/api/v1/admin/events/" + id, edit(ev, event("Da nascondere", "19:00", "22:00", true, "REQUEST", 10), false));
+        assertThat(hidden.status()).as(hidden.raw()).isEqualTo(200);
+        assertThat(hidden.body().path("status").asString()).isEqualTo("DRAFT");
+        assertThat(exclusiveSlots(ev)).as("la riserva esclusiva si libera").isZero();
+        assertThat(browser().get("/api/v1/public/events").body().toString()).doesNotContain("Da nascondere");
+        assertThat(browser().get("/api/v1/public/events/" + ev.path("slug").asString()).status()).isEqualTo(404);
+        assertThat(web(browser(), webBody(DAY, "19:30", 2, nextPhone())).status()).as("il servizio ordinario torna libero").isEqualTo(201);
+        assertThat(audit("EVENT_UNPUBLISHED")).isEqualTo(1);
+
+        // con solo storico chiuso non si elimina (resta il riferimento); senza prenotazioni sì, anche se pubblicato
+        assertThat(staff.delete("/api/v1/admin/events/" + id).code()).isEqualTo("EVENT_HAS_HISTORY");
+        JsonNode other = published(staff, event("Da eliminare", "23:00", "23:45", true, "NONE", null));
+        UUID otherRequest = eventRequest(published(staff, event("Con richiesta", "17:00", "18:00", true, "REQUEST", 5)), 2);
+        assertThat(staff.delete("/api/v1/admin/events/" + jdbc.sql("SELECT event_id FROM reservations WHERE id = ?")
+                .param(otherRequest).query(UUID.class).single()).code()).isEqualTo("EVENT_HAS_ACTIVE_RESERVATIONS");
+        assertThat(staff.delete("/api/v1/admin/events/" + other.path("id").asString()).status()).isEqualTo(204);
+        assertThat(exclusiveSlots(other)).isZero();
+        assertThat(eventsTitled("Da eliminare")).isZero();
     }
 
     @Test

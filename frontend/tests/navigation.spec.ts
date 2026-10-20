@@ -227,12 +227,16 @@ test.describe('Area gestori', () => {
   test('eventi: nuova bozza con validazione', async ({ page }) => {
     await signIn(page);
     await go(page, '/gestione/eventi/nuovo');
-    await page.getByRole('button', { name: 'Pubblica' }).click();
+    const visible = page.getByRole('switch', { name: 'Visibile sul sito' });
+    await expect(visible).toHaveAttribute('aria-checked', 'false'); // un evento nuovo nasce bozza
+    await page.getByRole('button', { name: 'Salva', exact: true }).click();
     await expect(page.getByText('Dai un titolo alla serata')).toBeVisible();
     await page.getByLabel('Titolo').fill('Serata di prova');
-    await page.getByRole('button', { name: 'Pubblica' }).click();
-    await expect(page.getByText('Per pubblicare una serata serve la data')).toBeVisible();
-    await page.getByRole('button', { name: 'Salva bozza' }).click();
+    await visible.click();
+    await page.getByRole('button', { name: 'Salva', exact: true }).click();
+    await expect(page.getByText('Per mettere una serata sul sito serve la data')).toBeVisible();
+    await visible.click();
+    await page.getByRole('button', { name: 'Salva', exact: true }).click();
     await expect(page.getByRole('heading', { level: 2, name: 'Serata di prova' })).toBeVisible();
   });
 

@@ -19,6 +19,11 @@ export function navigate(to: string) {
   window.location.hash = to;
 }
 
+/** Cambia l'indirizzo senza aggiungere una voce alla cronologia né ridisegnare la pagina (es. dopo «nuovo» → id). */
+export function replaceAddress(to: string) {
+  window.history.replaceState(window.history.state, '', `#${to}`);
+}
+
 /** Confronta `/eventi/:id` con il percorso corrente e restituisce i parametri. */
 export function match(pattern: string, path: string): Record<string, string> | null {
   const p = pattern.split('/').filter(Boolean);

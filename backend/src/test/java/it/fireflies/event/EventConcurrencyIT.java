@@ -41,7 +41,7 @@ class EventConcurrencyIT extends ReservationTestSupport {
 
     private EventService.AdminEvent draft(String title, int quota) {
         return events.create(owner, new EventService.EventCommand(null, title, "SERATA", DAY, LocalTime.of(19, 0), LocalTime.of(22, 0),
-                null, true, "REQUEST", quota, null, null, null, null, List.of()));
+                null, true, "REQUEST", quota, null, null, null, null, List.of()), false, false);
     }
 
     private UUID eventRequest(UUID eventId, int guests) {

@@ -101,11 +101,12 @@ test.describe('Eventi', () => {
     await signIn(page, 'Staff');
     await go(page, '/gestione/eventi/nuovo');
     await fillEvent(page, title, day, '19:30', '22:00', '20');
-    await page.getByRole('button', { name: 'Pubblica' }).click();
+    await page.getByRole('switch', { name: 'Visibile sul sito' }).click();
+    await page.getByRole('button', { name: 'Salva', exact: true }).click();
     const alert = page.getByRole('alert').filter({ hasText: 'prenotazioni già confermate' });
     await expect(alert).toContainText(receipt.reference);
     await expect(alert).toContainText('4 persone');
-    await expect(alert.getByRole('button', { name: /Pubblica comunque/ })).toHaveCount(0); // non forzabile
+    await expect(alert.getByRole('button', { name: /Salva comunque/ })).toHaveCount(0); // non forzabile
 
     const again = await ownerApi();
     try {
@@ -114,7 +115,7 @@ test.describe('Eventi', () => {
     } finally {
       await again.dispose();
     }
-    await page.getByRole('button', { name: 'Pubblica' }).click();
+    await page.getByRole('button', { name: 'Salva', exact: true }).click();
     await expect(page.locator('.toast')).toContainText(`«${title}» pubblicato sul sito`);
     await expect(page.locator('.ev-admin__item', { hasText: title })).toContainText('Pubblicato');
     await expect(page.locator('.ev-admin__item', { hasText: title })).toContainText('Esclusiva');
@@ -158,7 +159,8 @@ test.describe('Eventi', () => {
     await fillEvent(page, title, day, '18:00', '20:00', '40');
     await page.getByRole('switch', { name: /Esclusiva/ }).click();
     await expect(page.getByRole('switch', { name: /Posti condivisi/ })).toHaveAttribute('aria-checked', 'false');
-    await page.getByRole('button', { name: 'Pubblica' }).click();
+    await page.getByRole('switch', { name: 'Visibile sul sito' }).click();
+    await page.getByRole('button', { name: 'Salva', exact: true }).click();
     // quota 40 su un locale da 40: l'avviso «posti non garantiti» compare solo se il servizio ordinario ne ha già occupati
     await expect(page.locator('.toast')).toContainText(`«${title}» pubblicato sul sito`);
     await go(page, '/gestione/eventi');
