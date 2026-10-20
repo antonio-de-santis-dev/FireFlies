@@ -1,12 +1,12 @@
 # Avanzamento del lavoro — checkpoint di recupero
 
 > Regola: MASTER_PLAN §19. Aggiornato durante il lavoro, non solo a fine sessione.
-> Ultimo aggiornamento: 20/10/2026, FASE 5 avviata.
+> Ultimo aggiornamento: 20/10/2026, FASE 5: backend e test backend completati, frontend in corso.
 
 ## Fase e branch
 - **FASE 5 — Prenotazioni V1** (autorizzata dal committente il 20/10/2026, dopo l'approvazione definitiva della FASE 4).
 - Branch: `fase-5/prenotazioni`, creato da `fase-4/menu-media` @ `7775032`. Nessun merge su `main`.
-- Ultimo commit pubblicato: `7775032` (punto di partenza).
+- Punto di partenza: `7775032`. Ultimo commit pubblicato: `b991754` (test backend prenotazioni).
 
 ## Perimetro (dal mandato)
 - Richieste dal sito (data, ora, persone, nome, telefono obbligatorio, email facoltativa, note), orari prenotabili,
@@ -19,10 +19,10 @@
 ## Piano di lavoro
 | # | Attività | Stato |
 |---|---|---|
-| 1 | Backend configurazione: zone, fasce, aree e tavoli, regole, eccezioni; capienza effettiva per quanto | da fare |
-| 2 | Backend prenotazioni: opzioni pubbliche, richiesta web, inserimento manuale, transizioni, modifica, tavoli, outbox, scadenza | da fare |
-| 3 | Test backend (creazione, ciclo di vita, capienza, concorrenza, permessi, CSRF, duplicati, riavvio) | da fare |
-| 4 | Frontend: richiesta tavolo reale, pagina Richieste, inserimento manuale, capienza e tavoli; Playwright | da fare |
+| 1 | Backend configurazione: zone, fasce, aree e tavoli, regole, eccezioni; capienza effettiva per quanto | fatto (`c9079d6`) |
+| 2 | Backend prenotazioni: opzioni pubbliche, richiesta web, inserimento manuale, transizioni, modifica, tavoli, outbox, scadenza | fatto (`7c67958`) |
+| 3 | Test backend (creazione, ciclo di vita, capienza, concorrenza, permessi, CSRF, duplicati, riavvio) | fatto (`b991754`) |
+| 4 | Frontend: richiesta tavolo reale, pagina Richieste, inserimento manuale, capienza e tavoli; Playwright | in corso |
 | 5 | Documentazione, CI, report finale; stop in attesa di approvazione | da fare |
 
 ## File modificati non committati
@@ -30,9 +30,12 @@
 
 ## Test
 - Punto di partenza: 66 + 222 backend, 60 Playwright, tutti verdi (FASE 4).
+- FASE 5 (parziale): nuovi IT WebReservationIT (9), ReservationLifecycleIT (9), ReservationConcurrencyIT (25 ripetizioni),
+  ReservationRulesTest (4); DemoContentLoaderIT e PersistenceAfterRestartIT estesi. Tutti verdi in locale.
 
 ## Errori da risolvere
 - Nessuno.
 
 ## Prossima azione esatta
-Implementare il modulo `dining` (configurazione) e la `SlotCapacityPolicy` con fasce ed eccezioni.
+Frontend: `api/reservations.ts`, BookingDialog collegato alle opzioni e all'invio reale, pagina Richieste reale
+(filtri, dettaglio, azioni, inserimento manuale), pagina «Capienza e tavoli» del titolare, test Playwright.
