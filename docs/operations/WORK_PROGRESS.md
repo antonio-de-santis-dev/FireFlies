@@ -1,6 +1,6 @@
 # WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Ultimo aggiornamento: 20/10/2026, FASE 6 avviata.
+> Ultimo aggiornamento: 20/10/2026, **FASE 6 completata in locale**; in attesa della CI e dell'approvazione.
 
 ## Fase e branch
 - **FASE 6 — Eventi e capienza** (autorizzata il 20/10/2026 con l'approvazione della FASE 5, C-27).
@@ -18,21 +18,23 @@
 ## Piano di lavoro
 | # | Attività | Stato |
 |---|---|---|
-| 1 | Registro: marcatura/smarcatura esclusiva dei quanti, occupazione per le prenotazioni di un evento | da fare |
-| 2 | Backend eventi: CRUD, pubblicazione con conflitti, annullamento, quota, API pubbliche, audit, media | da fare |
-| 3 | Prenotazioni per eventi (sito e gestori), quota alla conferma, rilasci | da fare |
-| 4 | Test backend (ciclo di vita, conflitti, concorrenza, permessi, riavvio) | da fare |
-| 5 | Frontend: pagina Eventi pubblica, dialog per evento, gestione eventi, richieste; Playwright | da fare |
-| 6 | Documentazione, CI, report; stop in attesa di approvazione | da fare |
+| 1 | Registro: marcatura/smarcatura esclusiva dei quanti, occupazione per le prenotazioni di un evento | fatto (`9ed8490`) |
+| 2 | Backend eventi: CRUD, pubblicazione con conflitti, annullamento, quota, API pubbliche, audit, media | fatto (`9ed8490`) |
+| 3 | Prenotazioni per eventi (sito e gestori), quota alla conferma, rilasci | fatto (`9ed8490`) |
+| 4 | Test backend (ciclo di vita, conflitti, concorrenza, permessi) | fatto (`1900a87`) |
+| 5 | Frontend: pagina Eventi pubblica, dialog per evento, gestione eventi, richieste; Playwright | fatto (`91850b1`) |
+| 6 | Documentazione, CI, report; stop in attesa di approvazione | documenti fatti; CI da verificare |
 
 ## File modificati non committati
 - (aggiornato a ogni checkpoint)
 
 ## Test
-- Punto di partenza: 70 + 265 backend, 66 Playwright, tutti verdi (FASE 5).
+- Punto di partenza: 70 + 265 backend, 66 Playwright (FASE 5).
+- FASE 6 in locale: 70 + 294 backend, 69 Playwright, tutti verdi (totale 433).
 
 ## Errori da risolvere
 - Nessuno.
 
 ## Prossima azione esatta
-Estendere `CapacityLedger` con la marcatura esclusiva e l'occupazione per evento; poi il modulo `event`.
+Verificare le due workflow GitHub Actions sull'ultimo commit e riportarle in TEST_REPORT §CI; poi **fermarsi**:
+la FASE 7 richiede l'approvazione del committente.

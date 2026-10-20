@@ -1,6 +1,6 @@
 # Avvio locale — database, backend, frontend, foto e primo titolare
 
-> Aggiornato in FASE 5 · 20/10/2026. Tutti i comandi sono stati eseguiti davvero nel container di sviluppo
+> Aggiornato in FASE 6 · 20/10/2026. Tutti i comandi sono stati eseguiti davvero nel container di sviluppo
 > (Linux, Java 21, Node 22, Docker 29, Compose v5).
 
 ## Requisiti
@@ -82,10 +82,10 @@ dimostrativi del mockup** (nessuna chiamata al backend); l'area gestori ha bisog
 ```bash
 cd backend
 ./mvnw test        # 70 test unitari e di slice, senza Docker (foto, storage S3 simulato, configurazione, regole prenotazioni)
-./mvnw verify      # + 265 test di integrazione, sicurezza, concorrenza e riavvio su PostgreSQL 17 reale (Testcontainers)
+./mvnw verify      # + 294 test di integrazione, sicurezza, concorrenza e riavvio su PostgreSQL 17 reale (Testcontainers)
 
 cd ../frontend
-npm run verifica   # typecheck + 66 test Playwright (funzionali, accesso, contenuti, prenotazioni, QA 7 viewport, axe) con backend e DB reali
+npm run verifica   # typecheck + 69 test Playwright (funzionali, accesso, contenuti, prenotazioni, eventi, QA 7 viewport, axe) con backend e DB reali
 ```
 `npm run verifica` usa `scripts/e2e.mjs`: avvia un PostgreSQL separato (progetto Compose `fireflies-e2e`, porta 55432),
 compila e avvia il backend sulla porta 18080 con i contenuti demo e una cartella foto temporanea, crea il titolare con
@@ -128,8 +128,11 @@ Se una variabile manca l'avvio si ferma con il nome della variabile da impostare
   Aperitivo 18–20:30, Sera 21–22) in tutti i giorni tranne il mercoledì e le richieste dal sito aperte. **Nessuna
   prenotazione finta**: per provarle si usa «Richiedi un tavolo» sul sito e poi «Richieste» nell'area gestori. Tutto si
   cambia da «Capienza e tavoli» (titolare). Le notifiche vengono solo preparate: **nessuna email o SMS parte**.
-- Un database già creato con la FASE 4 non riceve la configurazione delle prenotazioni (il caricamento avviene solo su
-  database vuoto): impostarla dalla pagina «Capienza e tavoli» oppure ripartire da zero (§9).
+- **Eventi (FASE 6)**: «Domeniche del Fire» (format senza date), «DJ set al Fire» pubblicato e prenotabile su richiesta
+  (sabato ad almeno 14 giorni da oggi, 22:30–02:00, esclusivo: in quell'orario il servizio ordinario è chiuso) e la bozza
+  «Aperitivo e vinili». Gli indirizzi `…-esempio` sono etichettati come esempio sul sito. Si gestiscono da «Eventi».
+- Un database già creato con una fase precedente non riceve la configurazione delle prenotazioni né gli eventi (il
+  caricamento avviene solo su database vuoto): impostarla dalla pagina «Capienza e tavoli» oppure ripartire da zero (§9).
 - Un database demo non va mai copiato in produzione: si parte da un database nuovo e i contenuti veri li inseriscono i
   titolari dall'area gestori.
 

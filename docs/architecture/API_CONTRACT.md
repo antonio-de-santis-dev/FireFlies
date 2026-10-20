@@ -200,21 +200,37 @@ solo OWNER (regola sull'URL e `@PreAuthorize`).
 | `PUT /admin/booking-policy` | regole: `webBookingEnabled` (aprirle richiede una zona attiva), `minLeadMinutes`, `maxAdvanceDays`, `maxPartySizeWeb`, `pendingExpiryMinutesBeforeStart` |
 | `POST /admin/booking-exceptions`, `DELETE /admin/booking-exceptions/{id}` | `CLOSED` (chiusura agli arrivi) o `CAPACITY_OVERRIDE` (limite di presenze) per data, di una fascia o di tutto il giorno (stesso controllo `409`) |
 
-## 6. Area gestori — eventi
+## 6. Eventi (implementato in FASE 6)
 
-| Metodo e percorso | Ruolo | Descrizione |
-|---|---|---|
-| `GET /admin/events`, `GET /admin/events/{id}` | STAFF | elenco/dettaglio con contatore |
-| `POST /admin/events`, `PUT /admin/events/{id}` | STAFF | bozza/modifica (`version`); campi `zoneId` (null = tutto il locale), `exclusive` (default true), `capacityCovers`; cambio di orario/zona/esclusività con prenotazioni confermate → `409 EVENT_HAS_CONFIRMED_RESERVATIONS`; quota sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED`; area non separata → `422 ZONE_NOT_SEPARATE` |
-| `POST /admin/events/{id}/publish` | STAFF | `{ version, acknowledgePending }`. Evento esclusivo con prenotazioni ordinarie **confermate** nei suoi orari → `409 EVENT_CONFLICTS` (non forzabile); richieste **in attesa** sovrapposte → `409 EVENT_CONFLICTS` finché non si invia `acknowledgePending: true`. Evento non esclusivo: `warnings: ["EVENT_QUOTA_NOT_GUARANTEED"]` se la quota supera i posti liberi |
-| `POST /admin/events/{id}/cancel` | OWNER | `{ version, cancelReservations: true|false }` |
+### Pubblico
+| Metodo e percorso | Descrizione |
+|---|---|
+| `GET /public/events` | eventi pubblicati e annullati, format senza data e serate non ancora finite; `Cache-Control: max-age=60` |
+| `GET /public/events/{slug}` | scheda; bozza o inesistente → `404` |
 
-`409 EVENT_CONFLICTS`:
-```json
-{ "status": 409, "code": "EVENT_CONFLICTS", "title": "Ci sono prenotazioni nello stesso orario",
-  "context": { "blocking": [ { "publicRef": "FF-2M8R4T", "time": "21:30", "guestCount": 4, "status": "CONFIRMED" } ],
-               "pending":  [ { "publicRef": "FF-9QX2LP", "time": "22:00", "guestCount": 2, "status": "PENDING" } ] } }
-```
+`PublicEvent`: `{ id, slug, title, kind: SERATA|FORMAT, status: PUBLISHED|CANCELLED, date, startTime, endTime, artist,
+summary, body[] (paragrafi), poster, media[], booking: { mode: NONE|REQUEST, open, reason } }` — `reason`: `NONE`, `FULL`,
+`CLOSED` (richieste dal sito chiuse), `TOO_LATE` (oltre l'anticipo minimo), `CANCELLED`. Nessun numero di posti.
+
+Una richiesta per la serata usa `POST /public/reservations` con `eventId` (giorno e orario presi dall'evento). Errori in
+più: `422 EVENT_NOT_BOOKABLE`, `422 EVENT_FULL`, `422 TOO_EARLY`.
+
+### Gestori (STAFF e OWNER, CSRF sulle scritture)
+| Metodo e percorso | Descrizione |
+|---|---|
+| `GET /admin/events`, `GET /admin/events/{id}` | elenco/dettaglio: `AdminEvent` con `confirmedCovers`, `pendingCovers`, `confirmedReservations`, `pendingReservations`, `version`, `warnings` |
+| `POST /admin/events` | bozza: `{ title, kind, date, startTime, endTime, zoneId, exclusive (default true), bookingMode, capacityCovers, artist, summary, body, posterMediaId, mediaIds[] }`; `slug` dal titolo (univoco) |
+| `PUT /admin/events/{id}` | modifica `{ …, version, acknowledgePending }`. Pubblicato: cambio di orario/zona/esclusività con confermate → `409 EVENT_HAS_CONFIRMED_RESERVATIONS`, senza → riserva spostata con gli stessi controlli della pubblicazione; quota sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` |
+| `POST /admin/events/{id}/publish` | `{ version, acknowledgePending }` → `409 EVENT_CONFLICTS` (sotto); `422 EVENT_DATE_REQUIRED`, `422 EVENT_IN_PAST`; `warnings`: `PENDING_REQUESTS_BLOCKED`, `EVENT_QUOTA_NOT_GUARANTEED` |
+| `POST /admin/events/{id}/cancel` | `{ version, cancelReservations }`; con prenotazioni attive solo OWNER (`403`); con `true` le prenotazioni passano ad «Annullata» motivo `EVENT_CANCELLED`, posti e quota rilasciati, notifiche accodate |
+| `DELETE /admin/events/{id}` | solo bozze senza prenotazioni (`409 INVALID_TRANSITION` altrimenti) |
+
+Validazioni: `NOT_ALIGNED_15_MIN`, `VALIDATION_FAILED` (titolo, date incomplete, «su richiesta» senza quota o senza data),
+`QUOTA_ABOVE_CAPACITY`, `ZONE_NOT_SEPARATE` (zona indicata con una sola zona attiva), `EXCLUSIVITY_OWNER_ONLY` (`403`),
+`MEDIA_NOT_FOUND`, `NAME_TAKEN` (slug in gara).
+
+`409 EVENT_CONFLICTS` — `context`: `{ confirmed: [{ reference, date, time, endTime, guests, status }], pending: [...],
+otherEvent: bool, acknowledgeable: bool }`; mai nomi, telefoni o email.
 
 ## 7. Area gestori — contenuti, menu, media, notifiche, utenti
 

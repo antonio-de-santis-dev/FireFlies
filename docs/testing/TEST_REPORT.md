@@ -1,7 +1,44 @@
 # Report dei test — backend e frontend
 
-> Aggiornato in **FASE 5** (prenotazioni V1) il 20/10/2026. Seguono la FASE 4, la FASE 3 e, in fondo, la FASE 2.
+> Aggiornato in **FASE 6** (eventi e capienza) il 20/10/2026. Seguono le FASI 5, 4, 3 e, in fondo, la FASE 2.
 > Ambiente: OpenJDK 21.0.12, Maven 3.9.11, Node 22, Playwright 1.56.1 (Chromium), Docker 29.8.2, PostgreSQL **17.11**.
+
+## FASE 6 — Riepilogo
+
+| Suite | Comando | Test | Esito |
+|---|---|---|---|
+| Backend unità e slice | `cd backend && ./mvnw -B verify` | 70 | ✅ 70/70 |
+| Backend integrazione, sicurezza, concorrenza, riavvio (PostgreSQL reale) | stesso comando | 294 (+29) | ✅ 294/294 |
+| Frontend Playwright con backend e DB reali (funzionali 26 + accesso 10 + contenuti 12 + prenotazioni 7 + eventi 3 + QA 9 + axe 2) | `cd frontend && npm run verifica` | 69 (+3) | ✅ 69/69 |
+| **Totale** | | **433** | ✅ 433/433 |
+
+**Regressioni FASI 2–5**: tutti i test precedenti presenti e verdi. Attese cambiate per effetto voluto: `DemoContentLoaderIT`
+verifica anche gli eventi d'esempio e i 14 quanti riservati alla serata demo; in `navigation.spec` il link della serata
+demo si cerca nella riga dell'elenco (la data ora è reale, fra almeno due settimane, quindi spesso fuori dal mese del
+calendario).
+
+### Verifiche della FASE 6
+
+| Verifica | Test | Esito |
+|---|---|---|
+| Creazione, modifica, pubblicazione, annullamento | `EventApiIT.bozzaValidazioniEPubblicazione` (validazioni, slug univoco, bozze non pubbliche, doppio clic, eliminazione solo bozze), `modificaDiUnEventoPubblicato`, `annullamentoDellEvento`, `annullamentoSenzaToccareLePrenotazioni`; `events.spec` «nuova serata… pubblicata e annullata» | ✅ |
+| Locandine dalla libreria | `EventApiIT.locandinaEFotoDallaLibreria` (varianti e `srcset`, foto in uso non eliminabile, foto inesistente `422`) | ✅ |
+| Prenotazioni per evento con conferma manuale e quota | `EventApiIT.prenotazioniPerEventoConQuota` (in attesa senza posti, conferma su registro e quota, quota superata `409`, `EVENT_FULL` dal sito, orario fisso, persone modificabili, quota restituita); `events.spec` «il cliente chiede un tavolo per l'evento, lo staff lo conferma» | ✅ |
+| Esclusivi per impostazione predefinita | `bozzaValidazioniEPubblicazione` (12 quanti riservati, servizio ordinario bloccato dal sito e negli orari pubblici) | ✅ |
+| Non esclusivi solo dal titolare, condivisione sicura | `permessiECsrf` (staff `403`), `modificaDiUnEventoPubblicato`, `eventoNonEsclusivoUsaLoStessoRegistro` (quota 15 ma locale da 20 con 10 ordinarie: la conferma che supererebbe 20 è rifiutata, avviso alla pubblicazione); `events.spec` «posti condivisi» | ✅ |
+| Conflitti con le prenotazioni ordinarie confermate | `conflittiConLePrenotazioniOrdinarie` (confermata → `409` non forzabile senza dati personali; in attesa → da confermare; dopo la pubblicazione non confermabile; altro evento esclusivo); `events.spec` (riferimento mostrato nell'editor) | ✅ |
+| Coerenza con il registro a 15 minuti | riconciliazione dopo **ogni** test: registro = prenotazioni, quota eventi = prenotazioni confermate dell'evento, nessun quanto esclusivo con ordinarie | ✅ |
+| Concorrenza | `EventConcurrencyIT`: pubblicazione esclusiva contro conferma ordinaria nello stesso orario (10 ripetizioni, vince una sola), 6 conferme simultanee da 3 persone su quota 10 → esattamente 3 (5 ripetizioni), annullamento dell'evento contro una conferma (5 ripetizioni); nessun deadlock | ✅ |
+| OWNER/STAFF, CSRF, audit | `permessiECsrf`, `annullamentoDellEvento` (staff `403` con prenotazioni attive), audit `EVENT_*` | ✅ |
+| Regressioni | tutte le classi e gli spec precedenti | ✅ |
+
+### Difetti trovati dai test e corretti
+1. Una bozza nuova partiva con «Richiedi un tavolo» senza quota: il backend (e il vincolo del database) la rifiuterebbe.
+   Ora una bozza nuova parte senza prenotazione e il gestore sceglie (trovato rileggendo `navigation.spec`).
+2. Due test cercavano la serata demo nel calendario del mese corrente, valido solo con la data finta del mockup.
+
+### CI
+(aggiornato dopo la verifica su GitHub Actions)
 
 ## FASE 5 — Riepilogo
 
