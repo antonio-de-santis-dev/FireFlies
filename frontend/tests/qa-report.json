@@ -73,6 +73,20 @@
   "broken": [],
   "under44": [
    {
+    "name": "29 ottobre 2026: Serata E2E 179252037845",
+    "w": 41,
+    "h": 41,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "30 ottobre 2026: Condivisa E2E 179252038",
+    "w": 41,
+    "h": 41,
+    "inline": false,
+    "type": ""
+   },
+   {
     "name": "Menu",
     "w": 43,
     "h": 44,
@@ -207,7 +221,78 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393000470702",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426152",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426180",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426213",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000410627",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000411004",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000378458",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404749",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404790",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000376148",
+    "w": 283,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -1257,6 +1342,20 @@
   "broken": [],
   "under44": [
    {
+    "name": "29 ottobre 2026: Serata E2E 179252037845",
+    "w": 43,
+    "h": 43,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "30 ottobre 2026: Condivisa E2E 179252038",
+    "w": 43,
+    "h": 43,
+    "inline": false,
+    "type": ""
+   },
+   {
     "name": "Menu",
     "w": 43,
     "h": 44,
@@ -1391,7 +1490,78 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393000470702",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426152",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426180",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426213",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000410627",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000411004",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000378458",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404749",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404790",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000376148",
+    "w": 298,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -2575,7 +2745,78 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393000470702",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426152",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426180",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426213",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000410627",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000411004",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000378458",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404749",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404790",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000376148",
+    "w": 313,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -3696,7 +3937,78 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393000470702",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426152",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426180",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426213",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000410627",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000411004",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000378458",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404749",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404790",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000376148",
+    "w": 461,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -4081,7 +4393,78 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393000470702",
+    "w": 247,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426152",
+    "w": 247,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426180",
+    "w": 247,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426213",
+    "w": 247,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000410627",
+    "w": 245,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000411004",
+    "w": 245,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000378458",
+    "w": 245,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404749",
+    "w": 245,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404790",
+    "w": 245,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000376148",
+    "w": 245,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -4466,7 +4849,78 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393000470702",
+    "w": 274,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426152",
+    "w": 274,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426180",
+    "w": 274,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426213",
+    "w": 274,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000410627",
+    "w": 272,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000411004",
+    "w": 272,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000378458",
+    "w": 272,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404749",
+    "w": 272,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404790",
+    "w": 272,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000376148",
+    "w": 272,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {
@@ -4851,7 +5305,78 @@
   "route": "/gestione/richieste",
   "overflow": 0,
   "broken": [],
-  "under44": [],
+  "under44": [
+   {
+    "name": "+393000470702",
+    "w": 355,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426152",
+    "w": 355,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426180",
+    "w": 355,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000426213",
+    "w": 355,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000410627",
+    "w": 352,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000411004",
+    "w": 352,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000378458",
+    "w": 352,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404749",
+    "w": 352,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000404790",
+    "w": 352,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   },
+   {
+    "name": "+393000376148",
+    "w": 352,
+    "h": 32,
+    "inline": false,
+    "type": ""
+   }
+  ],
   "under24": []
  },
  {

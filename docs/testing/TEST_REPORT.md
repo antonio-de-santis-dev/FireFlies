@@ -1,7 +1,51 @@
 # Report dei test — backend e frontend
 
-> Aggiornato in **FASE 7** (completamento obbligatorio) il 20/10/2026. Seguono le FASI 6, 5, 4, 3 e, in fondo, la FASE 2.
+> Aggiornato in **FASE 8** (hardening e preparazione al deploy) il 20/10/2026. Seguono le FASI 7, 6, 5, 4, 3 e, in fondo, la FASE 2.
 > Ambiente: OpenJDK 21.0.12, Maven 3.9.11, Node 22, Playwright 1.56.1 (Chromium), Docker 29.8.2, PostgreSQL **17.11**.
+
+## FASE 8 — Riepilogo
+
+Tutte le suite eseguite **in sequenza** (mai backend ed e2e insieme) sul codice del commit `9beade5`.
+
+| Suite | Comando | Test | Esito locale |
+|---|---|---|---|
+| Backend unità e slice | `cd backend && ./mvnw -o verify` | 78 (invariati) | ✅ 78/78 |
+| Backend integrazione (PostgreSQL 17 reale) | stesso comando | 320 (+9: `EventApiIT` +2, `ProxyHeadersIT` 3, `ApiSecurityMatrixIT` 4; `MigrationIT` → 11 migrazioni) | ✅ 320/320 al primo giro completo |
+| Frontend typecheck + Playwright con backend e DB reali | `cd frontend && npm run verifica` | 111 (+18: `fase8.spec` 17, `events.spec` +1) | ✅ 111/111 al primo giro completo (7,7 min) |
+| Misure di performance | `node scripts/e2e.mjs tests/perf.spec.ts` | 2 | ✅ 2/2 (JS 78.407 B, DOMContentLoaded 951 ms, titolo 2.000 ms, panoramica 165 ms, 12 chiamate senza duplicati) |
+| Prova di ripristino | `infra/scripts/restore-drill.sh` | 1 scenario completo | ✅ 36 tabelle identiche, foto identica, 11 migrazioni, `check-health.sh` verificato |
+
+### Verifiche richieste dal mandato
+| # | Verifica | Dove | Esito |
+|---|---|---|---|
+| 1 | Evento senza ora di fine | `EventApiIT.senzaOraDiFineNeCopertiValoriRicavati`, `events.spec` «editor senza «Fine» e senza coperti» | ✅ |
+| 2 | Evento senza coperti | stessi test + `EventApiIT.senzaCapienzaDelLocaleNienteRichiestePerEventi` | ✅ |
+| 3 | Integrità della capienza e degli eventi esistenti | `EventApiIT` (fine e quota conservate, 16 quanti riservati), riconciliazione del registro dopo ogni IT, IT di concorrenza FASI 5–7 | ✅ |
+| 4 | Filtri compatti delle Richieste sul telefono | `fase8.spec` a 360/375/390/430/768/1280/1920 | ✅ |
+| 5 | Foto del menu senza perdita di informazioni | `fase8.spec` desktop e telefono, foto mancante (`route.abort`) | ✅ |
+| 6 | Chiamata e copia del numero | `fase8.spec` a 390 e 1366 (`tel:+39…`, appunti letti, tastiera), senza Clipboard API | ✅ |
+| 7 | Numero non configurato | `fase8.spec` (nessun `tel:`, avviso, Instagram) | ✅ |
+| 8 | Locandine non ritagliate | `posters.spec` (9) | ✅ |
+| 9 | Backup e ripristino | `restore-drill.sh` | ✅ |
+| 10 | Sicurezza delle API | `ApiSecurityMatrixIT`, `ProxyHeadersIT`, IT di sicurezza FASI 3–7 | ✅ |
+| 11 | Connessioni lente | `fase8.spec` (API rallentata, rete e CPU limitate via CDP), `perf.spec` | ✅ |
+| 12 | Nessuna regressione su prenotazioni, eventi, notifiche | suite complete sopra | ✅ |
+
+Screenshot reali: allegati ai test `fase8.spec` (`test.info().attach`) nel report HTML di Playwright e negli artifact
+della CI `frontend`.
+
+### Difetti trovati dai test e corretti
+- `event-visibility.spec`: ricaricamento prima della fine del salvataggio → attesa del messaggio «salvato».
+- `fase8.spec`: prima scheda delle Richieste a 552 px sul telefono → intestazione compatta (`AdminHead compact`).
+- `ProxyHeadersIT`: loopback IPv6 non fidato e barre rovesciate perse in `@TestPropertySource` → configurazione corretta.
+- Esecuzione con `mvnw verify` in parallelo all'e2e (jar sostituito) → errori casuali; regola: suite in sequenza.
+
+### CI (GitHub Actions, branch `fase-8/hardening-deploy`)
+| Workflow | Commit | Run | Esito |
+|---|---|---|---|
+| backend (ultimo commit con codice backend) | `07d6da9` | 39472456846 | ✅ |
+| frontend | `9beade5` | 39473373201 | ✅ |
+| images (build senza push, nessun `.env`, Caddyfile valido, utente non root) | `9beade5` | 39473373320 | ✅ |
 
 ## FASE 7 — Riepilogo
 

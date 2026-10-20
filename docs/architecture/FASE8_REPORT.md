@@ -111,11 +111,24 @@ su un database vuoto, backend riavviato sul database ripristinato. Esito in `evi
 con le stesse righe, stessa foto (SHA-256 identico), prenotazione ritrovata in attesa, migrazioni Flyway valide, dati
 demo non ricaricati; `check-health.sh` segnala una pulizia notturna mancante e passa quando tutto è in ordine.
 
-## 9. Risultati dei test
-_(compilato a fine esecuzione, §9 sotto)_
+## 9. Risultati dei test (eseguiti davvero, in sequenza, commit `9beade5`)
+| Suite | FASE 7 | FASE 8 | Esito |
+|---|---|---|---|
+| Backend unità | 78 | 78 | ✅ 78/78 |
+| Backend integrazione (PostgreSQL 17 reale) | 311 | **320** (+`EventApiIT` 2, `ProxyHeadersIT` 3, `ApiSecurityMatrixIT` 4) | ✅ 320/320 |
+| Playwright con backend e DB reali | 93 | **111** (+`fase8.spec` 17, `events.spec` 1) | ✅ 111/111 |
+| Performance (`perf.spec`) | — | 2 | ✅ 2/2 |
+| Prova di ripristino | — | 1 scenario | ✅ |
+Le 12 verifiche richieste dal mandato e dove sono coperte: TEST_REPORT «FASE 8». Tutte le suite sono passate al primo
+giro completo.
 
 ## 10. Risultati della CI
-_(compilato a fine esecuzione)_
+| Workflow | Commit | Run | Esito |
+|---|---|---|---|
+| backend (ultimo commit con codice backend) | `07d6da9` | 39472456846 | ✅ |
+| frontend | `9beade5` | 39473373201 | ✅ |
+| images (build senza push, controlli su segreti, Caddy e utente) | `9beade5` | 39473373320 | ✅ |
+Tutti i commit della FASE 8 hanno CI verde.
 
 ## 11. Problemi aperti
 - **Vite 5 / esbuild** (avvisi solo del server di sviluppo, nessun effetto sui file pubblicati): il passaggio a Vite 8 è
