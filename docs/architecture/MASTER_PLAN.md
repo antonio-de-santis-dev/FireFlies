@@ -315,6 +315,11 @@ Non decidere il provider senza consultare il committente. Usare Docker Compose p
 - Backup/restore, GDPR, error tracking, rate limits, accessibilità, performance, sicurezza, dominio e TLS.
 - Comparazione hosting, budget e processo di rollback.
 - Deploy staging prima, produzione solo dopo via libera esplicito.
+- **Mandato del 20/10/2026 (C-31)**: editor eventi senza ora di fine e coperti (ricavati nel backend), filtri compatti
+  delle Richieste sul telefono, foto più visibili in Menu e prezzi, telefono cliccabile e copiabile per eventi e
+  compleanni, audit di sicurezza, misure di performance, backup e ripristino provati in isolamento, immagini Docker,
+  Caddy con HTTPS e CSP, compose di produzione e proposta di hosting (`docs/operations/DEPLOY.md`). **Nessuna
+  pubblicazione, nessun servizio a pagamento, notifiche reali spente.** Stato reale in `FASE8_REPORT.md`.
 - **STOP: collaudo finale.**
 
 ### FUTURO V2 — NON IMPLEMENTARE ORA

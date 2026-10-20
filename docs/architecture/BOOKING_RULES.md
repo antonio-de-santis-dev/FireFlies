@@ -154,6 +154,11 @@ Senza zone fisicamente separate e configurate, **non esiste** un modo per avere 
 - `visible: false` su un evento pubblicato lo riporta in bozza solo senza prenotazioni `PENDING`/`CONFIRMED` (`409 EVENT_HAS_ACTIVE_RESERVATIONS`); la riserva esclusiva si libera.
 - Eliminazione (con conferma) di bozze, pubblicati e annullati **senza prenotazioni**; con prenotazioni attive → annullarle o annullare l'evento; con solo storico chiuso → `409 EVENT_HAS_HISTORY`, lo elimina la pulizia notturna (§13).
 
+### 7.5 Fine e quota ricavate (FASE 8, T-71/T-72)
+- L'editor chiede solo data e ora di **inizio**. Senza `endTime` il backend usa la durata che l'evento aveva già, altrimenti 4 ore (configurabile). Un evento che finisce dopo mezzanotte resta nello stesso giorno di servizio (es. 23:00 → 03:00).
+- Senza `capacityCovers`, un evento con richieste dal sito tiene la quota salvata; un evento nuovo prende la capienza fisica del locale. Se è inferiore ai confermati sale ai confermati; se il locale non ha capienza configurata → `422 VENUE_CAPACITY_MISSING`.
+- Restano invariati tutti i controlli di §7.2–7.4 (esclusività, `EVENT_CONFLICTS`, `EVENT_HAS_CONFIRMED_RESERVATIONS`, registro della zona). Eventi creati prima della FASE 8 mantengono fine e quota.
+
 ## 8. Tavoli (fuori dall'interfaccia dalla FASE 7)
 - **FASE 7:** la pagina «Capienza e tavoli» e l'assegnazione dei tavoli non sono più nell'interfaccia; la capienza si ragiona in persone per fascia (§3, Impostazioni › Capienza). Tabelle, API e vincoli restano invariati (nessuna migrazione distruttiva) e valgono le regole sotto per i dati esistenti.
 - Zone, aree e tavoli li configura l'OWNER. La V1 funziona anche senza tavoli.

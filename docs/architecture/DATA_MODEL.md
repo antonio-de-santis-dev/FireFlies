@@ -342,6 +342,12 @@ idempotente e concorrente (ora legale compresa).
 (V2) = chiusure e aperture straordinarie (ora con API); `notification_outbox.expires_at` = fine della prenotazione;
 `notification_attempts.provider = 'fake'` = invio simulato. Le tabelle dei tavoli restano (non più usate dalla UI).
 
+### 3.10 Indice del worker (V11, FASE 8)
+`ix_outbox_due ON notification_outbox (next_attempt_at, id) WHERE state IN ('PENDING','FAILED')`: la presa in carico
+del worker legge solo le notifiche da inviare, in ordine di scadenza (25,4 → 0,1 ms con 100.000 notifiche,
+`evidence/PERFORMANCE.md`). Nessuna colonna nuova; gli eventi della FASE 8 usano le colonne esistenti (`ends_at` e
+`capacity_covers` ricavati dal backend, BOOKING_RULES §7.5).
+
 ## 4. Invarianti
 
 | # | Invariante | Dove è garantita |

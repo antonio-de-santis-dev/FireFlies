@@ -38,6 +38,7 @@
 | C-28 | Evento **non esclusivo** solo se il titolare lo abilita esplicitamente e solo se la condivisione è sicura (stesso registro dei posti, mai un secondo contatore) — conferma di C-18 | 20/10 |
 | C-29 | Le quattro verifiche V-01…V-04 (§4-bis) restano aperte e sono requisiti pre-deploy; **nessun componente complesso** (Redis, Kafka) introdotto solo per risolverle | 20/10 |
 | C-30 | **FASE 7 — completamento obbligatorio**: requisiti 1–14 oltre al 15 già fatto; nessun invio reale senza autorizzazione, credenziali e provider; conservazione: prenotazioni 1 mese, eventi 2 mesi, statistiche anonime conservate; nessuna migrazione distruttiva | 20/10 |
+| C-31 | **FASE 7 approvata** (482 test, CI verde); **FASE 8**: hardening, performance, UX responsive, preparazione al deploy **senza pubblicare**, senza servizi a pagamento, notifiche reali spente; editor eventi senza ora di fine e senza coperti (valori ricavati nel backend) | 20/10 |
 
 ## 1-bis. Strategia Git (C-21, regola definitiva)
 
@@ -150,6 +151,18 @@ Regole: verificare stato e branch prima di iniziare; branch precedente completo 
 | T-68 | **Req. 2** — Menu dei gestori sul telefono: pulsante con la pagina attuale scritta, elenco a comparsa (Esc, tocco fuori, scelta di una voce lo chiudono; focus sulla voce attiva e poi di nuovo sul pulsante), voci alte 52 px. Ordine: Panoramica, Menu e prezzi, Calendario prenotazioni oggi, Eventi, Richieste, Foto, Comunicazioni, Personalizza il sito, Impostazioni | — |
 | T-69 | **Req. 1/5/7** — Panoramica senza scorciatoie che ripetono il menu (resta solo il riepilogo con «confermate oggi»); Richieste come schede separate (riga larga su desktop, schede impilate sul telefono); Foto a due colonne sotto i 640 px, campi `min-width: 0` | grafica approvata invariata (stessi colori, font, componenti) |
 | T-70 | Inserimenti dei gestori: la fascia di una prenotazione è quella in cui l'orario è un **arrivo** (21:00 → Sera), non la prima che lo copre per permanenza (l'Aperitivo delle 20:30) | coerenza delle fasce nel riepilogo |
+
+## 2-quinquies. Decisioni tecniche applicate in FASE 8
+
+| ID | Decisione | Riferimenti |
+|---|---|---|
+| T-71 | **Req. 1** — L'editor eventi non chiede più l'ora di fine: se manca, il backend la ricava. Evento esistente con orari → **mantiene la durata che aveva** (spostare l'inizio sposta anche la fine); evento nuovo → **4 ore** dall'inizio (`fireflies.events.default-duration`, PT4H, valori ammessi 15′–12h a multipli di 15′, controllati all'avvio). Data e ora di inizio restano obbligatorie per pubblicare. Le API accettano ancora `endTime` esplicito (compatibilità) | BOOKING_RULES §7.5 |
+| T-72 | **Req. 1** — L'editor non chiede più i coperti: per gli eventi con richieste dal sito la quota è quella **già salvata** (eventi esistenti invariati), altrimenti la **capienza fisica del locale** (somma delle zone). Non è un secondo contatore: il registro della zona resta il limite (§7.1). Mai sotto le persone già confermate; capienza del locale non configurata → `422 VENUE_CAPACITY_MISSING` (nessun valore inventato) | BOOKING_RULES §7.5, C-13 |
+| T-73 | **Req. 4** — «Organizza un evento / compleanno»: numero preso **solo** dalle impostazioni del sito, normalizzato (`+39` per i numeri italiani, 6–15 cifre, altrimenti nessun link); «Chiama ora» (`tel:`) e «Copia numero» con Clipboard API solo in contesto sicuro, conferma solo a copia riuscita, altrimenti campo selezionabile; nessun permesso chiesto. Senza numero: avviso e Instagram, mai `tel:` vuoto | T-65 |
+| T-74 | **Req. 5 / V-01** — In `prod` l'IP del client lo decide il `RemoteIpValve` di Tomcat: fiducia in `X-Forwarded-For` solo da reti private/loopback (dove sta Caddy), ultimo indirizzo non fidato; un prefisso falsificato non aggira i limiti (`ProxyHeadersIT`). Una sola istanza del backend: i limiti in memoria restano corretti | PRE_DEPLOY V-01 |
+| T-75 | **Req. 5** — Header aggiunti: HSTS (1 anno, sottodomini), `Permissions-Policy` (nessun sensore/pagamento), `Cross-Origin-Opener-Policy: same-origin`; la CSP la scrive Caddy sui file statici. Matrice dei permessi generata da **tutti** gli endpoint registrati (`ApiSecurityMatrixIT`) | — |
+| T-76 | **Req. 6** — Area gestori e accesso caricati a parte (`React.lazy`), precaricati appena si apre `/gestione`: −27,6 % di JavaScript sul sito pubblico senza rallentare l'area gestori. Indice parziale `ix_outbox_due` (V11) per la presa in carico del worker | evidence/PERFORMANCE.md |
+| T-77 | **Req. 7–8** — Produzione su un solo server con Docker Compose (Caddy + backend + PostgreSQL), foto su R2, backup `pg_dump -Fc` verificato e con impronte, ripristino solo su database vuoto; nessun servizio acquistato | DEPLOY.md |
 
 ## 3. Proposte — stato dopo l'approvazione della FASE 1
 

@@ -223,13 +223,14 @@ più: `422 EVENT_NOT_BOOKABLE`, `422 EVENT_FULL`, `422 TOO_EARLY`.
 | Metodo e percorso | Descrizione |
 |---|---|
 | `GET /admin/events`, `GET /admin/events/{id}` | elenco/dettaglio: `AdminEvent` con `confirmedCovers`, `pendingCovers`, `confirmedReservations`, `pendingReservations`, `version`, `warnings` |
-| `POST /admin/events` | `{ title, kind, date, startTime, endTime, zoneId, exclusive (default true), bookingMode, capacityCovers, artist, summary, body, posterMediaId, mediaIds[], visible (default false), acknowledgePending }`; `slug` dal titolo (univoco). **FASE 7:** `visible: true` = pubblicato nella stessa transazione, con gli stessi errori di `publish`; se fallisce non resta nulla |
+| `POST /admin/events` | `{ title, kind, date, startTime, endTime, zoneId, exclusive (default true), bookingMode, capacityCovers, artist, summary, body, posterMediaId, mediaIds[], visible (default false), acknowledgePending }`; `slug` dal titolo (univoco). **FASE 8:** `endTime` e `capacityCovers` facoltativi (`null` = ricavati: durata già salvata o 4 ore; quota già salvata o capienza fisica del locale, mai sotto i confermati — BOOKING_RULES §7.5); `date` e `startTime` vanno indicati insieme. **FASE 7:** `visible: true` = pubblicato nella stessa transazione, con gli stessi errori di `publish`; se fallisce non resta nulla |
 | `PUT /admin/events/{id}` | modifica `{ …, version, acknowledgePending, visible }` (`visible` assente = stato invariato; `true` su una bozza = pubblica; `false` su un pubblicato = torna bozza, solo senza prenotazioni attive → `409 EVENT_HAS_ACTIVE_RESERVATIONS`). Pubblicato: cambio di orario/zona/esclusività con confermate → `409 EVENT_HAS_CONFIRMED_RESERVATIONS`, senza → riserva spostata con gli stessi controlli della pubblicazione; quota sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` |
 | `POST /admin/events/{id}/publish` | `{ version, acknowledgePending }` → `409 EVENT_CONFLICTS` (sotto); `422 EVENT_DATE_REQUIRED`, `422 EVENT_IN_PAST`; `warnings`: `PENDING_REQUESTS_BLOCKED`, `EVENT_QUOTA_NOT_GUARANTEED` |
 | `POST /admin/events/{id}/cancel` | `{ version, cancelReservations }`; con prenotazioni attive solo OWNER (`403`); con `true` le prenotazioni passano ad «Annullata» motivo `EVENT_CANCELLED`, posti e quota rilasciati, notifiche accodate |
 | `DELETE /admin/events/{id}` | **FASE 7:** qualunque stato senza prenotazioni → `204` (riserva esclusiva liberata); prenotazioni attive → `409 EVENT_HAS_ACTIVE_RESERVATIONS`; solo storico chiuso → `409 EVENT_HAS_HISTORY` |
 
-Validazioni: `NOT_ALIGNED_15_MIN`, `VALIDATION_FAILED` (titolo, date incomplete, «su richiesta» senza quota o senza data),
+Validazioni: `NOT_ALIGNED_15_MIN`, `VALIDATION_FAILED` (titolo, data senza ora di inizio o viceversa, «su richiesta» senza data),
+`VENUE_CAPACITY_MISSING` (`422`, FASE 8: quota da ricavare ma capienza del locale non configurata),
 `QUOTA_ABOVE_CAPACITY`, `ZONE_NOT_SEPARATE` (zona indicata con una sola zona attiva), `EXCLUSIVITY_OWNER_ONLY` (`403`),
 `MEDIA_NOT_FOUND`, `NAME_TAKEN` (slug in gara).
 

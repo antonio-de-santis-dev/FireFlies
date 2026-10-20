@@ -79,5 +79,16 @@ echo "▶ confronto"
 [ "$counts_a" = "$counts_b" ] || { echo "righe diverse:"; diff <(tr ' ' '\n' <<<"$counts_a") <(tr ' ' '\n' <<<"$counts_b"); exit 1; }
 [ "$sha_a" = "$sha_b" ] || { echo "foto diversa dopo il ripristino" >&2; exit 1; }
 [ "$status_b" = "PENDING" ] || { echo "prenotazione $ref non ripristinata" >&2; exit 1; }
+echo "▶ controllo giornaliero (check-health.sh) sul sistema ripristinato"
+# pulizia notturna spenta nella prova: il controllo deve segnalarlo, poi passare con un'esecuzione completata
+if out="$("$root/infra/scripts/check-health.sh" "http://localhost:$http_b" fireflies-drill-b-postgres-1 "$work/backups" 2>&1)"; then
+  echo "check-health non ha segnalato la pulizia mancante: $out" >&2; exit 1
+fi
+grep -q "pulizia notturna: nessuna esecuzione completata" <<<"$out" || { echo "check-health: $out" >&2; exit 1; }
+docker exec fireflies-drill-b-postgres-1 psql -U fireflies -d fireflies -qc \
+  "insert into maintenance_runs (job, run_date, status, finished_at) values ('drill', current_date, 'DONE', now())"
+"$root/infra/scripts/check-health.sh" "http://localhost:$http_b" fireflies-drill-b-postgres-1 "$work/backups" >/dev/null
+
 echo "OK: $(tr ' ' '\n' <<<"$counts_b" | wc -l) tabelle identiche ($counts_b)"
+echo "OK: check-health segnala la pulizia mancante e passa con backup recente, manifest valido e backend pronto"
 echo "OK: foto $photo identica (sha256 $sha_b), prenotazione $ref in attesa, $migrations migrazioni Flyway valide, backend avviato su B"

@@ -96,6 +96,15 @@ create dai test usano nomi, giorni e numeri di prova sempre diversi. Il backend 
 dal sito (`--fireflies.reservations.web-requests-per-hour=1000`) perché tutte arrivano da 127.0.0.1: il limite reale
 (5 all'ora) è verificato dai test del backend.
 
+**Altre verifiche (FASE 8)**, da eseguire **una alla volta** e mai mentre gira `mvnw verify` (l'e2e usa il jar in
+`backend/target/`):
+```bash
+cd frontend && node scripts/e2e.mjs tests/perf.spec.ts   # misure su rete lenta → tests/perf-results.json (non versionato)
+cd .. && infra/scripts/restore-drill.sh                  # backup + ripristino completo in due PostgreSQL isolati (porte 55511/55512)
+```
+Le immagini di produzione si costruiscono nella CI (`.github/workflows/images.yml`, nessun push); la messa in
+produzione è descritta in `DEPLOY.md` e **richiede l'autorizzazione del titolare**.
+
 ## 6. Profili
 | Profilo | Uso | Database | Cookie di sessione | Notifiche | Foto | Dati demo |
 |---|---|---|---|---|---|---|
