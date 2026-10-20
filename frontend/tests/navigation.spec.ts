@@ -70,7 +70,7 @@ test.describe('Area pubblica — desktop', () => {
     await expect(page.locator('.event-row')).toContainText('Date da annunciare');
     await page.getByRole('button', { name: 'Tutti' }).click();
     await expect(page.getByText('Aperitivo e vinili')).toHaveCount(0); // bozza non pubblica
-    await page.getByRole('link', { name: /DJ set al Fire.*esempio demo/ }).click();
+    await page.getByRole('link', { name: /^Esempio demo DJ set al Fire/ }).click();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('DJ set al Fire');
     await expect(page.getByText("Serata d'esempio: data e artista non reali")).toBeVisible();
     await page.getByRole('button', { name: 'Richiedi un tavolo per questa serata' }).click();

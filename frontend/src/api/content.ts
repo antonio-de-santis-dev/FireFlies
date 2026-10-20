@@ -5,6 +5,8 @@ import type { Announcement, HomeSection, MediaItem, Owner, SiteContent, StaffMem
 import type { Category, MenuItem } from '../data/menu';
 import type { DayHours, SiteSettings } from '../data/site';
 import { api } from './client';
+import { loadPublicEvents } from './events';
+import type { FireEvent } from '../data/events';
 
 // --- forme delle risposte (API_CONTRACT §2, §7) ---------------------------------------------------------------
 
@@ -139,16 +141,18 @@ export type PublicData = {
   gallery: MediaItem[];
   mediaIndex: Record<string, Asset>;
   demoContent: boolean;
+  events: FireEvent[];
 };
 
-/** Il sito pubblico in tre letture con ETag (sito, menu, galleria). */
+/** Il sito pubblico in quattro letture con ETag (sito, menu, galleria, eventi). */
 export async function loadPublic(base: SiteSettings): Promise<PublicData> {
-  const [site, menuDto, gallery] = await Promise.all([
+  const mediaIndex: Record<string, Asset> = {};
+  const [site, menuDto, gallery, events] = await Promise.all([
     api.get<PublicSiteDto>('/public/site'),
     api.get<PublicMenuDto>('/public/menu'),
     api.get<MediaRef[]>('/public/gallery'),
+    loadPublicEvents(mediaIndex),
   ]);
-  const mediaIndex: Record<string, Asset> = {};
   const names = new Map(menuDto.allergens.map((a) => [a.code, a.name]));
   const menu = menuDto.categories.flatMap((c) => (c.items ?? []).map((i) => item(i, c.slug, names)));
   collect(menuDto.categories.flatMap((c) => (c.items ?? []).map((i) => i.photo)), mediaIndex);
@@ -163,6 +167,7 @@ export async function loadPublic(base: SiteSettings): Promise<PublicData> {
     gallery: gallery.map((g) => ({ id: g.id, asset: asset(g), inGallery: true, uploaded: false })),
     mediaIndex,
     demoContent: site.demoContent,
+    events,
   };
 }
 

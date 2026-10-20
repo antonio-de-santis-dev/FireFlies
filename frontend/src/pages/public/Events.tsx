@@ -85,6 +85,7 @@ function EventRow({ e }: { e: FireEvent }) {
         <span className="event-row__body">
           <span className="event-row__badges">
             {e.kind === 'format' ? <ConfirmBadge>Format ricorrente</ConfirmBadge> : null}
+            {e.status === 'annullato' && <span className="badge badge--neutral">Annullata</span>}
             {e.demo && <DemoBadge>Esempio demo</DemoBadge>}
           </span>
           <span className="event-row__title">{e.title}</span>
@@ -101,7 +102,7 @@ export function Events() {
   usePageMeta('Eventi');
   const { events, settings } = useStore();
   const [kind, setKind] = useState<'tutti' | 'format' | 'serata'>('tutti');
-  const published = useMemo(() => events.filter((e) => e.status === 'pubblicato'), [events]);
+  const published = useMemo(() => events.filter((e) => e.status === 'pubblicato' || e.status === 'annullato'), [events]);
   const list = published.filter((e) => kind === 'tutti' || e.kind === kind);
   const featured = published.find((e) => e.id === 'domeniche-del-fire');
 
@@ -161,7 +162,8 @@ export function Events() {
 
 export function EventDetail({ id }: { id: string }) {
   const { events, openBooking, settings, mediaOr, mediaAsset } = useStore();
-  const e = events.find((x) => x.id === id && x.status === 'pubblicato');
+  const e = events.find((x) => x.id === id && (x.status === 'pubblicato' || x.status === 'annullato'));
+  const cancelled = e?.status === 'annullato';
   usePageMeta(e ? e.title : 'Serata non trovata');
 
   if (!e) {
@@ -192,18 +194,21 @@ export function EventDetail({ id }: { id: string }) {
         <div className="event-detail__info">
           <p className="event-row__badges">
             {e.kind === 'format' && <ConfirmBadge>Format ricorrente</ConfirmBadge>}
+            {cancelled && <span className="badge badge--neutral">Serata annullata</span>}
             {e.demo && <DemoBadge>Serata d'esempio: data e artista non reali</DemoBadge>}
           </p>
           <h1>{e.title}</h1>
           <dl className="event-facts">
-            <div><dt><CalendarDays size={20} aria-hidden="true" /> Quando</dt><dd>{formatEventDate(e)}</dd></div>
+            <div><dt><CalendarDays size={20} aria-hidden="true" /> Quando</dt><dd>{formatEventDate(e)}{e.endTime ? ` – ${e.endTime}` : ''}</dd></div>
             <div><dt><Mic2 size={20} aria-hidden="true" /> Chi suona</dt><dd>{e.artist}</dd></div>
             <div><dt><Users size={20} aria-hidden="true" /> Posti</dt><dd>{e.seats}</dd></div>
             <div><dt><MapPin size={20} aria-hidden="true" /> Dove</dt><dd>{settings.addressLine}</dd></div>
           </dl>
           {e.body.map((p, i) => <p key={i} className="event-detail__p">{p}</p>)}
           <div className="event-detail__ctas">
-            {e.action === 'tavolo' ? (
+            {cancelled ? (
+              <p className="muted">Questa serata è stata annullata dal locale.</p>
+            ) : e.action === 'tavolo' ? (
               <button type="button" className="btn btn--primary" onClick={() => openBooking(e.id)}>Richiedi un tavolo per questa serata</button>
             ) : (
               <a className="btn btn--primary" href={settings.instagram} target="_blank" rel="noopener noreferrer">

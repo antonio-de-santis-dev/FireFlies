@@ -1,6 +1,7 @@
 import { CircleAlert, Inbox, Phone, Plus, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
+import { listEvents, type AdminEvent } from '../../api/events';
 import {
   bookingConfig, changeStatus, changeTables, createManual, getReservation, hhmm, listReservations, notificationLabel,
   REASON_LABEL, SOURCE_LABEL, STATUS_LABEL, TEMPLATE_LABEL, updateReservation,
@@ -177,6 +178,7 @@ export function Requests() {
                 <tr key={r.id}>
                   <td data-label="Quando">
                     <strong>{fmtShort(r.date)} · {hhmm(r.time)}</strong><br />
+                    {r.eventTitle && <><span className="small">Serata «{r.eventTitle}»</span><br /></>}
                     <span className="small muted">{SOURCE_LABEL[r.source]} · {r.reference} · ricevuta {fmtStamp(r.createdAt)}</span>
                   </td>
                   <td data-label="Persone">{r.guests}</td>
@@ -278,6 +280,7 @@ function ReservationDialog({ id, onClose, onChanged }: { id: string; onClose: ()
           <div><dt>Telefono</dt><dd><a href={`tel:${s.customerPhone}`}><Phone size={14} aria-hidden="true" /> {s.customerPhone}</a></dd></div>
           <div><dt>Email</dt><dd>{s.customerEmail ?? '—'}</dd></div>
           <div><dt>Origine</dt><dd>{SOURCE_LABEL[s.source]} · codice {s.reference}</dd></div>
+          {s.eventTitle && <div><dt>Evento</dt><dd>{s.eventTitle}</dd></div>}
           <div><dt>Stato</dt><dd>{STATUS_LABEL[s.status]}{s.statusReason ? ` · ${REASON_LABEL[s.statusReason] ?? s.statusReason}` : ''}</dd></div>
           <div><dt>Zona e tavoli</dt><dd>{detail.zoneName ?? '—'}{detail.tables.length ? ` · ${detail.tables.map((t) => `${t.code} (${t.maxSeats} posti${t.seatsOverride ? ', eccezione' : ''})`).join(', ')}` : ' · nessun tavolo'}</dd></div>
           <div><dt>Note del cliente</dt><dd>{detail.notes ?? '—'}</dd></div>
@@ -490,13 +493,20 @@ function ManualDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ field: string | null; text: string } | null>(null);
   const up = <K extends keyof typeof v>(k: K, val: (typeof v)[K]) => setV((x) => ({ ...x, [k]: val }));
+  // serate pubblicate su richiesta: una prenotazione per evento prende giorno e orario dall'evento
+  const [events, setEvents] = useState<AdminEvent[]>([]);
+  const [eventId, setEventId] = useState('');
+  useEffect(() => {
+    listEvents().then((list) => setEvents(list.filter((e) => e.status === 'PUBLISHED' && e.bookingMode === 'REQUEST'))).catch(() => undefined);
+  }, []);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const d = await createManual({ ...v, email: v.email || undefined, notes: v.notes || undefined, internalNote: v.internalNote || undefined });
+      const d = await createManual({ ...v, email: v.email || undefined, notes: v.notes || undefined, internalNote: v.internalNote || undefined,
+        eventId: eventId || undefined });
       const warn = d.warnings.map((w) => WARNING_LABEL[w] ?? w).join(' ');
       notify(`${d.summary.status === 'CONFIRMED' ? 'Prenotazione confermata' : 'Richiesta inserita in attesa'} (${d.summary.reference}).${warn ? ` Attenzione: ${warn}` : ''}`);
       onCreated(d.summary.id);
@@ -521,9 +531,18 @@ function ManualDialog({ onClose, onCreated }: { onClose: () => void; onCreated: 
             <label className="check"><input type="radio" name="mn-source" checked={v.source === 'EMAIL'} onChange={() => up('source', 'EMAIL')} /><span>Per email</span></label>
           </div>
         </fieldset>
+        {events.length > 0 && (
+          <div className="field">
+            <label htmlFor="mn-event">Per una serata <span className="muted">(facoltativo)</span></label>
+            <select id="mn-event" className="select" value={eventId} onChange={(e) => setEventId(e.target.value)}>
+              <option value="">Nessuna: prenotazione ordinaria</option>
+              {events.map((e) => <option key={e.id} value={e.id}>{e.title} · {e.date ? fmtShort(e.date) : ''} {e.startTime ? hhmm(e.startTime) : ''}</option>)}
+            </select>
+          </div>
+        )}
         <div className="editor__row">
-          <div className="field"><label htmlFor="mn-date">Giorno</label><input id="mn-date" className="input" type="date" min={todayIso()} value={v.date} onChange={(e) => up('date', e.target.value)} {...invalid('date')} /></div>
-          <div className="field"><label htmlFor="mn-time">Ora</label><input id="mn-time" className="input" type="time" step={900} value={v.time} onChange={(e) => up('time', e.target.value)} {...invalid('time')} /></div>
+          {!eventId && <><div className="field"><label htmlFor="mn-date">Giorno</label><input id="mn-date" className="input" type="date" min={todayIso()} value={v.date} onChange={(e) => up('date', e.target.value)} {...invalid('date')} /></div>
+          <div className="field"><label htmlFor="mn-time">Ora</label><input id="mn-time" className="input" type="time" step={900} value={v.time} onChange={(e) => up('time', e.target.value)} {...invalid('time')} /></div></>}
           <div className="field"><label htmlFor="mn-guests">Persone</label><input id="mn-guests" className="input" type="number" min={1} max={50} value={v.guests} onChange={(e) => up('guests', Number(e.target.value))} {...invalid('guests')} /></div>
         </div>
         <div className="editor__row">

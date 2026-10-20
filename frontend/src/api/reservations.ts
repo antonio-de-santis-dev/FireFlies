@@ -49,7 +49,7 @@ export type BookingOptions = {
 export type Receipt = { reference: string; status: ReservationStatus; date: string; time: string; guests: number; message: string };
 export type WebRequest = {
   date: string; time: string; guests: number; name: string; phone: string; email: string; notes: string;
-  privacyAccepted: boolean; website: string;
+  privacyAccepted: boolean; website: string; eventId?: string;
 };
 
 export const bookingOptions = (date?: string, guests?: number) => {
@@ -69,7 +69,7 @@ export type Summary = {
   id: string; reference: string; status: ReservationStatus; statusReason: string | null; source: ReservationSource;
   date: string; time: string; endTime: string; guests: number; customerName: string; customerPhone: string;
   customerEmail: string | null; notes: string | null; needsCallback: boolean; zoneId: string | null; tables: string[];
-  createdAt: string; version: number;
+  createdAt: string; version: number; eventId: string | null; eventTitle: string | null;
 };
 export type Action = 'CONFIRM' | 'REJECT' | 'CANCEL' | 'EDIT' | 'TABLES' | 'COMPLETE' | 'NO_SHOW' | 'CORRECT' | 'NOTES';
 export type Detail = {
@@ -118,6 +118,7 @@ export const changeTables = (id: string, body: { version: number; tableIds: stri
 export type ManualRequest = {
   source: 'PHONE' | 'EMAIL'; date: string; time: string; durationMinutes?: number; guests: number; name: string; phone: string;
   email?: string; notes?: string; internalNote?: string; confirmNow: boolean; needsCallback: boolean; tableIds?: string[];
+  eventId?: string;
 };
 export const createManual = (body: ManualRequest) => api.post<Detail>('/admin/reservations', body);
 

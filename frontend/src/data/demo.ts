@@ -1,3 +1,4 @@
+import { events as seedEvents } from './events';
 // Dati DIMOSTRATIVI per la sola build statica (`npm run build:static`, pagina apribile senza backend).
 // Nella build normale questo modulo non viene incluso: il sito legge tutto da /api/v1/public/*.
 import type { PublicData } from '../api/content';
@@ -18,5 +19,6 @@ export function demoData(): PublicData {
     gallery: seedMedia.filter((m) => m.inGallery),
     mediaIndex: { ...photos, ...mediaIndex },
     demoContent: true,
+    events: seedEvents,
   };
 }

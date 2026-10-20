@@ -97,7 +97,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         Vai al contenuto
       </a>
       <div className="demo-bar demo-bar--admin" role="note">
-        <span><strong>Area gestori</strong><span className="demo-bar__more"> · menu, foto, testi, orari, avvisi e prenotazioni si salvano sul server; gli eventi sono ancora dimostrativi</span></span>
+        <span><strong>Area gestori</strong><span className="demo-bar__more"> · menu, foto, testi, orari, avvisi, prenotazioni ed eventi si salvano sul server</span></span>
       </div>
       <div className="admin__shell">
         <aside className="admin__side">

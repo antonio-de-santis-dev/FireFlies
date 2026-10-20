@@ -1,7 +1,6 @@
 import { ArrowRight, CalendarDays, CircleAlert, Clock, Images, Inbox, Megaphone, Palette, PhoneCall, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { hhmm, listReservations, type Summary } from '../../api/reservations';
-import { DemoBadge } from '../../components/ui';
 import { formatEventDate } from '../../data/events';
 import { Link, usePageMeta } from '../../router';
 import { useStore } from '../../store';
@@ -36,7 +35,7 @@ export function Dashboard() {
   const requests = useRequestsToHandle();
   const fresh = requests?.pending ?? [];
   const toCall = requests?.callbacks ?? [];
-  const upcoming = events.filter((e) => e.kind === 'serata').sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
+  const upcoming = events.filter((e) => e.kind === 'serata' && e.status === 'pubblicato').sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
   const incomplete = menu.filter((m) => m.price == null || m.allergens == null);
   const todo = [
     !settings.hoursConfirmed && 'Orari di apertura',
@@ -48,9 +47,7 @@ export function Dashboard() {
 
   return (
     <>
-      <AdminHead title="Ciao! Ecco la giornata." lead="Richieste tavolo reali dal sito e dal telefono; gli eventi sono ancora esempi.">
-        <DemoBadge>Eventi demo</DemoBadge>
-      </AdminHead>
+      <AdminHead title="Ciao! Ecco la giornata." lead="Richieste tavolo ed eventi dal server: quello che vedi qui è quello che vede il sito." />
 
       <nav className="quick" aria-label="Azioni rapide">
         <ul>

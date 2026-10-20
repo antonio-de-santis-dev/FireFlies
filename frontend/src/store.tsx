@@ -5,7 +5,7 @@ import { onUnauthorized } from './api/client';
 import { loadPublic, type PublicData } from './api/content';
 import { photos, type Asset } from './data/assets';
 import type { Announcement, MediaItem, SiteContent } from './data/content';
-import { events as seedEvents, type FireEvent } from './data/events';
+import type { FireEvent } from './data/events';
 import type { Category, MenuItem } from './data/menu';
 import { defaultSettings, type SiteSettings } from './data/site';
 import { navigate } from './router';
@@ -41,7 +41,6 @@ type Action =
   | { type: 'media/index'; mediaIndex: Record<string, Asset> }
   | { type: 'menu/save'; item: MenuItem }
   | { type: 'menu/remove'; id: string }
-  | { type: 'event/save'; event: FireEvent }
   | { type: 'requests/pending'; count: number }
   | { type: 'settings/save'; settings: SiteSettings }
   | { type: 'content/save'; content: SiteContent; mediaIndex?: Record<string, Asset> }
@@ -68,7 +67,7 @@ function reducer(state: State, action: Action): State {
       return {
         ...state, contentStatus: 'ready', demoContent: d.demoContent, settings: d.settings, content: d.content,
         announcements: d.announcements, categories: d.categories, menu: d.menu, allergens: d.allergens, media: d.gallery,
-        mediaIndex: { ...state.mediaIndex, ...d.mediaIndex },
+        mediaIndex: { ...state.mediaIndex, ...d.mediaIndex }, events: d.events,
       };
     }
     case 'public/error':
@@ -83,8 +82,6 @@ function reducer(state: State, action: Action): State {
       return { ...state, menu: upsert(state.menu, action.item) };
     case 'menu/remove':
       return { ...state, menu: state.menu.filter((m) => m.id !== action.id) };
-    case 'event/save':
-      return { ...state, events: upsert(state.events, action.event) };
     case 'requests/pending':
       return { ...state, pendingRequests: action.count };
     case 'settings/save':
@@ -154,7 +151,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     menu: [],
     categories: [],
     allergens: [],
-    events: seedEvents,
+    events: [],
     pendingRequests: 0,
     settings: { ...defaultSettings, hours: defaultSettings.hours.map((h) => ({ ...h, open: null, close: null })) },
     content: emptyContent,

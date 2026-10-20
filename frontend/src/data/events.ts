@@ -1,7 +1,7 @@
 // Eventi DIMOSTRATIVI. «Domeniche del Fire» è un format citato nell'analisi Instagram
 // (non verificata): nessuna data viene inventata. Le altre serate sono esempi marcati DEMO.
 
-export type EventStatus = 'bozza' | 'pubblicato';
+export type EventStatus = 'bozza' | 'pubblicato' | 'annullato';
 
 export type FireEvent = {
   id: string;
@@ -18,6 +18,10 @@ export type FireEvent = {
   media: string[];
   seats: string;
   action: 'tavolo' | 'info';
+  /** Dal backend (FASE 6): id dell'evento, ora di fine e se ora si può chiedere un tavolo per la serata. */
+  uuid?: string;
+  endTime?: string | null;
+  bookable?: boolean;
 };
 
 export const events: FireEvent[] = [

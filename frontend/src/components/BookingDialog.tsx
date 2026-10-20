@@ -34,15 +34,18 @@ const SLOT_REASON: Record<string, string> = { FULL: 'completo', TOO_EARLY: 'trop
 const STEP_OF_FIELD: Record<string, number> = { date: 0, time: 1, guests: 2, name: 3, phone: 3, email: 3, notes: 3, privacyAccepted: 3 };
 const STEP_OF_CODE: Record<string, [number, keyof Values]> = {
   TOO_FAR: [0, 'date'], DAY_CLOSED: [1, 'time'], SLOT_NOT_AVAILABLE: [1, 'time'], TOO_EARLY: [1, 'time'],
-  FULLY_BOOKED: [1, 'time'], EVENT_BLOCKS_SLOT: [1, 'time'], PARTY_TOO_LARGE: [2, 'guests'],
+  FULLY_BOOKED: [1, 'time'], EVENT_BLOCKS_SLOT: [1, 'time'], PARTY_TOO_LARGE: [2, 'guests'], EVENT_FULL: [2, 'guests'],
 };
 
 export function BookingDialog() {
   const { booking, closeBooking, events, settings } = useStore();
   const event = events.find((e) => e.id === booking.eventId);
-  const [step, setStep] = useState(event?.date ? 1 : 0);
+  // serata prenotabile (FASE 6): giorno e orario sono quelli dell'evento, si parte dalle persone
+  const eventMode = !!(event?.uuid && event.bookable);
+  const [step, setStep] = useState(eventMode ? 2 : event?.date ? 1 : 0);
   const [values, setValues] = useState<Values>({
-    date: event?.date ?? '', time: '', guests: 2, name: '', phone: '', email: '', notes: '', privacy: false, website: '',
+    date: event?.date ?? '', time: eventMode ? event?.time ?? '' : '', guests: 2, name: '', phone: '', email: '', notes: '',
+    privacy: false, website: '',
   });
   const [errors, setErrors] = useState<Errors>({});
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -130,6 +133,7 @@ export function BookingDialog() {
       const r = await sendRequest({
         date: values.date, time: values.time, guests: values.guests, name: values.name.trim(), phone: values.phone.trim(),
         email: values.email.trim(), notes: values.notes.trim(), privacyAccepted: values.privacy, website: values.website,
+        eventId: eventMode ? event!.uuid : undefined,
       }, keyRef.current);
       setReceipt(r);
     } catch (e) {
@@ -140,7 +144,7 @@ export function BookingDialog() {
       const field = (e.problem as { context?: { field?: string } } | undefined)?.context?.field;
       const target = field && field in STEP_OF_FIELD ? ([STEP_OF_FIELD[field], field === 'privacyAccepted' ? 'privacy' : field] as const)
         : STEP_OF_CODE[e.code];
-      if (target) {
+      if (target && !(eventMode && target[0] < 2)) {
         const [s, key] = target;
         if (s === 1) setReload((n) => n + 1); // gli orari sono cambiati: si ricaricano
         setStep(s);
@@ -367,9 +371,11 @@ export function BookingDialog() {
                       <div key={k as string}>
                         <dt>{k}</dt>
                         <dd>{v}</dd>
-                        <button type="button" className="btn btn--quiet btn--sm" onClick={() => setStep(s as number)} aria-label={`Modifica ${String(k).toLowerCase()}`}>
-                          <Pencil size={14} aria-hidden="true" /> Modifica
-                        </button>
+                        {!(eventMode && (s as number) < 2) && (
+                          <button type="button" className="btn btn--quiet btn--sm" onClick={() => setStep(s as number)} aria-label={`Modifica ${String(k).toLowerCase()}`}>
+                            <Pencil size={14} aria-hidden="true" /> Modifica
+                          </button>
+                        )}
                       </div>
                     ))}
                   </dl>
@@ -379,7 +385,7 @@ export function BookingDialog() {
             </div>
 
             <div className="booking-nav">
-              {step > 0 && (
+              {step > (eventMode ? 2 : 0) && (
                 <button type="button" className="btn btn--quiet" disabled={sending} onClick={() => { setErrors({}); setStep((s) => s - 1); }}>
                   <ArrowLeft size={18} aria-hidden="true" /> Indietro
                 </button>
