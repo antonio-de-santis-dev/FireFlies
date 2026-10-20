@@ -29,7 +29,8 @@ public class ReservationViews {
 
     public record Summary(UUID id, String reference, String status, String statusReason, String source, LocalDate date,
             LocalTime time, LocalTime endTime, int guests, String customerName, String customerPhone, String customerEmail,
-            String notes, boolean needsCallback, UUID zoneId, List<String> tables, Instant createdAt, int version) {
+            String notes, boolean needsCallback, UUID zoneId, List<String> tables, Instant createdAt, int version, UUID eventId,
+            String eventTitle) {
     }
 
     public record HistoryEntry(String fromStatus, String toStatus, String reason, String note, String by, Instant at) {
@@ -84,7 +85,7 @@ public class ReservationViews {
         return new Summary(r.id(), r.publicRef(), r.status(), r.statusReason(), r.source(), start.toLocalDate(),
                 start.toLocalTime(), r.endsAt().atZone(BusinessTime.ZONE).toLocalTime(), r.guestCount(), r.customerName(),
                 r.customerPhone(), r.customerEmail(), r.customerNotes(), r.needsCallback(), r.zoneId(), tables,
-                r.createdAt(), r.version());
+                r.createdAt(), r.version(), r.eventId(), eventTitle(r.eventId()));
     }
 
     Detail detail(ReservationStore.Row r, List<String> warnings) {
@@ -173,6 +174,11 @@ public class ReservationViews {
                 .query((rs, n) -> new ChangeEntry(rs.getString(1), rs.getString(2),
                         rs.getObject(3, OffsetDateTime.class).toInstant(), json.readValue(rs.getString(4), Map.class)))
                 .list();
+    }
+
+    private String eventTitle(UUID eventId) {
+        return eventId == null ? null
+                : jdbc.sql("SELECT title FROM events WHERE id = ?").param(eventId).query(String.class).optional().orElse(null);
     }
 
     private String zoneName(UUID zoneId) {

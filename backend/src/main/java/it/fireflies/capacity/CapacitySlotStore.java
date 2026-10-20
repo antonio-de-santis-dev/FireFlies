@@ -112,6 +112,24 @@ class CapacitySlotStore {
                 """, rows);
     }
 
+    void setExclusive(UUID zoneId, UUID eventId, Instant fromInclusive, Instant toExclusive) {
+        jdbc.sql("""
+                UPDATE capacity_slots SET exclusive_event_id = ?, updated_at = now()
+                 WHERE zone_id = ? AND slot_start >= ? AND slot_start < ?
+                """).params(eventId, zoneId, utc(fromInclusive), utc(toExclusive)).update();
+    }
+
+    /** Lock dei quanti riservati a un evento in ordine di zona e orario, prima di liberarli. */
+    void lockExclusiveSlots(UUID eventId) {
+        jdbc.sql("SELECT 1 FROM capacity_slots WHERE exclusive_event_id = ? ORDER BY zone_id, slot_start FOR UPDATE")
+                .param(eventId).query(Integer.class).list();
+    }
+
+    int clearExclusive(UUID eventId) {
+        return jdbc.sql("UPDATE capacity_slots SET exclusive_event_id = NULL, updated_at = now() WHERE exclusive_event_id = ?")
+                .param(eventId).update();
+    }
+
     void updateCapacities(UUID zoneId, Map<Instant, Integer> capacities) {
         List<Object[]> rows = capacities.entrySet().stream()
                 .map(e -> new Object[] {e.getValue(), zoneId, utc(e.getKey())})

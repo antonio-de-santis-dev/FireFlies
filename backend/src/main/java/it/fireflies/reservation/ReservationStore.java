@@ -24,7 +24,7 @@ class ReservationStore {
             Instant startsAt, Instant endsAt, Instant occupiedUntil, int guestCount, UUID serviceWindowId, UUID zoneId,
             String customerName, String customerPhone, String customerEmail, String customerNotes, String internalNote,
             boolean needsCallback, UUID idempotencyKey, String fingerprint, UUID createdBy, UUID handledBy,
-            Instant confirmedAt, Instant closedAt, Instant createdAt, Instant updatedAt, int version) {
+            Instant confirmedAt, Instant closedAt, Instant createdAt, Instant updatedAt, int version, UUID eventId) {
 
         boolean occupying() {
             return "CONFIRMED".equals(status) || "COMPLETED".equals(status) || "NO_SHOW".equals(status);
@@ -34,7 +34,7 @@ class ReservationStore {
     record NewRow(String publicRef, String status, String source, LocalDate reservationDate, Instant startsAt, Instant endsAt,
             int guestCount, UUID serviceWindowId, UUID zoneId, String customerName, String customerPhone, String customerEmail,
             String customerNotes, String internalNote, String privacyVersion, Instant privacyAckAt, UUID idempotencyKey,
-            String fingerprint, UUID createdBy) {
+            String fingerprint, UUID createdBy, UUID eventId) {
     }
 
     record HistoryRow(String fromStatus, String toStatus, String reason, String note, UUID changedBy, String changedByName,
@@ -53,7 +53,7 @@ class ReservationStore {
             id, public_ref, status, status_reason, source, reservation_date, starts_at, ends_at, occupied_until,
             guest_count, service_window_id, capacity_zone_id, customer_name, customer_phone_e164, customer_email,
             customer_notes, internal_note, needs_callback, idempotency_key, request_fingerprint, created_by_user_id,
-            handled_by_user_id, confirmed_at, closed_at, created_at, updated_at, version
+            handled_by_user_id, confirmed_at, closed_at, created_at, updated_at, version, event_id
             """;
 
     private final JdbcClient jdbc;
@@ -67,13 +67,13 @@ class ReservationStore {
                 INSERT INTO reservations (public_ref, status, source, reservation_date, starts_at, ends_at, guest_count,
                                           service_window_id, capacity_zone_id, customer_name, customer_phone_e164,
                                           customer_email, customer_notes, internal_note, privacy_notice_version,
-                                          privacy_ack_at, idempotency_key, request_fingerprint, created_by_user_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+                                          privacy_ack_at, idempotency_key, request_fingerprint, created_by_user_id, event_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
                 """)
                 .params(r.publicRef(), r.status(), r.source(), r.reservationDate(), utc(r.startsAt()), utc(r.endsAt()),
                         r.guestCount(), r.serviceWindowId(), r.zoneId(), r.customerName(), r.customerPhone(),
                         r.customerEmail(), r.customerNotes(), r.internalNote(), r.privacyVersion(), utc(r.privacyAckAt()),
-                        r.idempotencyKey(), r.fingerprint(), r.createdBy())
+                        r.idempotencyKey(), r.fingerprint(), r.createdBy(), r.eventId())
                 .query(UUID.class).single();
     }
 
@@ -87,6 +87,14 @@ class ReservationStore {
 
     Optional<Row> lock(UUID id) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM reservations WHERE id = ? FOR UPDATE").param(id).query(ReservationStore::row).optional();
+    }
+
+    /** Lock di più prenotazioni in ordine di id (operazioni di massa, es. annullamento di un evento). */
+    void lockAll(List<UUID> ids) {
+        if (!ids.isEmpty()) {
+            jdbc.sql("SELECT id FROM reservations WHERE id = ANY (?) ORDER BY id FOR UPDATE").param(ids.toArray(UUID[]::new))
+                    .query(UUID.class).list();
+        }
     }
 
     Optional<Row> byIdempotencyKey(UUID key) {
@@ -276,7 +284,7 @@ class ReservationStore {
                 rs.getObject("idempotency_key", UUID.class), rs.getString("request_fingerprint"),
                 rs.getObject("created_by_user_id", UUID.class), rs.getObject("handled_by_user_id", UUID.class),
                 instant(rs, "confirmed_at"), instant(rs, "closed_at"), instant(rs, "created_at"), instant(rs, "updated_at"),
-                rs.getInt("version"));
+                rs.getInt("version"), rs.getObject("event_id", UUID.class));
     }
 
     private static Instant instant(ResultSet rs, String column) throws SQLException {

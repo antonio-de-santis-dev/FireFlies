@@ -42,12 +42,12 @@ import it.fireflies.security.Role;
 class ReservationController {
 
     record WebBody(LocalDate date, LocalTime time, Integer guests, String name, String phone, String email, String notes,
-            Boolean privacyAccepted, String website) {
+            Boolean privacyAccepted, String website, UUID eventId) {
     }
 
     record ManualBody(String source, LocalDate date, LocalTime time, Integer durationMinutes, Integer guests, String name,
             String phone, String email, String notes, String internalNote, UUID zoneId, Boolean confirmNow,
-            List<UUID> tableIds, Boolean needsCallback) {
+            List<UUID> tableIds, Boolean needsCallback, UUID eventId) {
     }
 
     record StatusBody(@NotNull Integer version, String status, String reason, String note, UUID zoneId, List<UUID> tableIds,
@@ -88,7 +88,7 @@ class ReservationController {
             @RequestBody WebBody body, HttpServletRequest request) {
         ReservationService.Receipt receipt = reservations.createWeb(new ReservationService.WebRequest(body.date(), body.time(),
                 body.guests() == null ? 0 : body.guests(), body.name(), body.phone(), body.email(), body.notes(),
-                Boolean.TRUE.equals(body.privacyAccepted()), body.website()), uuid(key), request.getRemoteAddr());
+                Boolean.TRUE.equals(body.privacyAccepted()), body.website(), body.eventId()), uuid(key), request.getRemoteAddr());
         return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore()).body(receipt);
     }
 
@@ -122,7 +122,7 @@ class ReservationController {
         ReservationViews.Detail detail = reservations.createManual(actor(gestore), new ReservationService.ManualRequest(b.source(),
                 b.date(), b.time(), b.durationMinutes(), b.guests() == null ? 0 : b.guests(), b.name(), b.phone(), b.email(),
                 b.notes(), b.internalNote(), b.zoneId(), Boolean.TRUE.equals(b.confirmNow()), b.tableIds(),
-                Boolean.TRUE.equals(b.needsCallback())));
+                Boolean.TRUE.equals(b.needsCallback()), b.eventId()));
         return ResponseEntity.status(HttpStatus.CREATED).body(detail);
     }
 

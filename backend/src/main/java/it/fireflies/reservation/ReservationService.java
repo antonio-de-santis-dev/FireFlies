@@ -37,6 +37,7 @@ import it.fireflies.common.ApiException;
 import it.fireflies.common.BusinessTime;
 import it.fireflies.dining.BookingCalendar;
 import it.fireflies.dining.DiningStore;
+import it.fireflies.event.EventBooking;
 import it.fireflies.notification.NotificationOutbox;
 
 /**
@@ -55,8 +56,9 @@ public class ReservationService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final DateTimeFormatter DATE_IT = DateTimeFormatter.ofPattern("d/M/yyyy");
 
+    /** {@code eventId}: richiesta per un evento (giorno e orari sono quelli dell'evento, {@code date}/{@code time} ignorati). */
     public record WebRequest(LocalDate date, LocalTime time, int guests, String name, String phone, String email,
-            String notes, boolean privacyAccepted, String website) {
+            String notes, boolean privacyAccepted, String website, UUID eventId) {
     }
 
     public record Receipt(String reference, String status, LocalDate date, LocalTime time, int guests, String message) {
@@ -64,7 +66,7 @@ public class ReservationService {
 
     public record ManualRequest(String source, LocalDate date, LocalTime time, Integer durationMinutes, int guests,
             String name, String phone, String email, String notes, String internalNote, UUID zoneId, boolean confirmNow,
-            List<UUID> tableIds, boolean needsCallback) {
+            List<UUID> tableIds, boolean needsCallback, UUID eventId) {
     }
 
     public record StatusChange(int version, String status, String reason, String note, UUID zoneId, List<UUID> tableIds,
@@ -89,9 +91,11 @@ public class ReservationService {
     private final WebRequestLimiter limiter;
     private final AuditLog audit;
     private final Clock clock;
+    private final EventBooking events;
 
     ReservationService(ReservationStore store, CapacityLedger ledger, BookingCalendar calendar, NotificationOutbox outbox,
-            WebRequestLimiter limiter, AuditLog audit, Clock clock) {
+            WebRequestLimiter limiter, AuditLog audit, Clock clock, EventBooking events) {
+        this.events = events;
         this.store = store;
         this.ledger = ledger;
         this.calendar = calendar;
@@ -121,7 +125,7 @@ public class ReservationService {
                 ApiErrors.invalid("phone", "Scrivi un numero di telefono valido, es. 333 123 4567."));
         String email = email(r.email());
         String notes = optional(r.notes(), "notes", 500);
-        String fingerprint = fingerprint(r.date(), r.time(), r.guests(), name, phone, email, notes);
+        String fingerprint = fingerprint(r.date(), r.time(), r.guests(), name, phone, email, notes, r.eventId());
 
         Optional<ReservationStore.Row> previous = store.byIdempotencyKey(idempotencyKey);
         if (previous.isPresent()) {
@@ -149,32 +153,64 @@ public class ReservationService {
                     "Dal sito si può chiedere un tavolo fino a " + policy.maxPartySizeWeb()
                             + " persone: per gruppi più grandi chiamaci.", Map.of("maxPartySize", policy.maxPartySizeWeb()));
         }
-        Slot slot = webSlot(r.date(), r.time(), policy, now);
+        EventBooking.BookableEvent event = r.eventId() == null ? null : bookableEvent(r.eventId(), r.guests(), now, policy);
+        Slot slot = event == null ? webSlot(r.date(), r.time(), policy, now) : null;
         if (store.webRequestsFromPhoneSince(phone, now.minus(Duration.ofDays(1))) >= 3) {
             throw rateLimited(3600, "Da questo numero sono già arrivate diverse richieste oggi: per altre chiamaci.");
         }
+        UUID zoneId = event == null ? slot.window().zoneId() : eventZone(event);
+        Instant start = event == null ? slot.start() : event.startsAt();
+        Instant end = event == null ? slot.end() : event.endsAt();
         // controllo preventivo, solo informativo (senza lock): quello vincolante avviene alla conferma (§5)
-        for (CapacityLedger.QuantumState q : ledger.read(slot.window().zoneId(), slot.start(), slot.end())) {
-            if (q.exclusiveEventId() != null) {
-                throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "EVENT_BLOCKS_SLOT", "Serata riservata",
-                        "In quell'orario c'è un evento: guarda la pagina Eventi.");
-            }
-            if (q.free() < r.guests()) {
-                throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "FULLY_BOOKED", "Orario completo",
-                        "In quell'orario siamo al completo: scegli un altro orario o chiamaci.");
+        if (zoneId != null) {
+            for (CapacityLedger.QuantumState q : ledger.read(zoneId, start, end)) {
+                if (q.exclusiveEventId() != null && (event == null || !q.exclusiveEventId().equals(event.id()))) {
+                    throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "EVENT_BLOCKS_SLOT", "Serata riservata",
+                            "In quell'orario c'è un evento: guarda la pagina Eventi.");
+                }
+                if (q.free() < r.guests()) {
+                    throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "FULLY_BOOKED", "Orario completo",
+                            "In quell'orario siamo al completo: scegli un altro orario o chiamaci.");
+                }
             }
         }
 
-        UUID id = store.insert(new ReservationStore.NewRow(newReference(), "PENDING", "WEB", r.date(), slot.start(), slot.end(),
-                r.guests(), slot.window().id(), slot.window().zoneId(), name, phone, email, notes, null, PRIVACY_VERSION, now,
-                idempotencyKey, fingerprint, null));
+        UUID id = store.insert(new ReservationStore.NewRow(newReference(), "PENDING", "WEB", BusinessTime.serviceDate(start), start,
+                end, r.guests(), slot == null ? null : slot.window().id(), zoneId, name, phone, email, notes, null,
+                PRIVACY_VERSION, now, idempotencyKey, fingerprint, null, event == null ? null : event.id()));
         store.history(id, null, "PENDING", null, null, null);
         ReservationStore.Row row = store.find(id).orElseThrow();
         notify(row, "RESERVATION_NEW_FOR_VENUE", "created");
         notify(row, "RESERVATION_RECEIVED", "created");
         audit.record(null, AuditAction.RESERVATION_CREATED, AGGREGATE, id.toString(),
-                Map.of("source", "WEB", "guests", r.guests(), "ref", row.publicRef()));
+                Map.of("source", "WEB", "guests", r.guests(), "ref", row.publicRef(), "event", event != null));
         return receipt(row);
+    }
+
+    /** Evento per cui si chiede un tavolo: pubblicato, prenotabile, non troppo vicino, con posti nella quota. */
+    private EventBooking.BookableEvent bookableEvent(UUID eventId, int guests, Instant now, DiningStore.PolicyRow policy) {
+        EventBooking.BookableEvent event = events.find(eventId).filter(EventBooking.BookableEvent::acceptsRequests)
+                .orElseThrow(() -> new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "EVENT_NOT_BOOKABLE", "Evento non prenotabile",
+                        "Per questo evento non si può chiedere un tavolo."));
+        if (policy != null && event.startsAt().isBefore(now.plus(Duration.ofMinutes(policy.minLeadMinutes())))) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "TOO_EARLY", "Troppo tardi",
+                    "La serata inizia a breve: per un tavolo chiamaci.");
+        }
+        if (guests > event.remaining()) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "EVENT_FULL", "Serata al completo",
+                    event.remaining() == 0 ? "Per questa serata i posti sono esauriti."
+                            : "Per questa serata restano pochi posti: prova con meno persone o chiamaci.");
+        }
+        return event;
+    }
+
+    /** Zona di una prenotazione per evento: quella dell'evento, oppure l'unica zona attiva (con più zone si sceglie alla conferma). */
+    private UUID eventZone(EventBooking.BookableEvent event) {
+        if (event.zoneId() != null) {
+            return event.zoneId();
+        }
+        List<DiningStore.ZoneRow> zones = calendar.activeZones();
+        return zones.size() == 1 ? zones.getFirst().id() : null;
     }
 
     record Slot(DiningStore.WindowRow window, Instant start, Instant end) {
@@ -233,10 +269,25 @@ public class ReservationService {
         String notes = optional(r.notes(), "notes", 500);
         String internal = optional(r.internalNote(), "internalNote", 500);
         Instant now = Instant.now(clock);
-        Timing t = timing(r.date(), r.time(), r.durationMinutes(), r.zoneId(), now);
+        Timing t;
+        UUID eventId = null;
+        if (r.eventId() != null) {
+            EventBooking.BookableEvent event = events.find(r.eventId()).filter(EventBooking.BookableEvent::acceptsRequests)
+                    .orElseThrow(() -> new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "EVENT_NOT_BOOKABLE",
+                            "Evento non prenotabile", "L'evento non è pubblicato o non accetta prenotazioni."));
+            if (!event.startsAt().isAfter(now)) {
+                throw ApiErrors.invalid("eventId", "L'evento è già iniziato.");
+            }
+            UUID zone = r.zoneId() != null ? r.zoneId() : eventZone(event);
+            t = new Timing(null, zone, event.startsAt(), event.endsAt(), List.of());
+            eventId = event.id();
+        } else {
+            t = timing(r.date(), r.time(), r.durationMinutes(), r.zoneId(), now);
+        }
 
-        UUID id = store.insert(new ReservationStore.NewRow(newReference(), "PENDING", source, r.date(), t.start(), t.end(),
-                r.guests(), t.window().id(), t.zoneId(), name, phone, email, notes, internal, null, null, null, null, actor.id()));
+        UUID id = store.insert(new ReservationStore.NewRow(newReference(), "PENDING", source, BusinessTime.serviceDate(t.start()),
+                t.start(), t.end(), r.guests(), t.window() == null ? null : t.window().id(), t.zoneId(), name, phone, email, notes,
+                internal, null, null, null, null, actor.id(), eventId));
         store.history(id, null, "PENDING", null, null, actor.id());
         if (r.needsCallback()) {
             ReservationStore.Row row = store.find(id).orElseThrow();
@@ -330,10 +381,7 @@ public class ReservationService {
                 if (!now.isBefore(row.startsAt())) {
                     throw transition("Dopo l'inizio non si annulla: segna «Completata» o «Non presentato».");
                 }
-                ledger.release(occupancy(row));
-                store.releaseAssignments(id);
-                outbox.supersede(AGGREGATE, id, List.of("RESERVATION_CONFIRMED", "RESERVATION_UPDATED"));
-                close(actor, row, "CANCELLED", reason(c.reason(), CANCEL_REASONS), c.note(), "RESERVATION_CANCELLED");
+                cancelConfirmed(actor, row, reason(c.reason(), CANCEL_REASONS), c.note());
             }
             case "CONFIRMED->COMPLETED" -> {
                 if (now.isBefore(row.startsAt())) {
@@ -365,6 +413,40 @@ public class ReservationService {
         return detail(id, List.of());
     }
 
+    /** CONFIRMED → CANCELLED: posti, quota dell'evento e tavoli rilasciati, notifiche non partite superate. */
+    private void cancelConfirmed(Actor actor, ReservationStore.Row row, String reason, String note) {
+        if (row.eventId() != null) {
+            events.lock(row.eventId()); // l'evento prima della zona e dei quanti
+        }
+        ledger.release(occupancy(row));
+        store.releaseAssignments(row.id());
+        outbox.supersede(AGGREGATE, row.id(), List.of("RESERVATION_CONFIRMED", "RESERVATION_UPDATED"));
+        close(actor, row, "CANCELLED", reason, note, "RESERVATION_CANCELLED");
+        if (row.eventId() != null) {
+            events.giveBack(row.eventId(), row.guestCount());
+        }
+    }
+
+    /** Blocca più prenotazioni in ordine di id (annullamento di un evento: prima le prenotazioni, poi l'evento). */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void lockInOrder(List<UUID> ids) {
+        store.lockAll(ids.stream().sorted().toList());
+    }
+
+    /**
+     * Annullamento dovuto all'annullamento dell'evento (motivo EVENT_CANCELLED): richieste in attesa chiuse, confermate
+     * non ancora iniziate rilasciate. Quelle già iniziate restano da gestire a mano.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void cancelForEvent(Actor actor, UUID id) {
+        ReservationStore.Row row = store.lock(id).orElseThrow(ReservationService::notFound);
+        if (row.status().equals("PENDING")) {
+            close(actor, row, "CANCELLED", "EVENT_CANCELLED", null, "RESERVATION_CANCELLED");
+        } else if (row.status().equals("CONFIRMED") && Instant.now(clock).isBefore(row.startsAt())) {
+            cancelConfirmed(actor, row, "EVENT_CANCELLED", null);
+        }
+    }
+
     /** PENDING → CONFIRMED (§3.3): zona determinata, occupazione nel registro, tavoli facoltativi. */
     private void confirm(Actor actor, ReservationStore.Row row, UUID requestedZone, List<UUID> tableIds, boolean overrideSeats,
             String overrideReason, String note) {
@@ -372,10 +454,18 @@ public class ReservationService {
         if (!row.startsAt().isAfter(now)) {
             throw transition("L'orario è già passato: la richiesta non si può più confermare.");
         }
-        UUID zoneId = requestedZone != null ? requestedZone : row.zoneId() != null ? row.zoneId() : singleActiveZone();
+        UUID eventZone = row.eventId() == null ? null : events.find(row.eventId()).map(EventBooking.BookableEvent::zoneId).orElse(null);
+        UUID zoneId = requestedZone != null ? requestedZone : row.zoneId() != null ? row.zoneId()
+                : eventZone != null ? eventZone : singleActiveZone();
         calendar.zone(zoneId).filter(DiningStore.ZoneRow::active).orElseThrow(() -> ApiErrors.invalid("zoneId", "Scegli una zona attiva."));
         ReservationStore.Row placed = withZone(row, zoneId, row.endsAt());
-        ledger.occupy(occupancy(placed)); // CAPACITY_EXCEEDED / EVENT_BLOCKS_SLOT: tutta la transazione si annulla
+        if (row.eventId() != null) {
+            // ordine dei lock: prenotazione → evento → zona → quanti; quota dell'evento e registro nella stessa transazione
+            events.acquire(row.eventId(), row.guestCount());
+            ledger.occupyForEvent(occupancy(placed), row.eventId());
+        } else {
+            ledger.occupy(occupancy(placed)); // CAPACITY_EXCEEDED / EVENT_BLOCKS_SLOT: tutta la transazione si annulla
+        }
         store.updateStatus(row.id(), "CONFIRMED", null, zoneId, row.endsAt(), actor.id(), true, false);
         store.history(row.id(), row.status(), "CONFIRMED", null, optional(note, "note", 300), actor.id());
         if (tableIds != null && !tableIds.isEmpty()) {
@@ -440,7 +530,28 @@ public class ReservationService {
         UUID zoneId = row.zoneId();
         List<String> warnings = List.of();
         boolean timing = u.date() != null || u.time() != null || u.durationMinutes() != null || u.guests() != null || u.zoneId() != null;
-        if (timing) {
+        if (row.eventId() != null && (u.date() != null || u.time() != null || u.durationMinutes() != null || u.zoneId() != null)) {
+            ZonedDateTime local = row.startsAt().atZone(BusinessTime.ZONE);
+            boolean same = (u.date() == null || u.date().equals(local.toLocalDate())) && (u.time() == null || u.time().equals(local.toLocalTime()))
+                    && (u.durationMinutes() == null || u.durationMinutes() == Duration.between(row.startsAt(), row.endsAt()).toMinutes())
+                    && (u.zoneId() == null || u.zoneId().equals(row.zoneId()));
+            if (!same) {
+                throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "EVENT_TIME_FIXED", "Orario dell'evento",
+                        "Giorno, orario e zona di una prenotazione per un evento sono quelli dell'evento: si cambiano solo persone e dati.");
+            }
+        }
+        if (timing && row.eventId() != null) {
+            if (!open) {
+                throw transition("Una prenotazione chiusa non si modifica: puoi cambiare solo note e recapiti.");
+            }
+            guests = u.guests() != null ? u.guests() : row.guestCount();
+            if (guests < 1 || guests > 50) {
+                throw ApiErrors.invalid("guests", "Le persone vanno da 1 a 50.");
+            }
+            if (guests != row.guestCount()) {
+                changed.put("guests", guests);
+            }
+        } else if (timing) {
             if (!open) {
                 throw transition("Una prenotazione chiusa non si può spostare: puoi cambiare solo note e recapiti.");
             }
@@ -472,7 +583,12 @@ public class ReservationService {
         Instant occupiedUntil = row.occupiedUntil();
         if (row.status().equals("CONFIRMED") && !changed.isEmpty()) {
             // libera il vecchio intervallo e occupa il nuovo insieme: se non sta, nulla cambia (409)
-            ledger.change(occupancy(row), new Occupancy(zoneId, new OccupancyInterval(start, end), guests));
+            if (row.eventId() != null) {
+                events.change(row.eventId(), guests - row.guestCount());
+                ledger.changeForEvent(occupancy(row), new Occupancy(zoneId, new OccupancyInterval(start, end), guests), row.eventId());
+            } else {
+                ledger.change(occupancy(row), new Occupancy(zoneId, new OccupancyInterval(start, end), guests));
+            }
             occupiedUntil = end;
         }
         if (!Objects.equals(name, row.customerName()) || !Objects.equals(phone, row.customerPhone())
@@ -673,7 +789,7 @@ public class ReservationService {
                 r.startsAt(), r.endsAt(), occupiedUntil, r.guestCount(), r.serviceWindowId(), zoneId, r.customerName(),
                 r.customerPhone(), r.customerEmail(), r.customerNotes(), r.internalNote(), r.needsCallback(),
                 r.idempotencyKey(), r.fingerprint(), r.createdBy(), r.handledBy(), r.confirmedAt(), r.closedAt(),
-                r.createdAt(), r.updatedAt(), r.version());
+                r.createdAt(), r.updatedAt(), r.version(), r.eventId());
     }
 
     static Instant ceilToQuantum(Instant instant) {

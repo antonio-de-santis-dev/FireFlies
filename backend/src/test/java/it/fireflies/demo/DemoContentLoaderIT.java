@@ -10,6 +10,7 @@ import org.springframework.context.ApplicationContext;
 import it.fireflies.audit.AuditLog;
 import it.fireflies.content.ContentService;
 import it.fireflies.dining.DiningService;
+import it.fireflies.event.EventService;
 import it.fireflies.media.MediaService;
 import it.fireflies.menu.MenuService;
 import it.fireflies.support.PostgresIntegrationTest;
@@ -42,6 +43,9 @@ class DemoContentLoaderIT extends PostgresIntegrationTest {
     @Autowired
     DiningService dining;
 
+    @Autowired
+    EventService events;
+
     @Test
     void nelProfiloTestIlCaricatoreNonEsiste() {
         assertThat(context.getBeanNamesForType(DemoContentLoader.class)).isEmpty();
@@ -51,7 +55,7 @@ class DemoContentLoaderIT extends PostgresIntegrationTest {
     @Test
     void caricaIlMockupUnaSolaVoltaEMarcaIlDatabase() throws Exception {
         DemoContentLoader loader = new DemoContentLoader(new DemoProperties(true, "../frontend/public/assets/fireflies"),
-                media, menu, content, jdbc, json, audit, dining);
+                media, menu, content, jdbc, json, audit, dining, events);
         loader.run(null);
 
         assertThat(jdbc.sql("SELECT count(*) FROM media_assets").query(Long.class).single()).isEqualTo(32);
@@ -72,6 +76,14 @@ class DemoContentLoaderIT extends PostgresIntegrationTest {
         assertThat(booking.windows()).hasSize(6 * 4).noneMatch(w -> w.isoDay() == 3);
         assertThat(booking.policy().webBookingEnabled()).isTrue();
         assertThat(jdbc.sql("SELECT count(*) FROM reservations").query(Long.class).single()).isZero();
+        // eventi d'esempio: format e serata pubblicati, una bozza; la serata riserva in esclusiva i suoi quanti
+        assertThat(events.list()).extracting(EventService.AdminEvent::slug, EventService.AdminEvent::status)
+                .containsExactlyInAnyOrder(org.assertj.core.groups.Tuple.tuple("domeniche-del-fire", "PUBLISHED"),
+                        org.assertj.core.groups.Tuple.tuple("dj-set-esempio", "PUBLISHED"),
+                        org.assertj.core.groups.Tuple.tuple("aperitivo-vinili-esempio", "DRAFT"));
+        assertThat(events.publicEvents()).extracting(EventService.PublicEvent::slug).containsExactly("domeniche-del-fire", "dj-set-esempio");
+        assertThat(jdbc.sql("SELECT count(*) FROM capacity_slots WHERE exclusive_event_id IS NOT NULL").query(Long.class).single())
+                .as("22:30–02:00 = 14 quanti").isEqualTo(14);
 
         loader.run(null);
         assertThat(jdbc.sql("SELECT count(*) FROM media_assets").query(Long.class).single()).as("seconda volta: niente").isEqualTo(32);

@@ -47,6 +47,50 @@ public class CapacityLedger {
         apply(List.of(), List.of(occupancy));
     }
 
+    /**
+     * Occupa i posti di una prenotazione confermata per un evento (BOOKING_RULES §7): stesse regole di
+     * {@link #occupy}, ma i quanti riservati in esclusiva a <b>quell'</b>evento sono ammessi.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void occupyForEvent(Occupancy occupancy, UUID eventId) {
+        apply(List.of(), List.of(occupancy), eventId);
+    }
+
+    /** Come {@link #change}, per una prenotazione di un evento (es. persone cambiate). */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void changeForEvent(Occupancy before, Occupancy after, UUID eventId) {
+        apply(List.of(before), List.of(after), eventId);
+    }
+
+    /**
+     * Riserva in esclusiva a un evento i quanti di una zona nell'intervallo (pubblicazione di un evento esclusivo,
+     * §7.3). Stessa procedura a lock ordinati di una conferma: lock condiviso della zona, quanti mancanti creati,
+     * quanti bloccati in ordine di orario. Se un quanto ha già persone confermate o è riservato a un altro evento,
+     * <b>nulla viene marcato</b> e si restituiscono i quanti in conflitto (il chiamante annulla la transazione).
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public List<QuantumState> markExclusive(UUID zoneId, UUID eventId, OccupancyInterval interval) {
+        ZoneRow zone = store.lockZoneShared(zoneId).orElseThrow(() -> CapacityExceptions.zoneNotFound(zoneId));
+        List<Instant> quanta = interval.quanta();
+        store.insertMissingSlots(zoneId, quanta, q -> capacityPolicy.capacityFor(zoneId, zone.physicalCapacity(), q));
+        List<SlotRow> locked = store.lockSlots(zoneId, interval.start(), interval.end());
+        List<QuantumState> conflicts = locked.stream()
+                .filter(s -> s.occupiedCovers() > 0 || (s.exclusiveEventId() != null && !s.exclusiveEventId().equals(eventId)))
+                .map(s -> new QuantumState(s.slotStart(), s.capacityCovers(), s.occupiedCovers(), s.exclusiveEventId()))
+                .toList();
+        if (conflicts.isEmpty()) {
+            store.setExclusive(zoneId, eventId, interval.start(), interval.end());
+        }
+        return conflicts;
+    }
+
+    /** Toglie la riserva esclusiva di un evento da tutti i quanti (bloccati prima in ordine di zona e orario). */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public int unmarkExclusive(UUID eventId) {
+        store.lockExclusiveSlots(eventId);
+        return store.clearExclusive(eventId);
+    }
+
     /** Libera i posti (annullamento, oppure i soli quanti futuri per uscita anticipata e no-show). */
     @Transactional(propagation = Propagation.MANDATORY)
     public void release(Occupancy occupancy) {
@@ -132,13 +176,18 @@ public class CapacityLedger {
     }
 
     private void apply(List<Occupancy> removed, List<Occupancy> added) {
+        apply(removed, added, null);
+    }
+
+    /** {@code eventId}: l'evento delle prenotazioni coinvolte, i cui quanti esclusivi sono ammessi (null = ordinaria). */
+    private void apply(List<Occupancy> removed, List<Occupancy> added, UUID eventId) {
         SortedMap<UUID, SortedMap<Instant, Integer>> deltas = netDeltas(removed, added);
         for (Map.Entry<UUID, SortedMap<Instant, Integer>> zone : deltas.entrySet()) {
-            applyToZone(zone.getKey(), zone.getValue());
+            applyToZone(zone.getKey(), zone.getValue(), eventId);
         }
     }
 
-    private void applyToZone(UUID zoneId, SortedMap<Instant, Integer> deltas) {
+    private void applyToZone(UUID zoneId, SortedMap<Instant, Integer> deltas, UUID eventId) {
         ZoneRow zone = store.lockZoneShared(zoneId).orElseThrow(() -> CapacityExceptions.zoneNotFound(zoneId));
         List<Instant> growing = deltas.entrySet().stream().filter(e -> e.getValue() > 0).map(Map.Entry::getKey).toList();
         if (!growing.isEmpty()) {
@@ -159,7 +208,7 @@ public class CapacityLedger {
             int delta = entry.getValue();
             SlotRow slot = locked.get(quantum);
             if (delta > 0) {
-                if (slot.exclusiveEventId() != null) {
+                if (slot.exclusiveEventId() != null && !slot.exclusiveEventId().equals(eventId)) {
                     throw new EventBlocksSlotException(zoneId, quantum, slot.exclusiveEventId());
                 }
                 if (slot.occupiedCovers() + delta > slot.capacityCovers()) {

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -28,6 +29,7 @@ import it.fireflies.audit.AuditLog;
 import it.fireflies.content.ContentService;
 import it.fireflies.dining.DiningService;
 import it.fireflies.dining.DiningStore;
+import it.fireflies.event.EventService;
 import it.fireflies.media.MediaService;
 import it.fireflies.menu.MenuService;
 import tools.jackson.databind.ObjectMapper;
@@ -87,10 +89,12 @@ class DemoContentLoader implements ApplicationRunner {
     private final ObjectMapper json;
     private final AuditLog audit;
     private final DiningService dining;
+    private final EventService events;
 
     DemoContentLoader(DemoProperties properties, MediaService media, MenuService menu, ContentService content,
-            JdbcClient jdbc, ObjectMapper json, AuditLog audit, DiningService dining) {
+            JdbcClient jdbc, ObjectMapper json, AuditLog audit, DiningService dining, EventService events) {
         this.dining = dining;
+        this.events = events;
         this.properties = properties;
         this.media = media;
         this.menu = menu;
@@ -141,6 +145,7 @@ class DemoContentLoader implements ApplicationRunner {
             content.createAnnouncement(null, new ContentService.AnnouncementCommand(a.text(), a.tone(), a.active(), null));
         }
         configureBooking(manifest.hours());
+        createEvents(photos);
         content.markDemoContent();
         audit.record(null, AuditAction.DEMO_CONTENT_LOADED, "SITE_SETTINGS", "1",
                 Map.of("photos", photos.size(), "items", manifest.items().size()));
@@ -174,6 +179,41 @@ class DemoContentLoader implements ApplicationRunner {
             window(zone.id(), h.isoDay(), "Sera", "21:00", "22:00", 30, 60, null);
         }
         dining.updatePolicy(null, new DiningService.PolicyCommand(true, 60, 60, 12, 60));
+    }
+
+    /**
+     * Eventi d'esempio (stessi del mockup): un format senza date, una serata pubblicata e prenotabile su richiesta
+     * (slug «…-esempio», etichettata come esempio sul sito) e una bozza. Le date sono calcolate da oggi, lontane dai
+     * giorni usati nelle prove, e la serata inizia dopo l'ultimo arrivo serale.
+     */
+    private void createEvents(Map<String, UUID> photos) {
+        EventService.Actor owner = new EventService.Actor(null, true);
+        LocalDate saturday = LocalDate.now(it.fireflies.common.BusinessTime.ZONE).plusDays(14)
+                .with(java.time.temporal.TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SATURDAY));
+        EventService.AdminEvent format = events.create(owner, new EventService.EventCommand("domeniche-del-fire",
+                "Domeniche del Fire", "FORMAT", null, null, null, null, true, "NONE", null, "Line-up da annunciare di volta in volta",
+                "Il format della domenica: aperitivo lungo, musica e la solita compagnia.",
+                "Le Domeniche del Fire sono il format ricorrente del locale. Il calendario reale non è ancora stato fornito: qui non "
+                        + "mostriamo date finché il gestore non le conferma.\n\nTesto da validare: durata, orari, tipo di musica e "
+                        + "se serve prenotare il tavolo.",
+                photos.get("tavolataFesta"), ids(photos, "tavolataFesta", "longDrinkBlu", "amiciMaglia")));
+        events.publish(owner, format.id(), format.version(), false);
+        EventService.AdminEvent dj = events.create(owner, new EventService.EventCommand("dj-set-esempio", "DJ set al Fire",
+                "SERATA", saturday, LocalTime.of(22, 30), LocalTime.of(2, 0), null, true, "REQUEST", 30, "DJ da annunciare",
+                "Consolle all'ingresso, aperitivo dentro e fuori. Serata d'esempio per mostrare il layout.",
+                "Esempio di scheda serata: data, orario, artista, foto e azione per chiedere un tavolo.\n\nLe foto sono reali "
+                        + "(DJ set davanti alla parete con la lucciola), la data e l'artista sono di esempio.",
+                photos.get("djParete"), ids(photos, "djParete", "djCappello", "consolle")));
+        events.publish(owner, dj.id(), dj.version(), false);
+        events.create(owner, new EventService.EventCommand("aperitivo-vinili-esempio", "Aperitivo e vinili", "SERATA",
+                saturday.plusDays(7), LocalTime.of(22, 30), LocalTime.of(1, 0), null, true, "REQUEST", 20,
+                "Selezione musicale da definire", "Bozza non pubblicata: compare solo nell'area gestori.",
+                "Bozza di esempio per mostrare lo stato «bozza» nella gestione eventi.", photos.get("cocktailRosso"),
+                ids(photos, "cocktailRosso", "cocktailAmbrato")));
+    }
+
+    private static List<UUID> ids(Map<String, UUID> photos, String... keys) {
+        return java.util.Arrays.stream(keys).map(photos::get).filter(java.util.Objects::nonNull).toList();
     }
 
     private void window(UUID zoneId, int isoDay, String name, String first, String last, int step, int duration, Integer max) {

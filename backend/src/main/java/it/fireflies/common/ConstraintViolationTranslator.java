@@ -26,6 +26,8 @@ public final class ConstraintViolationTranslator {
                     "Nome già usato", "Esiste già un'area con questo nome.")),
             Map.entry("ux_table_code", new Translation(HttpStatus.CONFLICT, "NAME_TAKEN",
                     "Codice già usato", "In quest'area esiste già un tavolo con questo codice.")),
+            Map.entry("ux_event_slug", new Translation(HttpStatus.CONFLICT, "NAME_TAKEN",
+                    "Indirizzo già usato", "Esiste già un evento con questo indirizzo: cambia il titolo.")),
             Map.entry("ux_menu_category_slug", new Translation(HttpStatus.CONFLICT, "CATEGORY_SLUG_TAKEN",
                     "Categoria già presente", "Esiste già una categoria con questo nome o identificativo.")),
             Map.entry("ex_table_no_overlap", new Translation(HttpStatus.CONFLICT, "TABLE_CONFLICT",
