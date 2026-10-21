@@ -22,6 +22,12 @@
 | 9 | Documenti e FIX2_REPORT | fatto |
 | 10 | Commit e push solo su `fix2/prenotatavolo`, report finale | fatto |
 
+## Reset dei dati di prova (21/10/2026)
+- Script `infra/scripts/reset-test-data/reset.sh` e guida `docs/operations/RESET_TEST_DATA.md`: anteprima, backup
+  verificato, conferma esplicita, transazione unica. Provato solo su un PostgreSQL di laboratorio usa e getta.
+- **Il reset sul database locale del titolare NON è stato eseguito**: in attesa della sua seconda conferma dopo
+  anteprima e backup.
+
 ## Note per la ripresa
 - **Non compilare il backend mentre gira l'e2e** (il jar in `backend/target/` è quello usato da `scripts/e2e.mjs`).
 - Docker: se non risponde, avviare `dockerd` (vedi FASE 8).
