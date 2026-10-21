@@ -140,14 +140,21 @@ export type Area = { id: string; zoneId: string; name: string; active: boolean; 
 export type Table = { id: string; areaId: string; zoneId: string; code: string; minSeats: number; maxSeats: number; active: boolean; sortOrder: number };
 export type ServiceWindow = {
   id: string; zoneId: string; isoDay: number; name: string; firstStart: string; lastStart: string; slotMinutes: number;
-  defaultDurationMinutes: number; maxCovers: number | null; validFrom: string; validTo: string | null; active: boolean;
+  defaultDurationMinutes: number; validFrom: string; validTo: string | null; active: boolean;
 };
 export type Policy = {
   id: string; effectiveFrom: string; webBookingEnabled: boolean; minLeadMinutes: number; maxAdvanceDays: number;
-  maxPartySizeWeb: number; pendingExpiryMinutesBeforeStart: number;
+  pendingExpiryMinutesBeforeStart: number;
 };
-export type BookingException = { id: string; serviceDate: string; serviceWindowId: string | null; kind: 'CLOSED' | 'CAPACITY_OVERRIDE'; capacityOverride: number | null; reason: string | null };
-export type BookingConfig = { zones: Zone[]; areas: Area[]; tables: Table[]; windows: ServiceWindow[]; policy: Policy | null; exceptions: BookingException[] };
+/** Fascia chiusa agli arrivi in una data (FIX-1: la capienza per data non esiste più). */
+export type BookingException = { id: string; serviceDate: string; serviceWindowId: string | null; kind: 'CLOSED'; reason: string | null };
+/** Chiusura o apertura straordinaria dal giorno `day` al giorno `endDay` compresi (un giorno solo: endDay = day). */
+export type OpeningException = { id: string; day: string; endDay: string; closed: boolean; opensAt: string | null; closesAt: string | null; note: string | null };
+export type BookingConfig = {
+  zones: Zone[]; areas: Area[]; tables: Table[]; windows: ServiceWindow[]; policy: Policy | null; exceptions: BookingException[];
+  /** FIX-1: capienza massima del locale, la stessa in ogni giorno e fascia. */
+  venueCapacity: number; openingExceptions: OpeningException[];
+};
 
 export const bookingConfig = () => api.get<BookingConfig>('/admin/booking-config');
 
@@ -158,6 +165,9 @@ export const updateZone = (z: Zone, patch: Partial<Pick<Zone, 'name' | 'physical
   });
 
 export const savePolicy = (p: Omit<Policy, 'id' | 'effectiveFrom'>) => api.put<Policy>('/admin/booking-policy', p);
+
+/** FIX-1: l'unica capienza da configurare. Errore `CAPACITY_BELOW_CONFIRMED` se ci sono già più persone confermate. */
+export const saveVenueCapacity = (capacity: number) => api.put<Zone>('/admin/venue-capacity', { capacity });
 
 export const createArea = (zoneId: string, name: string) => api.post<Area>('/admin/areas', { zoneId, name });
 export const deleteArea = (id: string) => api.del(`/admin/areas/${id}`);
@@ -172,11 +182,9 @@ export const createWindow = (w: WindowInput) => api.post<ServiceWindow>('/admin/
 export const updateWindow = (id: string, w: WindowInput) => api.put<ServiceWindow>(`/admin/service-windows/${id}`, w);
 export const deleteWindow = (id: string) => api.del(`/admin/service-windows/${id}`);
 
-export const addException = (e: { serviceDate: string; serviceWindowId?: string | null; kind: BookingException['kind']; capacityOverride?: number | null; reason?: string }) =>
-  api.post<BookingException>('/admin/booking-exceptions', e);
 export const deleteException = (id: string) => api.del(`/admin/booking-exceptions/${id}`);
 
-// --- FASE 7: capienza per giorno e fascia, riepilogo, calendario di oggi, date straordinarie ----------------
+// --- FASE 7 / FIX-1: riepilogo per fascia, calendario di oggi, date straordinarie --------------------------
 
 export type Band = 'COLAZIONE' | 'POMERIGGIO' | 'APERITIVO' | 'SERA';
 export const BANDS: { id: Band; label: string }[] = [
@@ -184,26 +192,25 @@ export const BANDS: { id: Band; label: string }[] = [
   { id: 'APERITIVO', label: 'Aperitivo' }, { id: 'SERA', label: 'Sera' },
 ];
 
-export type CapacityCell = { isoDay: number; band: Band; offered: boolean; maxCovers: number | null };
-export type OpeningException = { id: string; day: string; closed: boolean; opensAt: string | null; closesAt: string | null; note: string | null };
-export type CapacityMatrix = { physicalCapacity: number; cells: CapacityCell[]; exceptions: BookingException[]; openingExceptions: OpeningException[] };
-export const capacityMatrix = () => api.get<CapacityMatrix>('/admin/capacity-matrix');
-export const saveCapacityMatrix = (cells: { isoDay: number; band: Band; maxCovers: number | null }[]) =>
-  api.put<CapacityMatrix>('/admin/capacity-matrix', { cells });
-
 export type SummaryRow = {
   date: string; band: Band; label: string; closed: boolean; requests: number; pending: number; confirmed: number; guests: number;
   capacity: number | null; available: number | null; fromStatistics: boolean;
 };
-export const capacitySummary = (from: string, to: string) =>
-  api.get<{ from: string; to: string; rows: SummaryRow[] }>(`/admin/capacity-summary?from=${from}&to=${to}`);
+export const capacitySummary = (from: string, to: string, band?: Band) =>
+  api.get<{ from: string; to: string; rows: SummaryRow[] }>(`/admin/capacity-summary?from=${from}&to=${to}${band ? `&band=${band}` : ''}`);
 
 export type TodayItem = { id: string; reference: string; time: string; name: string | null; guests: number; band: Band; bandLabel: string; event: string | null };
 export type Today = { date: string; band: Band | null; items: TodayItem[]; bands: { band: Band; label: string; reservations: number; guests: number }[]; reservations: number; guests: number };
 export const todayReservations = (band: Band | null) => api.get<Today>(`/admin/reservations/today${band ? `?band=${band}` : ''}`);
 
-export const addOpeningException = (e: { day: string; closed: boolean; opensAt?: string | null; closesAt?: string | null; note?: string }) =>
-  api.post<{ exception: OpeningException; activeReservations: number }>('/admin/opening-exceptions', e);
+export type OpeningInput = { from: string; to: string; closed: boolean; opensAt?: string | null; closesAt?: string | null; note?: string };
+/** Esito: per una chiusura, i giorni con prenotazioni già in attesa o confermate (restano valide, da gestire a mano). */
+export type OpeningResult = {
+  exception: OpeningException; activeReservations: number;
+  conflicts: { date: string; pending: number; confirmed: number; confirmedGuests: number }[];
+};
+export const addOpeningException = (e: OpeningInput) => api.post<OpeningResult>('/admin/opening-exceptions', e);
+export const updateOpeningException = (id: string, e: OpeningInput) => api.put<OpeningResult>(`/admin/opening-exceptions/${id}`, e);
 export const deleteOpeningException = (id: string) => api.del(`/admin/opening-exceptions/${id}`);
 
 /** Testo per lo stato di una notifica: mai «inviata» se non è partita davvero. */

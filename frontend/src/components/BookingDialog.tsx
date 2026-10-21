@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, Copy, Info, Instagram, Minus, PartyPopper, Pencil, Phone, Plus, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, Copy, Info, Instagram, LoaderCircle, Minus, PartyPopper, Pencil, Phone, Plus, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
 import { bookingOptions, hhmm, newIdempotencyKey, sendRequest, type BookingOptions, type Receipt } from '../api/reservations';
@@ -32,6 +32,12 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const SLOT_REASON: Record<string, string> = { FULL: 'completo', TOO_EARLY: 'troppo vicino', DAY_CLOSED: 'chiuso', EVENT: 'evento' };
 
 // errori del backend → passo del modulo in cui si correggono
+/** Per un 429: l'attesa la dice già il messaggio del server; qui si aggiunge solo l'alternativa del telefono. */
+function retryHint(e: ApiError): string {
+  const seconds = Number((e.problem as { context?: { retryAfterSeconds?: number } } | undefined)?.context?.retryAfterSeconds ?? 0);
+  return seconds > 0 ? '' : ' Riprova più tardi o chiamaci.';
+}
+
 const STEP_OF_FIELD: Record<string, number> = { date: 0, time: 1, guests: 2, name: 3, phone: 3, email: 3, notes: 3, privacyAccepted: 3 };
 const STEP_OF_CODE: Record<string, [number, keyof Values]> = {
   TOO_FAR: [0, 'date'], DAY_CLOSED: [1, 'time'], SLOT_NOT_AVAILABLE: [1, 'time'], TOO_EARLY: [1, 'time'],
@@ -58,6 +64,8 @@ export function BookingDialog() {
   const [reload, setReload] = useState(0);
   // una chiave per contenuto: ripetere lo stesso invio (doppio clic, rete instabile) non crea due richieste
   const keyRef = useRef(newIdempotencyKey());
+  // FIX-1: blocco sincrono del doppio invio (due tocchi nello stesso istante vedono ancora `sending` a false)
+  const submittingRef = useRef(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   // regole generali (richieste aperte, persone massime, giorni prenotabili)
@@ -128,6 +136,8 @@ export function BookingDialog() {
   const focusField = (key: string) => requestAnimationFrame(() => document.getElementById(`bk-${key}`)?.focus());
 
   const submit = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSending(true);
     setErrors({});
     try {
@@ -153,8 +163,13 @@ export function BookingDialog() {
         focusField(key);
         return;
       }
-      setErrors({ form: e.status === 0 ? 'Il server non risponde: controlla la connessione e riprova.' : e.message });
+      // stessa chiave al nuovo tentativo: se la richiesta era arrivata, il server restituisce la stessa ricevuta
+      setErrors({ form: e.status === 0 ? 'Il server non risponde: controlla la connessione e riprova. Se la richiesta era già partita non verrà duplicata.'
+        : e.status === 429 ? `${e.message}${retryHint(e)}`
+        : e.status >= 500 ? 'Problema temporaneo del server: riprova tra poco. La richiesta non verrà duplicata.'
+        : e.message });
     } finally {
+      submittingRef.current = false;
       setSending(false);
     }
   };
@@ -427,8 +442,9 @@ export function BookingDialog() {
                   <ArrowLeft size={18} aria-hidden="true" /> Indietro
                 </button>
               )}
-              <button type="submit" className="btn btn--primary booking-nav__next" disabled={sending}>
-                {step === 4 ? (sending ? 'Invio in corso…' : 'Invia la richiesta') : 'Avanti'} <ArrowRight size={20} aria-hidden="true" />
+              <button type="submit" className="btn btn--primary booking-nav__next" disabled={sending} aria-busy={sending}>
+                {step === 4 ? (sending ? 'Invio in corso…' : 'Invia la richiesta') : 'Avanti'}
+                {sending ? <LoaderCircle size={20} className="spin" aria-hidden="true" /> : <ArrowRight size={20} aria-hidden="true" />}
               </button>
             </div>
           </form>

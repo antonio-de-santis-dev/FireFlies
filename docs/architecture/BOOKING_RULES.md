@@ -62,8 +62,12 @@ In ogni zona e in ogni quanto: **persone confermate presenti ≤ capienza effett
 Una prenotazione è presente nei quanti di `[starts_at, occupied_until)`. Due prenotazioni 19:00–21:00 e 20:00–22:00 contano **entrambe** tra le 20:00 e le 21:00, anche se arrivano in fasce diverse. Questo sostituisce il conteggio «solo nella fascia di arrivo» della rev. 1, che permetteva di superare la capienza reale.
 
 ### 3.2 Capienza effettiva di un quanto
-`min( capienza fisica della zona, limite della fascia che contiene il quanto (o eccezione del giorno) )`.
-Se nessuna fascia contiene il quanto (es. una cena che si prolunga dopo l'ultimo arrivo) vale la capienza fisica della zona.
+**FIX-1 (T-78)**: una sola fonte, la **capienza massima del locale** (`capacity_zones.physical_capacity`), uguale per
+ogni giorno e fascia: è il numero di persone presenti nello stesso momento, non un totale della giornata.
+L'occupazione dipende solo dalle prenotazioni confermate, dalle sovrapposizioni di orario e dagli eventi. Giorni e
+fasce chiusi non cambiano la capienza: bloccano gli arrivi (§13).
+~~`min(capienza fisica, limite della fascia o eccezione del giorno)`~~ (fino alla FASE 8; limiti per fascia e per data
+rimossi dalla V12).
 
 ### 3.3 Conferma: procedura transazionale
 Una sola transazione PostgreSQL (`READ COMMITTED`):
@@ -89,7 +93,7 @@ Verificato su PostgreSQL 17 (spike 2): 60 conferme parallele con orari e durate 
 - Clienti che restano oltre l'orario: il gestore **allunga** la durata (modifica), con nuovo controllo dei posti.
 
 ### 3.5 Il gestore cambia una capienza
-Riguarda capienza fisica della zona, limite di una fascia, eccezione di una data, capienza di un evento. Solo OWNER (la capienza evento anche STAFF, §10).
+Riguarda la capienza del locale (`PUT /admin/venue-capacity`, FIX-1) e la quota di un evento. Solo OWNER (la quota evento anche STAFF, §10).
 1. `SELECT … FOR UPDATE` della zona (aspetta le conferme in corso, che tengono `FOR SHARE`);
 2. ricalcolo della capienza effettiva dei quanti futuri già esistenti, lock in ordine;
 3. se in qualche quanto `occupied > nuova capienza` → **`409 CAPACITY_BELOW_CONFIRMED`** con l'elenco di orari e prenotazioni coinvolte. **Nessuna prenotazione viene annullata o spostata automaticamente**; il gestore decide;
@@ -119,7 +123,12 @@ Accettata solo se: web attivo; fascia attiva e non chiusa; nessun evento esclusi
 
 Con più zone il cliente può indicare una preferenza; la zona definitiva la sceglie il gestore alla conferma.
 
-Anti-abuso: header `Idempotency-Key` obbligatorio (stessa chiave + stessi dati → stessa risposta; dati diversi → `422 IDEMPOTENCY_KEY_REUSED`); duplicato stesso telefono + stesso orario ancora attivo → `409 DUPLICATE_REQUEST`; rate limit 5/ora per IP e 3/giorno per telefono → `429`; honeypot; niente CAPTCHA a puzzle.
+Anti-abuso: header `Idempotency-Key` obbligatorio (stessa chiave + stessi dati → stessa risposta; dati diversi → `422 IDEMPOTENCY_KEY_REUSED`); duplicato stesso telefono + stesso orario ancora attivo → `409 DUPLICATE_REQUEST`; limiti per IP (FIX-1, T-80): letture della disponibilità 120/min, tentativi di invio 30 in 10 minuti, richieste
+**create** 10/ora (gli invii rifiutati non le consumano), più 3/giorno per telefono → `429` con `Retry-After` e attesa
+nel messaggio; doppio invio contemporaneo con la stessa chiave → stessa ricevuta; honeypot; niente CAPTCHA a puzzle.
+
+Persone per richiesta (FIX-1, T-79): da 1 alla capienza del locale, mai oltre 30 (tetto fisso, non configurabile);
+oltre si chiama il locale («Organizza un evento o un compleanno»). Gli inserimenti dei gestori restano fino a 50.
 
 Dati: nome, **telefono obbligatorio** (normalizzato E.164), email facoltativa, note (≤ 500, avviso «non inserire dati sanitari»), presa visione dell'informativa con versione. (Decisione confermata.)
 
@@ -205,12 +214,13 @@ Controllo sempre **lato server** (regole su URL + `@PreAuthorize`). Id inesisten
 ## 11. Privacy (sintesi)
 Dati minimi; note libere mai nei log né nell'outbox; log solo con `public_ref`/id; **cancellazione dopo un mese** (FASE 7, §13) con statistiche anonime; testi legali da validare (FASE 8).
 
-## 13. Capienza per fascia, giorni chiusi, calendario di oggi, conservazione (FASE 7)
+## 13. Capienza, giorni chiusi, calendario di oggi, conservazione (FASE 7, aggiornato in FIX-1)
 - **Fasce**: Colazione, Pomeriggio, Aperitivo, Sera. Una prenotazione appartiene alla fascia prenotabile in cui il suo orario è un arrivo (nome della fascia), altrimenti all'orario: prima delle 11 colazione, fino alle 17 pomeriggio, fino alle 20 aperitivo, poi sera.
-- **Capienza per giorno della settimana e fascia** = persone presenti **nello stesso momento** al massimo (`service_windows.max_covers`; vuoto = capienza del locale). Vale sul registro dei quanti di §3: raggiunto il limite il sito segna «completo» e nessuna conferma passa (`409 CAPACITY_EXCEEDED`), anche con conferme contemporanee. Eccezioni per data con `booking_exceptions`. Ridurre sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` (con data e ora) e nulla cambia.
+- **Capienza** (FIX-1): un solo valore per tutto il locale, lo stesso in ogni giorno e fascia (§3.2). Vale sul registro dei quanti di §3: raggiunto il limite il sito segna «completo» e nessuna conferma passa (`409 CAPACITY_EXCEEDED`), anche con conferme contemporanee. Ridurla sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` (con data e ora) e nulla cambia.
 - **Giorni chiusi**: data straordinaria chiusa, oppure giorno chiuso negli orari settimanali del sito, salvo **apertura straordinaria**; anche la chiusura di tutto il giorno di `booking_exceptions`. Dal sito: date disabilitate (`closedDates`) e `422 DAY_CLOSED`. Gestori: possibile con avviso `DAY_CLOSED`.
+- **Chiusure e aperture straordinarie su intervalli** (FIX-1, T-82): un giorno oppure dal giorno X al giorno Y compresi (al massimo un anno), una riga per intervallo; due intervalli non si sovrappongono mai (`409 EXCEPTION_OVERLAPS`, anche con salvataggi contemporanei). Si vedono, si modificano e si eliminano. Chiudere giorni con prenotazioni attive è permesso: nessuna cancellazione automatica, il salvataggio restituisce per ogni giorno quante richieste e conferme ci sono.
 - **Calendario di oggi**: solo `CONFIRMED` di oggi (Europe/Rome), filtro per fascia, niente recapiti.
-- **Riepilogo** per giorno e fascia: richieste, in attesa, confermate, persone, capienza, gruppo più grande ancora accoglibile; per i giorni già puliti si sommano le statistiche anonime.
+- **Riepilogo** (FIX-1): una settimana e una fascia alla volta; per ogni giorno prenotazioni confermate (e in attesa), persone confermate, capienza, gruppo più grande ancora accoglibile; per i giorni già puliti si sommano le statistiche anonime.
 - **Conservazione** (job 02:00–05:00 Europe/Rome, una esecuzione riuscita al giorno): prenotazioni finite da almeno un mese di calendario (mai future o in corso, mai con notifiche ancora da inviare) → contatori anonimi in `reservation_stats`, poi cancellati storico, assegnazioni, notifiche della prenotazione e la prenotazione; quanti del registro di quel passato; eventi finiti da almeno due mesi senza prenotazioni; notifiche finali dopo 90 giorni; audit dopo 12 mesi.
 
 ## 12. Cosa NON fa la V1

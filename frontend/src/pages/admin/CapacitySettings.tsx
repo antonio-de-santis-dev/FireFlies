@@ -1,13 +1,14 @@
-// Impostazioni › Capienza (FASE 7, req. 6 e 8): persone al massimo per giorno della settimana e fascia, chiusure e
-// aperture straordinarie, limiti per data, riepilogo per giorno e fascia. Nessuna gestione dei tavoli: la capienza si
-// ragiona in persone, il backend la controlla sul registro dei posti a ogni conferma.
-import { CircleAlert, Plus, Save, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+// Impostazioni › Capienza (FIX-1): una sola capienza per tutto il locale, regole delle richieste dal sito, riepilogo di
+// una settimana per una fascia, chiusure e aperture straordinarie su un giorno o su un intervallo. Il backend resta
+// l'autorità: controlla capienza, conflitti e sovrapposizioni anche con più salvataggi nello stesso momento.
+import { CalendarRange, ChevronLeft, ChevronRight, CircleAlert, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
 import {
-  addException, addOpeningException, BANDS, bookingConfig, capacityMatrix, capacitySummary, createWindow, deleteException,
-  deleteOpeningException, deleteWindow, hhmm, saveCapacityMatrix, savePolicy, updateZone,
-  type Band, type BookingConfig, type CapacityMatrix, type Policy, type ServiceWindow, type SummaryRow,
+  addOpeningException, BANDS, bookingConfig, capacitySummary, createWindow, deleteException, deleteOpeningException,
+  deleteWindow, hhmm, savePolicy, saveVenueCapacity, updateOpeningException,
+  type Band, type BookingConfig, type OpeningException, type OpeningInput, type OpeningResult, type Policy, type ServiceWindow,
+  type SummaryRow,
 } from '../../api/reservations';
 import { useStore } from '../../store';
 import { fmtShort } from './Requests';
@@ -24,16 +25,50 @@ const plusDays = (iso: string, n: number) => {
   d.setDate(d.getDate() + n);
   return isoOf(d);
 };
+/** Lunedì della settimana che contiene la data. */
+const mondayOf = (iso: string) => plusDays(iso, -((new Date(`${iso}T12:00:00`).getDay() + 6) % 7));
+const longDate = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
+const dayMonth = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' });
+const weekday = new Intl.DateTimeFormat('it-IT', { weekday: 'short', day: 'numeric', month: 'numeric' });
+const at = (iso: string) => new Date(`${iso}T12:00:00`);
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Primo estremo di un intervallo: senza mese/anno se uguali a quelli dell'ultimo giorno. */
+function firstOf(a: Date, b: Date) {
+  if (a.getFullYear() !== b.getFullYear()) return longDate.format(a);
+  return a.getMonth() === b.getMonth() ? String(a.getDate()) : dayMonth.format(a);
+}
+
+/** «20 – 26 ottobre 2026», «28 ottobre – 3 novembre 2026». */
+export function weekLabel(monday: string) {
+  const b = at(plusDays(monday, 6));
+  return `${firstOf(at(monday), b)} – ${longDate.format(b)}`;
+}
+
+/** «25 dicembre 2026» oppure «10 – 17 agosto 2026 · 8 giorni». */
+export function rangeLabel(e: Pick<OpeningException, 'day' | 'endDay'>) {
+  if (e.day === e.endDay) return longDate.format(at(e.day));
+  const a = at(e.day);
+  const b = at(e.endDay);
+  const days = Math.round((b.getTime() - a.getTime()) / 86_400_000) + 1;
+  return `${firstOf(a, b)} – ${longDate.format(b)} · ${days} giorni`;
+}
+
+/** Fascia in corso adesso (stessi orari di arrivo del backend: <11, <17, <20, sera). */
+const currentBand = (): Band => {
+  const h = new Date().getHours();
+  return h < 11 ? 'COLAZIONE' : h < 17 ? 'POMERIGGIO' : h < 20 ? 'APERITIVO' : 'SERA';
+};
 
 /** Messaggio dell'errore; per «capienza sotto i confermati» dice dove e quanti. */
 function message(e: unknown): string {
   if (!(e instanceof ApiError)) return 'Si è verificato un errore imprevisto. Riprova.';
-  const ctx = (e.problem as { context?: { conflicts?: { slotStart: string; occupiedCovers: number; newCapacity?: number; capacity?: number }[] } } | undefined)?.context;
+  const ctx = (e.problem as { context?: { conflicts?: { slotStart: string; occupiedCovers: number }[] } } | undefined)?.context;
   if (e.code === 'CAPACITY_BELOW_CONFIRMED' && ctx?.conflicts?.length) {
     const first = ctx.conflicts[0];
     const when = new Date(first.slotStart);
     const label = `${fmtShort(isoOf(when))} alle ${when.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
-    return `Non salvato: ${label} ci sono già ${first.occupiedCovers} persone confermate, più del nuovo limite. Annulla o sposta prima quelle prenotazioni${ctx.conflicts.length > 1 ? ` (${ctx.conflicts.length} quarti d'ora coinvolti)` : ''}.`;
+    return `Non salvato: ${label} ci sono già ${first.occupiedCovers} persone confermate, più della nuova capienza. Annulla o sposta prima quelle prenotazioni${ctx.conflicts.length > 1 ? ` (${ctx.conflicts.length} quarti d'ora coinvolti)` : ''}.`;
   }
   return e.message;
 }
@@ -44,13 +79,12 @@ type Act = <T>(op: () => Promise<T>, done: string | ((result: T) => string)) => 
 export function CapacitySettings() {
   const { notify } = useStore();
   const [config, setConfig] = useState<BookingConfig | null>(null);
-  const [matrix, setMatrix] = useState<CapacityMatrix | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
   const load = useCallback(() => {
-    Promise.all([bookingConfig(), capacityMatrix()])
-      .then(([c, m]) => { setConfig(c); setMatrix(m); setError(null); setVersion((v) => v + 1); })
+    bookingConfig()
+      .then((c) => { setConfig(c); setError(null); setVersion((v) => v + 1); })
       .catch((e) => setError(message(e)));
   }, []);
   useEffect(load, [load]);
@@ -71,20 +105,19 @@ export function CapacitySettings() {
   return (
     <section className="capacity-settings" id="capienza" aria-labelledby="cap-title">
       <header className="capacity-settings__head">
-        <h2 id="cap-title">Capienza</h2>
-        <p className="muted">Quante persone può accogliere il locale in ogni fascia. Raggiunto il limite il sito non accetta altre richieste
-          per quell'orario e nessun gestore può confermare oltre: il controllo lo fa il server, anche con più conferme nello stesso momento.</p>
+        <h2 id="cap-title">Capienza e calendario</h2>
+        <p className="muted">Un solo numero per tutto il locale. Raggiunto il limite il sito non accetta altre richieste per quell'orario e
+          nessun gestore può confermare oltre: il controllo lo fa il server, anche con più conferme nello stesso momento.</p>
       </header>
       {error && <p className="error" role="alert"><CircleAlert size={16} aria-hidden="true" /> {error}</p>}
       {!config && !error && <p className="muted" role="status">Caricamento della capienza…</p>}
-      {config && matrix && (
-        <div className="settings">
-          <ZonePanel config={config} act={act} />
-          <MatrixPanel key={`m${version}`} matrix={matrix} act={act} />
-          <SummaryPanel refreshKey={version} />
-          <OpeningDatesPanel matrix={matrix} act={act} />
-          <ExceptionsPanel config={config} act={act} />
-          <PolicyPanel policy={config.policy} act={act} />
+      {config && (
+        <div className="cap-grid">
+          <VenueCapacityPanel key={`v${version}`} capacity={config.venueCapacity} act={act} />
+          <PolicyPanel key={`p${version}`} policy={config.policy} act={act} />
+          <WeekSummaryPanel refreshKey={version} />
+          <OpeningDatesPanel items={config.openingExceptions} act={act} />
+          {config.exceptions.length > 0 && <ClosedBandsPanel config={config} act={act} />}
           <WindowsPanel config={config} act={act} />
         </div>
       )}
@@ -92,226 +125,283 @@ export function CapacitySettings() {
   );
 }
 
-function ZonePanel({ config, act }: { config: BookingConfig; act: Act }) {
-  const zone = config.zones[0];
-  const [capacity, setCapacity] = useState(zone?.physicalCapacity ?? 0);
-  useEffect(() => setCapacity(zone?.physicalCapacity ?? 0), [zone?.physicalCapacity]);
-  if (!zone) return null;
+function VenueCapacityPanel({ capacity, act }: { capacity: number; act: Act }) {
+  const [value, setValue] = useState(capacity > 0 ? String(capacity) : '');
+  const [invalid, setInvalid] = useState<string | null>(null);
+  const save = (e: FormEvent) => {
+    e.preventDefault();
+    const n = Number(value);
+    if (!Number.isInteger(n) || n < 1 || n > 1000) {
+      setInvalid('Indica un numero intero di persone, da 1 a 1000.');
+      return;
+    }
+    setInvalid(null);
+    void act(() => saveVenueCapacity(n), `Capienza del locale salvata: ${n} persone in ogni giorno e fascia.`);
+  };
   return (
-    <form className="panel" aria-labelledby="cap-zone" onSubmit={(e) => { e.preventDefault(); void act(() => updateZone(zone, { physicalCapacity: capacity, active: zone.active || capacity > 0 }), 'Capienza del locale salvata.'); }}>
-      <h3 id="cap-zone" className="panel__title">Capienza del locale</h3>
+    <form className="panel cap-grid__venue" aria-labelledby="cap-venue" onSubmit={save} noValidate>
+      <h3 id="cap-venue" className="panel__title">Capienza massima del locale</h3>
       <div className="field">
-        <label htmlFor="zone-cap">Persone presenti al massimo</label>
-        <input id="zone-cap" className="input" type="number" inputMode="numeric" min={0} max={2000} value={capacity} onChange={(e) => setCapacity(Number(e.target.value))} />
+        <label htmlFor="venue-cap">Capienza massima del locale (persone)</label>
+        <input id="venue-cap" className="input cap-venue__input" type="number" inputMode="numeric" min={1} max={1000} value={value}
+          aria-invalid={!!invalid} aria-describedby="venue-cap-hint" onChange={(e) => setValue(e.target.value)} />
+        {invalid && <p className="error" role="alert">{invalid}</p>}
       </div>
-      <p className="hint">È il tetto di ogni fascia. Se ci sono già più persone confermate, la modifica viene rifiutata.</p>
+      <p className="hint" id="venue-cap-hint">Persone presenti <strong>nello stesso momento</strong>, uguale per ogni giorno e fascia
+        (Colazione, Pomeriggio, Aperitivo, Sera). Non è un totale della giornata: chi se ne va libera il posto. Se in qualche orario
+        ci sono già più persone confermate, la riduzione viene rifiutata e ti diciamo dove.</p>
       <button type="submit" className="btn btn--action btn--sm"><Save size={16} aria-hidden="true" /> Salva la capienza</button>
     </form>
   );
 }
 
-function MatrixPanel({ matrix, act }: { matrix: CapacityMatrix; act: Act }) {
-  const key = (d: number, b: Band) => `${d}|${b}`;
-  const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(
-    matrix.cells.map((c) => [key(c.isoDay, c.band), c.maxCovers == null ? '' : String(c.maxCovers)])));
-  const cell = (d: number, b: Band) => matrix.cells.find((c) => c.isoDay === d && c.band === b);
+function PolicyPanel({ policy, act }: { policy: Policy | null; act: Act }) {
+  const [p, setP] = useState({
+    minLeadMinutes: policy?.minLeadMinutes ?? 60, maxAdvanceDays: policy?.maxAdvanceDays ?? 60,
+    pendingExpiryMinutesBeforeStart: policy?.pendingExpiryMinutesBeforeStart ?? 60,
+  });
+  const up = (k: keyof typeof p, v: number) => setP((x) => ({ ...x, [k]: v }));
   const save = (e: FormEvent) => {
     e.preventDefault();
-    const cells = matrix.cells.filter((c) => c.offered).map((c) => {
-      const v = values[key(c.isoDay, c.band)]?.trim() ?? '';
-      return { isoDay: c.isoDay, band: c.band, maxCovers: v === '' ? null : Number(v) };
-    });
-    void act(() => saveCapacityMatrix(cells), 'Capienza per fascia salvata.');
+    void act(() => savePolicy({ webBookingEnabled: !!policy?.webBookingEnabled, ...p }), 'Regole delle richieste salvate.');
   };
   return (
-    <form className="panel panel--wide" aria-labelledby="cap-matrix" onSubmit={save}>
-      <h3 id="cap-matrix" className="panel__title">Persone al massimo per giorno e fascia</h3>
-      <p className="hint">Vuoto = fino alla capienza del locale ({matrix.physicalCapacity} persone). «—» = fascia non prenotabile quel giorno.</p>
-      <div className="table-wrap">
-        <table className="table table--compact cap-matrix">
-          <caption className="sr-only">Persone presenti al massimo per giorno della settimana e fascia</caption>
-          <thead><tr><th scope="col">Giorno</th>{BANDS.map((b) => <th key={b.id} scope="col">{b.label}</th>)}</tr></thead>
-          <tbody>
-            {DAYS.map((day, i) => (
-              <tr key={day}>
-                <th scope="row">{day}</th>
-                {BANDS.map((b) => {
-                  const c = cell(i + 1, b.id);
-                  return (
-                    <td key={b.id} data-label={b.label}>
-                      {c?.offered ? (
-                        <>
-                          <label className="sr-only" htmlFor={`cm-${i + 1}-${b.id}`}>{b.label} di {day.toLowerCase()}</label>
-                          <input id={`cm-${i + 1}-${b.id}`} className="input input--sm cap-matrix__input" type="number" inputMode="numeric" min={0}
-                            max={1000} placeholder={String(matrix.physicalCapacity)} value={values[key(i + 1, b.id)] ?? ''}
-                            onChange={(e) => setValues((v) => ({ ...v, [key(i + 1, b.id)]: e.target.value }))} />
-                        </>
-                      ) : <span className="muted" aria-label="non prenotabile">—</span>}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <form className="panel cap-grid__policy" aria-labelledby="cap-policy" onSubmit={save}>
+      <h3 id="cap-policy" className="panel__title">Regole delle richieste dal sito</h3>
+      <div className="cap-policy__fields">
+        <div className="field"><label htmlFor="pol-lead">Anticipo minimo (minuti)</label><input id="pol-lead" className="input" type="number" inputMode="numeric" min={0} value={p.minLeadMinutes} onChange={(e) => up('minLeadMinutes', Number(e.target.value))} /></div>
+        <div className="field"><label htmlFor="pol-adv">Al massimo giorni prima</label><input id="pol-adv" className="input" type="number" inputMode="numeric" min={1} max={365} value={p.maxAdvanceDays} onChange={(e) => up('maxAdvanceDays', Number(e.target.value))} /></div>
+        <div className="field"><label htmlFor="pol-exp">Scadenza (minuti prima dell'arrivo)</label><input id="pol-exp" className="input" type="number" inputMode="numeric" min={0} value={p.pendingExpiryMinutesBeforeStart} onChange={(e) => up('pendingExpiryMinutesBeforeStart', Number(e.target.value))} /></div>
       </div>
-      <button type="submit" className="btn btn--action btn--sm"><Save size={16} aria-hidden="true" /> Salva la capienza per fascia</button>
+      <p className="hint">Una richiesta non gestita in tempo scade da sola. Le richieste si aprono o chiudono con l'interruttore nei
+        Contatti. Il numero di persone per richiesta segue la capienza del locale (oltre 30 persone il sito invita a chiamare).</p>
+      <button type="submit" className="btn btn--action btn--sm"><Save size={16} aria-hidden="true" /> Salva le regole</button>
     </form>
   );
 }
 
-/** Riepilogo per giorno e fascia: richieste, confermate, persone, capienza e posti ancora disponibili. */
-export function SummaryPanel({ refreshKey = 0 }: { refreshKey?: number }) {
-  const [from, setFrom] = useState(todayIso());
+/** Riepilogo di una settimana per una fascia: un giorno per riga, solo i numeri utili. */
+export function WeekSummaryPanel({ refreshKey = 0 }: { refreshKey?: number }) {
+  const thisMonday = mondayOf(todayIso());
+  const [monday, setMonday] = useState(thisMonday);
+  const [band, setBand] = useState<Band>(currentBand);
   const [rows, setRows] = useState<SummaryRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
   useEffect(() => {
     let current = true;
     setRows(null);
-    capacitySummary(from, plusDays(from, 13))
+    capacitySummary(monday, plusDays(monday, 6), band)
       .then((r) => current && (setRows(r.rows), setError(null)))
       .catch((e) => current && setError(message(e)));
     return () => { current = false; };
-  }, [from, refreshKey]);
+  }, [monday, band, refreshKey]);
+  const isCurrent = monday === thisMonday;
+  const today = todayIso();
+  const bandLabel = BANDS.find((b) => b.id === band)!.label;
   return (
-    <section className="panel panel--wide" aria-labelledby="cap-sum">
-      <div className="panel__head">
-        <h3 id="cap-sum" className="panel__title">Riepilogo per giorno e fascia</h3>
-        <div className="field field--inline">
-          <label htmlFor="sum-from">Dal</label>
-          <input id="sum-from" className="input input--sm" type="date" value={from} onChange={(e) => setFrom(e.target.value || todayIso())} />
+    <section className="panel cap-grid__week" aria-labelledby={titleId}>
+      <div className="week-head">
+        <h3 id={titleId} className="panel__title">Riepilogo della settimana</h3>
+        <div className="field field--inline week-band">
+          <label htmlFor="week-band">Fascia</label>
+          <select id="week-band" className="select" value={band} onChange={(e) => setBand(e.target.value as Band)}>
+            {BANDS.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
+          </select>
         </div>
       </div>
-      <p className="hint">14 giorni. «Disponibili» è il gruppo più grande che si può ancora accogliere in almeno un orario della fascia. I giorni
-        passati già puliti mostrano le statistiche anonime.</p>
+      <div className="week-nav" role="group" aria-label="Settimana">
+        <button type="button" className="icon-btn week-nav__btn" aria-label="Settimana precedente" onClick={() => setMonday((m) => plusDays(m, -7))}>
+          <ChevronLeft size={20} aria-hidden="true" />
+        </button>
+        <p className="week-nav__label" aria-live="polite">
+          <CalendarRange size={16} aria-hidden="true" /> <span>{weekLabel(monday)}</span>
+          {isCurrent && <span className="badge badge--demo">Questa settimana</span>}
+        </p>
+        <button type="button" className="icon-btn week-nav__btn" aria-label="Settimana successiva" onClick={() => setMonday((m) => plusDays(m, 7))}>
+          <ChevronRight size={20} aria-hidden="true" />
+        </button>
+        {!isCurrent && <button type="button" className="btn btn--ghost btn--sm week-nav__today" onClick={() => setMonday(thisMonday)}>Questa settimana</button>}
+      </div>
       {error && <p className="error" role="alert">{error}</p>}
       {!rows && !error && <p className="muted" role="status">Caricamento…</p>}
-      {rows && rows.length === 0 && <p className="muted">Nessuna fascia prenotabile in questi giorni.</p>}
-      {rows && rows.length > 0 && (
-        <div className="table-wrap">
-          <table className="table table--compact cap-summary">
-            <caption className="sr-only">Riepilogo prenotazioni per giorno e fascia</caption>
-            <thead><tr><th scope="col">Giorno</th><th scope="col">Fascia</th><th scope="col">Richieste</th><th scope="col">Confermate</th><th scope="col">Persone</th><th scope="col">Capienza</th><th scope="col">Disponibili</th></tr></thead>
+      {rows && (
+        <div className="table-wrap week-wrap">
+          <table className="table week-table">
+            <caption className="sr-only">{bandLabel}, settimana {weekLabel(monday)}</caption>
+            <thead><tr><th scope="col">Giorno</th><th scope="col">Prenotazioni</th><th scope="col">Persone confermate</th><th scope="col">Capienza</th><th scope="col">Disponibili</th></tr></thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={`${r.date}${r.band}`} className={r.closed ? 'is-closed' : r.available === 0 ? 'is-full' : undefined}>
-                  <td data-label="Giorno">{fmtShort(r.date)}</td>
-                  <td data-label="Fascia">{r.label}{r.closed && <span className="badge badge--neutral">Chiuso</span>}</td>
-                  <td data-label="Richieste">{r.requests}{r.pending > 0 && <span className="muted small"> ({r.pending} in attesa)</span>}</td>
-                  <td data-label="Confermate">{r.confirmed}</td>
-                  <td data-label="Persone">{r.guests}</td>
-                  <td data-label="Capienza">{r.capacity ?? '—'}</td>
-                  <td data-label="Disponibili"><strong>{r.available ?? '—'}</strong></td>
-                </tr>
-              ))}
+              {rows.map((r) => {
+                const offered = r.capacity != null;
+                return (
+                  <tr key={r.date} data-date={r.date} className={[r.date === today ? 'is-today' : '', r.closed || !offered ? 'is-closed' : '', offered && !r.closed && r.available === 0 ? 'is-full' : ''].join(' ').trim() || undefined}
+                    aria-current={r.date === today ? 'date' : undefined}>
+                    <th scope="row" className="week-table__day">
+                      {capitalize(weekday.format(at(r.date)))}
+                      {r.date === today && <span className="badge badge--demo">Oggi</span>}
+                      {r.closed && <span className="badge badge--neutral">Chiuso</span>}
+                      {!offered && !r.closed && <span className="badge badge--neutral">Fascia non prevista</span>}
+                    </th>
+                    <td data-label="Prenotazioni">{r.confirmed}{r.pending > 0 && <span className="muted small"> + {r.pending} in attesa</span>}</td>
+                    <td data-label="Persone confermate">{r.guests}</td>
+                    <td data-label="Capienza">{r.capacity ?? '—'}</td>
+                    <td data-label="Disponibili"><strong>{offered && !r.closed && r.date >= today ? r.available : '—'}</strong></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
+      <p className="hint">«Disponibili» è il gruppo più grande che si può ancora accogliere in almeno un orario della fascia. I giorni già
+        puliti dalla conservazione mostrano le statistiche anonime.</p>
     </section>
   );
 }
 
-function OpeningDatesPanel({ matrix, act }: { matrix: CapacityMatrix; act: Act }) {
-  const [x, setX] = useState({ day: todayIso(), closed: true, opensAt: '18:00', closesAt: '23:00', note: '' });
-  const add = (e: FormEvent) => {
-    e.preventDefault();
-    void act(() => addOpeningException({ day: x.day, closed: x.closed, opensAt: x.closed ? null : x.opensAt, closesAt: x.closed ? null : x.closesAt, note: x.note || undefined }),
-      (r) => (x.closed ? 'Chiusura straordinaria aggiunta: quel giorno il sito non accetta richieste.' : 'Apertura straordinaria aggiunta.')
-        + (r.activeReservations > 0 ? ` Attenzione: in quella data ci sono già ${r.activeReservations} prenotazioni o richieste, che restano valide: gestiscile da Richieste.` : ''));
+type OpeningForm = { mode: 'day' | 'range'; from: string; to: string; closed: boolean; opensAt: string; closesAt: string; note: string };
+const emptyForm = (): OpeningForm => ({ mode: 'day', from: todayIso(), to: todayIso(), closed: true, opensAt: '18:00', closesAt: '23:00', note: '' });
+
+function conflictText(r: OpeningResult): string | null {
+  if (!r.conflicts.length) return null;
+  const parts = r.conflicts.slice(0, 3).map((c) => `${fmtShort(c.date)}: ${c.confirmed} confermate (${c.confirmedGuests} persone)${c.pending ? `, ${c.pending} in attesa` : ''}`);
+  return `Attenzione: in ${r.conflicts.length === 1 ? 'questo giorno ci sono' : `${r.conflicts.length} giorni ci sono`} già prenotazioni — ${parts.join('; ')}${r.conflicts.length > 3 ? '…' : ''}. Restano valide: gestiscile da Richieste.`;
+}
+
+function OpeningDatesPanel({ items, act }: { items: OpeningException[]; act: Act }) {
+  const [form, setForm] = useState<OpeningForm>(emptyForm);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [invalid, setInvalid] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const up = <K extends keyof OpeningForm>(k: K, v: OpeningForm[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  const startEdit = (e: OpeningException) => {
+    setEditing(e.id);
+    setInvalid(null);
+    setForm({ mode: e.day === e.endDay ? 'day' : 'range', from: e.day, to: e.endDay, closed: e.closed,
+      opensAt: hhmm(e.opensAt) || '18:00', closesAt: hhmm(e.closesAt) || '23:00', note: e.note ?? '' });
+    requestAnimationFrame(() => document.getElementById('od-from')?.focus());
   };
+  const cancel = () => { setEditing(null); setForm(emptyForm()); setInvalid(null); };
+
+  const submit = async (ev: FormEvent) => {
+    ev.preventDefault();
+    if (busy) return;
+    const to = form.mode === 'day' ? form.from : form.to;
+    if (!form.from || !to) return setInvalid('Scegli il giorno.');
+    if (to < form.from) return setInvalid("L'ultimo giorno non può essere prima del primo.");
+    if (!form.closed && (!form.opensAt || !form.closesAt)) return setInvalid("Per un'apertura straordinaria indica gli orari.");
+    setInvalid(null);
+    setBusy(true);
+    const input: OpeningInput = { from: form.from, to, closed: form.closed, opensAt: form.closed ? null : form.opensAt,
+      closesAt: form.closed ? null : form.closesAt, note: form.note.trim() || undefined };
+    const ok = await act(() => (editing ? updateOpeningException(editing, input) : addOpeningException(input)), (r: OpeningResult) => {
+      setWarning(conflictText(r));
+      const what = r.exception.closed ? 'Chiusura straordinaria' : 'Apertura straordinaria';
+      return `${what} ${editing ? 'aggiornata' : 'salvata'}: ${rangeLabel(r.exception)}.`;
+    });
+    setBusy(false);
+    if (ok) cancel();
+  };
+
   return (
-    <section className="panel" aria-labelledby="cap-dates">
+    <section className="panel cap-grid__dates" aria-labelledby="cap-dates">
       <h3 id="cap-dates" className="panel__title">Chiusure e aperture straordinarie</h3>
-      <p className="hint">Valgono su tutto il giorno e prevalgono sugli orari della settimana: un giorno chiuso non si può scegliere nel calendario del sito.</p>
-      {matrix.openingExceptions.length === 0 ? <p className="muted">Nessuna data straordinaria.</p> : (
-        <ul className="cap-list">
-          {matrix.openingExceptions.map((e) => (
-            <li key={e.id}>
-              <strong>{fmtShort(e.day)}</strong>
-              <span>{e.closed ? 'Chiuso' : `Aperto ${hhmm(e.opensAt!)}–${hhmm(e.closesAt!)}`}{e.note ? ` · ${e.note}` : ''}</span>
-              <button type="button" className="icon-btn icon-btn--sm" aria-label={`Elimina la data straordinaria del ${fmtShort(e.day)}`} onClick={() => void act(() => deleteOpeningException(e.id), 'Data straordinaria eliminata.')}><Trash2 size={14} aria-hidden="true" /></button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form className="cap-form" aria-label="Nuova data straordinaria" onSubmit={add}>
-        <div className="editor__row">
-          <div className="field"><label htmlFor="od-day">Data</label><input id="od-day" className="input" type="date" min={todayIso()} value={x.day} onChange={(e) => setX((v) => ({ ...v, day: e.target.value }))} /></div>
-          <div className="field"><label htmlFor="od-kind">Tipo</label>
-            <select id="od-kind" className="select" value={x.closed ? 'closed' : 'open'} onChange={(e) => setX((v) => ({ ...v, closed: e.target.value === 'closed' }))}>
-              <option value="closed">Chiusura straordinaria</option><option value="open">Apertura straordinaria</option>
-            </select></div>
-          {!x.closed && <>
-            <div className="field"><label htmlFor="od-open">Apre</label><input id="od-open" className="input" type="time" value={x.opensAt} onChange={(e) => setX((v) => ({ ...v, opensAt: e.target.value }))} /></div>
-            <div className="field"><label htmlFor="od-close">Chiude</label><input id="od-close" className="input" type="time" value={x.closesAt} onChange={(e) => setX((v) => ({ ...v, closesAt: e.target.value }))} /></div>
-          </>}
-          <div className="field"><label htmlFor="od-note">Nota</label><input id="od-note" className="input" maxLength={140} value={x.note} onChange={(e) => setX((v) => ({ ...v, note: e.target.value }))} placeholder="Es. ferie, festa patronale" /></div>
+      <p className="hint">Valgono su tutto il giorno e prevalgono sugli orari della settimana. Un giorno chiuso non si può scegliere nel
+        calendario del sito; le prenotazioni già presenti non vengono mai cancellate da sole.</p>
+      {warning && <p className="notice notice--warn" role="status"><CircleAlert size={16} aria-hidden="true" /> {warning}
+        <button type="button" className="icon-btn icon-btn--sm" aria-label="Chiudi l'avviso" onClick={() => setWarning(null)}><X size={14} aria-hidden="true" /></button></p>}
+      <div className={`dates-layout${items.length === 0 ? ' is-empty' : ''}`}>
+        <div className="dates-layout__list">
+          {items.length === 0 ? <p className="muted">Nessuna data straordinaria.</p> : (
+            <ul className="exc-list" aria-label="Date straordinarie">
+              {items.map((e) => (
+                <li key={e.id} className={editing === e.id ? 'is-editing' : undefined}>
+                  <div className="exc-list__main">
+                    <strong>{rangeLabel(e)}</strong>
+                    <span className={`badge ${e.closed ? 'badge--neutral' : 'badge--demo'}`}>{e.closed ? 'Chiuso' : `Aperto ${hhmm(e.opensAt)}–${hhmm(e.closesAt)}`}</span>
+                    {e.note && <span className="muted small">{e.note}</span>}
+                  </div>
+                  {confirmDelete === e.id ? (
+                    <div className="exc-list__actions" role="group" aria-label={`Conferma l'eliminazione di ${rangeLabel(e)}`}>
+                      <button type="button" className="btn btn--action btn--sm" onClick={() => { setConfirmDelete(null); void act(() => deleteOpeningException(e.id), 'Data straordinaria eliminata.'); }}>Elimina</button>
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => setConfirmDelete(null)}>Annulla</button>
+                    </div>
+                  ) : (
+                    <div className="exc-list__actions">
+                      <button type="button" className="icon-btn" aria-label={`Modifica ${rangeLabel(e)}`} onClick={() => startEdit(e)}><Pencil size={16} aria-hidden="true" /></button>
+                      <button type="button" className="icon-btn" aria-label={`Elimina ${rangeLabel(e)}`} onClick={() => setConfirmDelete(e.id)}><Trash2 size={16} aria-hidden="true" /></button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        <button type="submit" className="btn btn--ghost btn--sm"><Plus size={16} aria-hidden="true" /> Aggiungi la data</button>
-      </form>
+        <form className="cap-form dates-form" aria-label={editing ? 'Modifica la data straordinaria' : 'Nuova data straordinaria'} onSubmit={submit} noValidate>
+          <fieldset className="cap-fieldset">
+            <legend className="cap-legend">Quando</legend>
+            <div className="seg" role="radiogroup" aria-label="Quando">
+              <label className="seg__opt"><input type="radio" name="od-mode" checked={form.mode === 'day'} onChange={() => up('mode', 'day')} /><span>Un giorno</span></label>
+              <label className="seg__opt"><input type="radio" name="od-mode" checked={form.mode === 'range'} onChange={() => setForm((f) => ({ ...f, mode: 'range', to: f.to < f.from ? f.from : f.to }))} /><span>Più giorni</span></label>
+            </div>
+            <div className="dates-form__days">
+              <div className="field"><label htmlFor="od-from">{form.mode === 'day' ? 'Giorno' : 'Dal'}</label>
+                <input id="od-from" className="input" type="date" min={todayIso()} value={form.from}
+                  onChange={(e) => setForm((f) => ({ ...f, from: e.target.value, to: f.to < e.target.value ? e.target.value : f.to }))} /></div>
+              {form.mode === 'range' && <div className="field"><label htmlFor="od-to">Al (compreso)</label>
+                <input id="od-to" className="input" type="date" min={form.from || todayIso()} value={form.to} onChange={(e) => up('to', e.target.value)} /></div>}
+            </div>
+          </fieldset>
+          <fieldset className="cap-fieldset">
+            <legend className="cap-legend">Tipo</legend>
+            <div className="seg" role="radiogroup" aria-label="Tipo">
+              <label className="seg__opt"><input type="radio" name="od-kind" checked={form.closed} onChange={() => up('closed', true)} /><span>Chiusura</span></label>
+              <label className="seg__opt"><input type="radio" name="od-kind" checked={!form.closed} onChange={() => up('closed', false)} /><span>Apertura straordinaria</span></label>
+            </div>
+            {!form.closed && <div className="dates-form__days">
+              <div className="field"><label htmlFor="od-open">Apre alle</label><input id="od-open" className="input" type="time" value={form.opensAt} onChange={(e) => up('opensAt', e.target.value)} /></div>
+              <div className="field"><label htmlFor="od-close">Chiude alle</label><input id="od-close" className="input" type="time" value={form.closesAt} onChange={(e) => up('closesAt', e.target.value)} /></div>
+            </div>}
+          </fieldset>
+          <div className="field"><label htmlFor="od-note">Nota (facoltativa)</label><input id="od-note" className="input" maxLength={140} value={form.note} onChange={(e) => up('note', e.target.value)} placeholder="Es. ferie, festa patronale" /></div>
+          {invalid && <p className="error" role="alert">{invalid}</p>}
+          <div className="dates-form__actions">
+            <button type="submit" className="btn btn--action btn--sm" disabled={busy}>
+              {editing ? <><Save size={16} aria-hidden="true" /> Salva le modifiche</> : <><Plus size={16} aria-hidden="true" /> Aggiungi</>}
+            </button>
+            {editing && <button type="button" className="btn btn--ghost btn--sm" onClick={cancel}>Annulla la modifica</button>}
+          </div>
+        </form>
+      </div>
     </section>
   );
 }
 
-function ExceptionsPanel({ config, act }: { config: BookingConfig; act: Act }) {
-  const [x, setX] = useState({ serviceDate: todayIso(), kind: 'CAPACITY_OVERRIDE' as 'CLOSED' | 'CAPACITY_OVERRIDE', capacityOverride: 20, reason: '' });
+/** Chiusure agli arrivi di una sola fascia in una data, create prima di FIX-1: si vedono e si possono togliere. */
+function ClosedBandsPanel({ config, act }: { config: BookingConfig; act: Act }) {
   const windowName = (id: string | null) => (id ? config.windows.find((w) => w.id === id)?.name ?? 'fascia' : 'tutto il giorno');
   return (
-    <section className="panel" aria-labelledby="cap-exc">
-      <h3 id="cap-exc" className="panel__title">Limiti di persone per data</h3>
-      {config.exceptions.length === 0 ? <p className="muted">Nessun limite particolare nei prossimi giorni.</p> : (
-        <ul className="cap-list">
-          {config.exceptions.map((e) => (
-            <li key={e.id}>
-              <strong>{fmtShort(e.serviceDate)}</strong>
-              <span>{e.kind === 'CLOSED' ? 'Chiuso agli arrivi' : `Al massimo ${e.capacityOverride} persone`} · {windowName(e.serviceWindowId)}{e.reason ? ` · ${e.reason}` : ''}</span>
-              <button type="button" className="icon-btn icon-btn--sm" aria-label={`Elimina il limite del ${fmtShort(e.serviceDate)}`} onClick={() => void act(() => deleteException(e.id), 'Limite eliminato.')}><Trash2 size={14} aria-hidden="true" /></button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form className="cap-form" aria-label="Nuovo limite per data" onSubmit={(e) => { e.preventDefault(); void act(() => addException({ serviceDate: x.serviceDate, kind: x.kind, capacityOverride: x.kind === 'CAPACITY_OVERRIDE' ? x.capacityOverride : null, reason: x.reason || undefined }), 'Limite aggiunto.'); }}>
-        <div className="editor__row">
-          <div className="field"><label htmlFor="exc-date">Data</label><input id="exc-date" className="input" type="date" min={todayIso()} value={x.serviceDate} onChange={(e) => setX((v) => ({ ...v, serviceDate: e.target.value }))} /></div>
-          <div className="field"><label htmlFor="exc-kind">Tipo</label><select id="exc-kind" className="select" value={x.kind} onChange={(e) => setX((v) => ({ ...v, kind: e.target.value as typeof v.kind }))}><option value="CAPACITY_OVERRIDE">Persone al massimo</option><option value="CLOSED">Nessun arrivo</option></select></div>
-          {x.kind === 'CAPACITY_OVERRIDE' && <div className="field"><label htmlFor="exc-cap">Persone al massimo</label><input id="exc-cap" className="input" type="number" inputMode="numeric" min={0} value={x.capacityOverride} onChange={(e) => setX((v) => ({ ...v, capacityOverride: Number(e.target.value) }))} /></div>}
-          <div className="field"><label htmlFor="exc-reason">Motivo</label><input id="exc-reason" className="input" maxLength={140} value={x.reason} onChange={(e) => setX((v) => ({ ...v, reason: e.target.value }))} placeholder="Es. festa privata" /></div>
-        </div>
-        <button type="submit" className="btn btn--ghost btn--sm"><Plus size={16} aria-hidden="true" /> Aggiungi</button>
-      </form>
+    <section className="panel cap-grid__bands" aria-labelledby="cap-bands">
+      <h3 id="cap-bands" className="panel__title">Fasce chiuse agli arrivi</h3>
+      <ul className="exc-list">
+        {config.exceptions.map((e) => (
+          <li key={e.id}>
+            <div className="exc-list__main"><strong>{fmtShort(e.serviceDate)}</strong><span>{windowName(e.serviceWindowId)}</span>{e.reason && <span className="muted small">{e.reason}</span>}</div>
+            <div className="exc-list__actions"><button type="button" className="icon-btn" aria-label={`Riapri ${windowName(e.serviceWindowId)} del ${fmtShort(e.serviceDate)}`} onClick={() => void act(() => deleteException(e.id), 'Fascia riaperta agli arrivi.')}><Trash2 size={16} aria-hidden="true" /></button></div>
+          </li>
+        ))}
+      </ul>
     </section>
-  );
-}
-
-function PolicyPanel({ policy, act }: { policy: Policy | null; act: Act }) {
-  const [p, setP] = useState(() => policy ?? { webBookingEnabled: false, minLeadMinutes: 60, maxAdvanceDays: 60, maxPartySizeWeb: 12, pendingExpiryMinutesBeforeStart: 60 } as Policy);
-  useEffect(() => { if (policy) setP(policy); }, [policy]);
-  const up = <K extends keyof Policy>(k: K, v: Policy[K]) => setP((x) => ({ ...x, [k]: v }));
-  const save = (e: FormEvent) => {
-    e.preventDefault();
-    void act(() => savePolicy({ webBookingEnabled: p.webBookingEnabled, minLeadMinutes: p.minLeadMinutes, maxAdvanceDays: p.maxAdvanceDays,
-      maxPartySizeWeb: p.maxPartySizeWeb, pendingExpiryMinutesBeforeStart: p.pendingExpiryMinutesBeforeStart }), 'Regole delle richieste salvate.');
-  };
-  return (
-    <form className="panel" aria-labelledby="cap-policy" onSubmit={save}>
-      <h3 id="cap-policy" className="panel__title">Regole delle richieste dal sito</h3>
-      <div className="editor__row">
-        <div className="field"><label htmlFor="pol-lead">Anticipo minimo (minuti)</label><input id="pol-lead" className="input" type="number" min={0} value={p.minLeadMinutes} onChange={(e) => up('minLeadMinutes', Number(e.target.value))} /></div>
-        <div className="field"><label htmlFor="pol-adv">Al massimo giorni prima</label><input id="pol-adv" className="input" type="number" min={1} max={365} value={p.maxAdvanceDays} onChange={(e) => up('maxAdvanceDays', Number(e.target.value))} /></div>
-        <div className="field"><label htmlFor="pol-party">Persone massime dal sito</label><input id="pol-party" className="input" type="number" min={1} max={50} value={p.maxPartySizeWeb} onChange={(e) => up('maxPartySizeWeb', Number(e.target.value))} /></div>
-        <div className="field"><label htmlFor="pol-exp">Scadenza delle richieste (minuti prima dell'arrivo)</label><input id="pol-exp" className="input" type="number" min={0} value={p.pendingExpiryMinutesBeforeStart} onChange={(e) => up('pendingExpiryMinutesBeforeStart', Number(e.target.value))} /></div>
-      </div>
-      <p className="hint">Una richiesta non gestita in tempo scade da sola. Le richieste si aprono o chiudono con l'interruttore nei Contatti.</p>
-      <button type="submit" className="btn btn--action btn--sm">Salva le regole</button>
-    </form>
   );
 }
 
 const EMPTY_WINDOW = { isoDay: 5, name: 'Aperitivo', firstStart: '18:00', lastStart: '20:30', slotMinutes: 30, defaultDurationMinutes: 90 };
 
 function WindowsPanel({ config, act }: { config: BookingConfig; act: Act }) {
-  const zone = config.zones[0];
+  const zone = config.zones.find((z) => z.active) ?? config.zones[0];
   const [w, setW] = useState(EMPTY_WINDOW);
   const up = <K extends keyof typeof w>(k: K, v: (typeof w)[K]) => setW((x) => ({ ...x, [k]: v }));
   const byDay = (d: number) => config.windows.filter((x) => x.isoDay === d && x.active);
@@ -319,11 +409,11 @@ function WindowsPanel({ config, act }: { config: BookingConfig; act: Act }) {
     e.preventDefault();
     if (!zone) return;
     void act(() => createWindow({ zoneId: zone.id, isoDay: w.isoDay, name: w.name, firstStart: w.firstStart, lastStart: w.lastStart,
-      slotMinutes: w.slotMinutes, defaultDurationMinutes: w.defaultDurationMinutes, maxCovers: null, active: true }), 'Fascia aggiunta.');
+      slotMinutes: w.slotMinutes, defaultDurationMinutes: w.defaultDurationMinutes, active: true }), 'Fascia aggiunta.');
   };
   const label = (x: ServiceWindow) => `${x.name} ${hhmm(x.firstStart)}–${hhmm(x.lastStart)} ogni ${x.slotMinutes}' · ${x.defaultDurationMinutes}'`;
   return (
-    <details className="panel panel--wide cap-windows">
+    <details className="panel cap-grid__windows cap-windows">
       <summary><h3 className="panel__title">Orari di arrivo delle fasce</h3></summary>
       <p className="hint">Primo e ultimo arrivo, passo tra gli arrivi e permanenza prevista. Il nome (Colazione, Pomeriggio, Aperitivo, Sera) decide la fascia.</p>
       <ul className="cap-list">

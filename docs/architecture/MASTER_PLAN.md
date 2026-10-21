@@ -322,6 +322,13 @@ Non decidere il provider senza consultare il committente. Usare Docker Compose p
   pubblicazione, nessun servizio a pagamento, notifiche reali spente.** Stato reale in `FASE8_REPORT.md`.
 - **STOP: collaudo finale.**
 
+### FIX-1 — CORREZIONI DOPO IL COLLAUDO (branch `fix-1`, STOP)
+- Mandato del 21/10/2026 (C-33): animazione iniziale, categorie del menu sul telefono, foto di «Perché FireFlies»,
+  rate limiting equilibrato e doppio invio, menu dei gestori sul telefono, Impostazioni (capienza unica del locale,
+  riepilogo settimanale per fascia, chiusure e aperture su intervalli, orari sul telefono), audit del flusso di
+  prenotazione (`BOOKING_FLOW_AUDIT.md`). Stato reale in `FIX1_REPORT.md`.
+- **STOP: collaudo manuale; merge in `main` solo con approvazione esplicita.**
+
 ### FUTURO V2 — NON IMPLEMENTARE ORA
 - Algoritmo di scelta tavoli in automatico.
 - Ottimizzazione capienza, combinazione tavoli, tempi variabili, suggerimento alternative.

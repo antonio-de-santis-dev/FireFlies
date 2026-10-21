@@ -37,13 +37,19 @@ test.describe('Area pubblica — desktop', () => {
     await page.getByLabel('Ora del giorno').fill('22');
     await expect(section.getByRole('heading', { level: 3 })).toHaveText('Le lucciole si accendono');
     await section.getByRole('link', { name: /Vedi nel menu/ }).click();
-    await expect(page.getByRole('button', { name: /^Cocktail/ })).toHaveAttribute('aria-pressed', 'true');
+    // FIX-1: il collegamento apre il menu sulla sezione Cocktail, evidenziata nella barra delle categorie
+    await expect(page.getByRole('navigation', { name: 'Categorie del menu' }).getByRole('button', { name: /^Cocktail/ }))
+      .toHaveAttribute('aria-current', 'true');
+    await expect(page.getByRole('heading', { level: 2, name: 'Cocktail' })).toBeInViewport();
   });
 
   test('menu: filtri, ricerca, stato vuoto e dettaglio voce', async ({ page }) => {
     await go(page, '/menu');
+    // FIX-1: i chip portano alla sezione (nessuna voce nascosta); la sezione Cocktail ha le sue 4 voci
     await page.getByRole('button', { name: /^Cocktail/ }).click();
-    await expect(page.locator('.menu-item')).toHaveCount(4);
+    await expect(page.getByRole('heading', { level: 2, name: 'Cocktail' })).toBeFocused();
+    await expect(page.locator('section.menu__group', { has: page.getByRole('heading', { name: 'Cocktail' }) }).locator('.menu-item')).toHaveCount(4);
+    await expect(page.locator('.menu-item')).toHaveCount(14);
     await page.getByRole('button', { name: /^Tutto/ }).click();
     await page.getByLabel('Cerca nel menu').fill('lamponi');
     await expect(page.locator('.menu-item')).toHaveCount(1);

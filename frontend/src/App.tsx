@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react';
 import { Img } from './components/ui';
 import { logo } from './data/assets';
 import { fetchSession, uiRole } from './api/auth';
@@ -63,6 +63,14 @@ function publicPage(path: string): ReactNode {
 function ContentGate({ failed, retry }: { failed: boolean; retry: () => void }) {
   return (
     <main className="content-gate" id="contenuto" aria-busy={!failed}>
+      <GateBody failed={failed} retry={retry} />
+    </main>
+  );
+}
+
+function GateBody({ failed, retry }: { failed: boolean; retry: () => void }) {
+  return (
+    <>
       <Img asset={logo.onDarkSmall} eager className="content-gate__logo" />
       {failed ? (
         <div role="alert" className="content-gate__msg">
@@ -72,7 +80,43 @@ function ContentGate({ failed, retry }: { failed: boolean; retry: () => void }) 
       ) : (
         <p className="content-gate__msg muted">Caricamento…</p>
       )}
-    </main>
+    </>
+  );
+}
+
+/**
+ * FIX-1, req. 1 — uscita morbida della schermata d'attesa: arrivati i contenuti, la pagina è già sotto e il velo con il
+ * logo sfuma (circa mezzo secondo, solo opacità e scala: niente ricalcoli di layout). Non blocca i tocchi (pointer-events:
+ * none), si toglie da solo anche se l'animazione non parte (scheda in background) e non c'è con «riduci movimento».
+ * Solo al primo caricamento: la navigazione interna non lo ripropone.
+ */
+let introShown = false;
+function useIntroVeil(ready: boolean) {
+  const [phase, setPhase] = useState<'waiting' | 'leaving' | 'done'>(() => (introShown ? 'done' : 'waiting'));
+  useEffect(() => {
+    if (!ready || phase !== 'waiting') return;
+    introShown = true;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      setPhase('done');
+      return;
+    }
+    setPhase('leaving');
+  }, [ready, phase]);
+  useEffect(() => {
+    if (phase !== 'leaving') return;
+    const t = window.setTimeout(() => setPhase('done'), 900);
+    return () => window.clearTimeout(t);
+  }, [phase]);
+  return { phase, finish: () => setPhase('done') };
+}
+
+function IntroVeil({ leaving, onDone }: { leaving: boolean; onDone: () => void }) {
+  return (
+    <div className={`intro-veil${leaving ? ' is-leaving' : ''}`} aria-hidden="true"
+      onAnimationEnd={(e) => e.target === e.currentTarget && onDone()}>
+      <GateBody failed={false} retry={() => undefined} />
+    </div>
   );
 }
 
@@ -82,6 +126,7 @@ export function App() {
   const { role, authChecked, dispatch, openBooking, contentStatus, reloadPublic } = useStore();
   const signedIn = role != null;
   useReveal(path, contentStatus === 'ready');
+  const intro = useIntroVeil(contentStatus === 'ready');
 
   useEffect(() => {
     if (route === '/prenota') openBooking();
@@ -150,5 +195,11 @@ export function App() {
       </Suspense>
     );
   }
-  return <PublicLayout>{publicPage(path)}</PublicLayout>;
+  return (
+    <>
+      <PublicLayout>{publicPage(path)}</PublicLayout>
+      {/* presente già nel primo fotogramma con i contenuti: la pagina compare solo sotto il velo, mai di colpo */}
+      {intro.phase !== 'done' && <IntroVeil leaving={intro.phase === 'leaving'} onDone={intro.finish} />}
+    </>
+  );
 }

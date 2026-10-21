@@ -133,3 +133,26 @@ export async function openTableBooking(page: Page, open: () => Promise<void>) {
 export function requestCard(page: Page, name: string | RegExp) {
   return page.getByRole('article', { name: typeof name === 'string' ? new RegExp(name) : name });
 }
+
+/**
+ * FIX-1: riga del riepilogo settimanale (Impostazioni › Capienza e calendario) per un giorno e una fascia: sceglie la
+ * fascia e scorre le settimane con le frecce fino a quella che contiene il giorno.
+ */
+export async function weekSummaryRow(page: Page, day: string, band: 'Colazione' | 'Pomeriggio' | 'Aperitivo' | 'Sera') {
+  const panel = page.locator('.cap-grid__week');
+  await panel.getByLabel('Fascia', { exact: true }).selectOption({ label: band });
+  const monday = (iso: string) => {
+    const d = new Date(`${iso}T12:00:00`);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d.getTime();
+  };
+  const today = new Date();
+  const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const weeks = Math.round((monday(day) - monday(todayIso)) / (7 * 86_400_000));
+  for (let i = 0; i < Math.abs(weeks); i++) {
+    await panel.getByRole('button', { name: weeks > 0 ? 'Settimana successiva' : 'Settimana precedente' }).click();
+  }
+  const row = page.locator(`.week-table tbody tr[data-date="${day}"]`);
+  await expect(row).toBeVisible();
+  return row;
+}

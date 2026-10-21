@@ -3,7 +3,7 @@
 // scelta tavolo / evento privato e giorni chiusi (req. 10), larghezze 360–1920 senza scorrimento orizzontale.
 import { expect, test } from '@playwright/test';
 import { ownerApi, settingsBody } from './baseline';
-import { bookableDay, go, horizontalOverflow, openTableBooking, requestCard, signIn, testPhone } from './helpers';
+import { bookableDay, go, horizontalOverflow, openTableBooking, requestCard, signIn, testPhone, weekSummaryRow } from './helpers';
 
 const WIDTHS = [360, 375, 390, 768, 1366, 1440, 1920];
 const isoWeekday = (iso: string) => ((new Date(`${iso}T12:00:00`).getDay() + 6) % 7) + 1;
@@ -100,30 +100,29 @@ test.describe('Foto sui telefoni', () => {
 });
 
 test.describe('Capienza, calendario di oggi, giorni chiusi', () => {
-  test('titolare: capienza per fascia salvata nel backend; oltre il limite non si conferma', async ({ page }) => {
+  // FIX-1: la capienza per giorno e fascia è diventata la capienza unica del locale (stesso controllo sul registro)
+  test('titolare: capienza unica salvata nel backend; oltre il limite non si conferma', async ({ page }) => {
     const day = bookableDay(15, 0);
-    const iso = isoWeekday(day);
     const owner = await ownerApi();
-    const before = await owner.call('GET', '/admin/capacity-matrix');
-    const original = before.cells.filter((c: { isoDay: number; band: string; offered: boolean }) => c.isoDay === iso && c.band === 'SERA' && c.offered);
+    const original = (await owner.call('GET', '/admin/booking-config')).venueCapacity as number;
     try {
       await page.setViewportSize({ width: 1366, height: 900 });
       await signIn(page);
       await go(page, '/gestione/impostazioni');
       await expect(page.getByRole('heading', { level: 1 })).toHaveText('Impostazioni');
-      await expect(page.getByRole('heading', { name: 'Capienza', exact: true })).toBeVisible();
-      const days = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica'];
-      const cell = page.getByLabel(`Sera di ${days[iso - 1]}`, { exact: true });
-      await cell.fill('5');
-      await page.getByRole('button', { name: 'Salva la capienza per fascia' }).click();
-      await expect(page.locator('.toast')).toContainText('Capienza per fascia salvata');
+      await expect(page.getByRole('heading', { name: 'Capienza e calendario', exact: true })).toBeVisible();
+      await expect(page.getByLabel(/^Sera di /)).toHaveCount(0); // niente più tabella giorno × fascia
+      const field = page.getByLabel('Capienza massima del locale (persone)');
+      await field.fill('30');
+      await page.getByRole('button', { name: 'Salva la capienza' }).click();
+      await expect(page.locator('.toast')).toContainText('Capienza del locale salvata: 30 persone');
       await page.reload();
-      await expect(page.getByLabel(`Sera di ${days[iso - 1]}`, { exact: true })).toHaveValue('5');
+      await expect(page.getByLabel('Capienza massima del locale (persone)')).toHaveValue('30');
 
-      // due richieste da 4 alle 21:00: la seconda conferma è rifiutata dal backend
+      // due richieste da 20 alle 21:00: la seconda conferma è rifiutata dal backend (40 > 30)
       const names = [`Sera A ${Date.now()}`, `Sera B ${Date.now()}`];
       for (const name of names) {
-        await owner.call('POST', '/admin/reservations', { source: 'PHONE', date: day, time: '21:00', guests: 4, name, phone: testPhone(), confirmNow: false, needsCallback: false });
+        await owner.call('POST', '/admin/reservations', { source: 'PHONE', date: day, time: '21:00', guests: 20, name, phone: testPhone(), confirmNow: false, needsCallback: false });
       }
       await signIn(page, 'Staff');
       await go(page, '/gestione/richieste');
@@ -139,20 +138,19 @@ test.describe('Capienza, calendario di oggi, giorni chiusi', () => {
       }
       await expect(requestCard(page, names[1])).toContainText('In attesa');
 
-      // riepilogo del giorno: confermate, persone, capienza e posti
+      // riepilogo settimanale, fascia Sera: confermate, persone, capienza
       await signIn(page);
       await go(page, '/gestione/impostazioni');
-      await page.getByLabel('Dal', { exact: true }).fill(day);
-      const row = page.locator('.cap-summary tbody tr', { hasText: 'Sera' }).first();
-      await expect(row.locator('td[data-label="Capienza"]')).toHaveText('5');
-      await expect(row.locator('td[data-label="Persone"]')).toHaveText('4');
-      await expect(row.locator('td[data-label="Disponibili"]')).toHaveText(/^[0-5]$/);
+      const row = await weekSummaryRow(page, day, 'Sera');
+      await expect(row.locator('td[data-label="Capienza"]')).toHaveText('30');
+      await expect(row.locator('td[data-label="Persone confermate"]')).toHaveText('20');
+      await expect(row.locator('td[data-label="Disponibili"]')).toHaveText(/^\d+$/);
       // ridurre sotto i confermati: errore chiaro, nulla cambia
-      await page.getByLabel(`Sera di ${days[iso - 1]}`, { exact: true }).fill('2');
-      await page.getByRole('button', { name: 'Salva la capienza per fascia' }).click();
-      await expect(page.locator('.toast')).toContainText('persone confermate, più del nuovo limite');
+      await page.getByLabel('Capienza massima del locale (persone)').fill('15');
+      await page.getByRole('button', { name: 'Salva la capienza' }).click();
+      await expect(page.locator('.toast')).toContainText('persone confermate, più della nuova capienza');
       await page.reload();
-      await expect(page.getByLabel(`Sera di ${days[iso - 1]}`, { exact: true })).toHaveValue('5');
+      await expect(page.getByLabel('Capienza massima del locale (persone)')).toHaveValue('30');
       // pulizia: richieste annullate
       const found = await owner.call('GET', `/admin/reservations?from=${day}&to=${day}&q=Sera`);
       for (const r of found.items as { id: string; version: number; status: string }[]) {
@@ -161,7 +159,7 @@ test.describe('Capienza, calendario di oggi, giorni chiusi', () => {
         }
       }
     } finally {
-      await owner.call('PUT', '/admin/capacity-matrix', { cells: original.map((c: { isoDay: number; band: string; maxCovers: number | null }) => ({ isoDay: c.isoDay, band: c.band, maxCovers: c.maxCovers })) });
+      await owner.call('PUT', '/admin/venue-capacity', { capacity: original });
       await owner.dispose();
     }
   });
@@ -256,7 +254,7 @@ test.describe('Capienza, calendario di oggi, giorni chiusi', () => {
     const owner = await ownerApi();
     let exceptionId = '';
     try {
-      const added = await owner.call('POST', '/admin/opening-exceptions', { day: closedDay, closed: true, note: 'Chiusura E2E' });
+      const added = await owner.call('POST', '/admin/opening-exceptions', { from: closedDay, to: closedDay, closed: true, note: 'Chiusura E2E' });
       exceptionId = added.exception.id;
       await page.setViewportSize({ width: 390, height: 844 });
       await go(page, '/');

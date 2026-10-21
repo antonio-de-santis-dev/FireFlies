@@ -201,6 +201,13 @@ export function Toast() {
 export function PublicLayout({ children }: { children: ReactNode }) {
   const { booking } = useStore();
   const path = usePath();
+  // FIX-1: la prima pagina entra con il velo dell'avvio, non con una seconda dissolvenza sovrapposta
+  const [firstRoute] = useState(() => path.split('?')[0]);
+  const route = path.split('?')[0];
+  const [navigated, setNavigated] = useState(false);
+  useEffect(() => {
+    if (route !== firstRoute) setNavigated(true);
+  }, [route, firstRoute]);
   return (
     <>
       <a className="skip-link" href="#contenuto" onClick={(e) => { e.preventDefault(); document.getElementById('contenuto')?.focus(); }}>
@@ -210,8 +217,8 @@ export function PublicLayout({ children }: { children: ReactNode }) {
       <Announcements />
       <Header />
       <main id="contenuto" tabIndex={-1}>
-        {/* la chiave sul percorso fa ripartire l'animazione d'ingresso a ogni cambio pagina */}
-        <div className="page-enter" key={path.split('?')[0]}>{children}</div>
+        {/* la chiave sul percorso fa ripartire l'animazione d'ingresso a ogni cambio pagina (non alla prima) */}
+        <div className={navigated || route !== firstRoute ? 'page-enter' : undefined} key={route}>{children}</div>
       </main>
       <Footer />
       <MobileCta />

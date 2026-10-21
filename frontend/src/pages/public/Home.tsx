@@ -1,5 +1,5 @@
 import { ArrowRight, CalendarHeart, Clock, Instagram, MapPin, UtensilsCrossed } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { logo, photos } from '../../data/assets';
 import { formatEventDate } from '../../data/events';
 import { momentAt, moments } from '../../data/site';
@@ -26,11 +26,18 @@ export function HoursList({ compact = false }: { compact?: boolean }) {
   );
 }
 
+/** FIX-1: l'ingresso del hero (zoom lento della foto, testi che salgono) solo alla prima apertura del sito. */
+let heroIntroPlayed = false;
+
 function Hero() {
   const { settings, content, mediaOr } = useStore();
   const today = settings.hours[todayIndex()];
+  const [intro] = useState(() => !heroIntroPlayed);
+  useEffect(() => {
+    heroIntroPlayed = true;
+  }, []);
   return (
-    <section className="hero" aria-labelledby="hero-title">
+    <section className={`hero${intro ? ' hero--intro' : ''}`} aria-labelledby="hero-title">
       <div className="hero__media">
         {/* React 18 non conosce ancora `fetchPriority`: attributo HTML in minuscolo */}
         <Img asset={mediaOr(content.heroPhoto)} eager decorative {...({ fetchpriority: 'high' } as object)} />

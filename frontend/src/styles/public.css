@@ -148,7 +148,18 @@
   height: 100%;
   object-fit: cover;
   object-position: 50% 30%;
-  animation: hero-zoom 9s var(--ease-out) both;
+}
+/* FIX-1: ingresso solo alla prima apertura (classe hero--intro); tornando alla home la foto è già ferma */
+.hero--intro .hero__media img { animation: hero-zoom 7s var(--ease-out) both; will-change: transform; }
+.hero--intro .hero__inner > * { animation: hero-rise 700ms var(--ease-out) both; animation-delay: calc(var(--rise, 0) * 70ms + 120ms); }
+.hero--intro .hero__inner > :nth-child(2) { --rise: 1; }
+.hero--intro .hero__inner > :nth-child(3) { --rise: 2; }
+.hero--intro .hero__inner > :nth-child(4) { --rise: 3; }
+.hero--intro .hero__inner > :nth-child(5) { --rise: 4; }
+@keyframes hero-rise { from { opacity: 0; transform: translateY(14px); } }
+@media (prefers-reduced-motion: reduce) {
+  .hero--intro .hero__media img,
+  .hero--intro .hero__inner > * { animation: none; }
 }
 /* scrim neutro: unico gradiente ammesso, solo per leggibilità */
 .hero__media::after {
@@ -583,18 +594,35 @@
 
 /* ================= Menu ================= */
 .menu { padding-bottom: var(--section); }
-.menu__tools {
+/* FIX-1, req. 2: la ricerca scorre via, resta in alto solo la riga dei chip (navigazione tra le categorie) */
+.menu__search { position: relative; display: flex; align-items: center; max-width: 560px; margin-top: 20px; }
+.menu__nav {
   position: sticky;
   top: var(--header-h);
   z-index: 10;
   background: var(--ff-ink-950);
-  padding: 16px 0 8px;
-  display: grid;
-  gap: 12px;
-  margin-bottom: 24px;
+  padding: 10px 0 8px;
+  margin: 12px 0 8px;
   border-bottom: 1px solid var(--ff-ink-800);
 }
-.menu__search { position: relative; display: flex; align-items: center; max-width: 560px; }
+.menu__chips-wrap { position: relative; }
+.menu__chips { scroll-behavior: smooth; padding-inline: 2px; }
+.menu__chips-wrap.more-right .menu__chips {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+}
+.menu__chips-wrap.more-left.more-right .menu__chips {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 32px, #000 calc(100% - 48px), transparent);
+}
+.menu__chips-wrap.more-left:not(.more-right) .menu__chips {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 32px);
+  mask-image: linear-gradient(to right, transparent, #000 32px);
+}
+.menu__chips .chip { white-space: nowrap; max-width: 80vw; overflow: hidden; text-overflow: ellipsis; }
+.menu__chips .chip[aria-current='true'] { background: var(--ff-gold); border-color: var(--ff-gold); color: var(--ff-ink-950); }
+.menu__group-head h2:focus { outline: none; }
+.menu__group-head h2:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
 .menu__search > svg { position: absolute; left: 14px; color: var(--ff-muted); pointer-events: none; }
 .menu__search .input { padding-left: 44px; padding-right: 52px; }
 .menu__search .icon-btn { position: absolute; right: 0; }
@@ -607,7 +635,7 @@
   border-top: 1px solid var(--ff-ink-800);
 }
 .menu__group:first-of-type { border-top: 0; }
-.menu__group-head { position: sticky; top: calc(var(--header-h) + 140px); align-self: start; }
+.menu__group-head { position: sticky; top: calc(var(--header-h) + 96px); align-self: start; }
 .menu__group-head h2 { font-size: var(--fs-h2); }
 .menu__group-head p { margin-top: 8px; }
 .menu__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
@@ -835,7 +863,7 @@ a.cal__day.has-event:hover { background: #a50d4f; }
 .story-hero__grid > div { padding-bottom: 48px; }
 .story {
   display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   gap: clamp(32px, 5vw, 96px);
   padding-block: var(--section);
   align-items: center;
@@ -843,7 +871,11 @@ a.cal__day.has-event:hover { background: #a50d4f; }
 .story__text { display: grid; gap: 16px; }
 .story__text h2 { font-size: var(--fs-h2); }
 .story__photo { margin: 0; display: grid; gap: 8px; }
-.story__photo img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; object-position: 50% 0; }
+/* FIX-1, req. 3: la foto è verticale (3:4) e il soggetto (le persone al tavolo) sta in basso. Il riquadro orizzontale
+   4:3 con l'ancoraggio in alto tagliava i volti: ora riquadro verticale 4:5 (ritaglio minimo, ~6 %), soggetto centrato,
+   colonna più stretta su desktop così la foto non diventa più alta dello schermo. */
+.story__photo { justify-self: center; width: 100%; max-width: 560px; }
+.story__photo img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; object-position: 50% 55%; }
 .spaces { background: var(--ff-green-900); padding-block: var(--section); }
 .spaces h2 { font-size: var(--fs-h1); margin-bottom: 40px; }
 .spaces__grid { display: grid; grid-template-columns: 5fr 4fr 3fr; gap: 32px; align-items: start; }
@@ -1332,7 +1364,8 @@ a.cal__day.has-event:hover { background: #a50d4f; }
 
 /* ================= Menu: leggibilità su smartphone ================= */
 @media (max-width: 767px) {
-  .menu__tools { padding: 14px 0 10px; gap: 14px; }
+  .menu__nav { margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); }
+  .menu__group-head { position: static; }
   .menu__search .input { min-height: 52px; font-size: 1.0625rem; }
   .menu .chip { min-height: 46px; padding: 10px 18px; font-size: 1rem; }
   .menu__group { padding-block: 32px 20px; gap: 18px; }

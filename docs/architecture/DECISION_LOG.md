@@ -40,12 +40,14 @@
 | C-30 | **FASE 7 — completamento obbligatorio**: requisiti 1–14 oltre al 15 già fatto; nessun invio reale senza autorizzazione, credenziali e provider; conservazione: prenotazioni 1 mese, eventi 2 mesi, statistiche anonime conservate; nessuna migrazione distruttiva | 20/10 |
 | C-31 | **FASE 7 approvata** (482 test, CI verde); **FASE 8**: hardening, performance, UX responsive, preparazione al deploy **senza pubblicare**, senza servizi a pagamento, notifiche reali spente; editor eventi senza ora di fine e senza coperti (valori ricavati nel backend) | 20/10 |
 | C-32 | **Autorizzazione del titolare a portare la FASE 8 su `main`** (fast-forward da `fase-8/hardening-deploy`, nessun force push). **Non** autorizza il deploy, servizi a pagamento o notifiche reali | 21/10 |
+| C-33 | **FIX-1** sul branch di collaudo `fix-1` (da `main`): animazione iniziale, categorie del menu sul telefono, foto di «Perché FireFlies», rate limiting equilibrato, menu dei gestori sul telefono, Impostazioni (capienza unica, riepilogo settimanale, chiusure su intervalli), report sul flusso di prenotazione. Merge in `main` solo dopo il collaudo manuale | 21/10 |
 
 ## 1-bis. Strategia Git (C-21, regola definitiva)
 
 | Branch | Deriva da | Stato |
 |---|---|---|
 | `main` | — | dal 21/10/2026 allineato a `fase-8/hardening-deploy` (C-32); si modifica solo con autorizzazione |
+| `fix-1` | `main` (`395dcf5`) | correzioni FIX-1 in collaudo (C-33), nessun merge senza approvazione |
 | `fase-0/audit` | `main` | completato e approvato |
 | `fase-1/progettazione` | `fase-0/audit` | completato e approvato |
 | `fase-2/backend-foundation` | `fase-1/progettazione` | completato e approvato |
@@ -164,6 +166,21 @@ Regole: verificare stato e branch prima di iniziare; branch precedente completo 
 | T-75 | **Req. 5** — Header aggiunti: HSTS (1 anno, sottodomini), `Permissions-Policy` (nessun sensore/pagamento), `Cross-Origin-Opener-Policy: same-origin`; la CSP la scrive Caddy sui file statici. Matrice dei permessi generata da **tutti** gli endpoint registrati (`ApiSecurityMatrixIT`) | — |
 | T-76 | **Req. 6** — Area gestori e accesso caricati a parte (`React.lazy`), precaricati appena si apre `/gestione`: −27,6 % di JavaScript sul sito pubblico senza rallentare l'area gestori. Indice parziale `ix_outbox_due` (V11) per la presa in carico del worker | evidence/PERFORMANCE.md |
 | T-77 | **Req. 7–8** — Produzione su un solo server con Docker Compose (Caddy + backend + PostgreSQL), foto su R2, backup `pg_dump -Fc` verificato e con impronte, ripristino solo su database vuoto; nessun servizio acquistato | DEPLOY.md |
+
+## 2-sexies. Decisioni tecniche applicate in FIX-1
+
+| ID | Decisione | Riferimenti |
+|---|---|---|
+| T-78 | **Capienza unica**: l'unica fonte è `capacity_zones.physical_capacity` («Capienza massima del locale»), uguale in ogni giorno e fascia; V12 rimuove `service_windows.max_covers` e le eccezioni `CAPACITY_OVERRIDE` (potevano solo abbassarla: nessun rischio di overbooking) e riallinea i quanti esistenti. Con più zone attive `PUT /admin/venue-capacity` risponde `409 MULTIPLE_ZONES` (configurazione non più gestita dall'interfaccia). Registro, lock e `CAPACITY_BELOW_CONFIRMED` invariati | BOOKING_RULES §3.2; supera T-61 |
+| T-79 | **Persone per richiesta dal sito**: via `max_party_size_web`; limite = capienza del locale, con tetto fisso di 30 (`BookingCalendar.WEB_PARTY_CEILING`): non è un'impostazione, impedisce che una richiesta automatica blocchi metà del locale e non espone la capienza al pubblico | BOOKING_RULES §5 |
+| T-80 | **Limiti del modulo pubblico**: tre finestre per IP in memoria — letture 120/min, tentativi 30/10 min, richieste create 10/ora (contate solo al salvataggio) — più 3 al giorno per telefono sul database; `429` con `Retry-After` e attesa nel messaggio. Nessun CAPTCHA: volume di un locale, trappola `website`, limiti e conferma manuale bastano | BOOKING_FLOW_AUDIT §12; supera T-17 per il modulo |
+| T-81 | **Doppio invio**: blocco sincrono nel frontend; nel backend, la violazione di `ux_res_idempotency_key` di due invii contemporanei viene ripetuta in una nuova transazione e restituisce la stessa ricevuta | BOOKING_FLOW_AUDIT §11 |
+| T-82 | **Chiusure e aperture straordinarie su intervalli**: una riga per intervallo (`opening_exceptions.day`…`end_day`, max 366 giorni) invece di espanderle in date singole: inserimento e modifica atomici, elenco leggibile, sovrapposizioni impossibili per il vincolo di esclusione `ex_opening_exception_overlap`. Nessuna prenotazione cancellata: il salvataggio restituisce i giorni con prenotazioni attive | BOOKING_RULES §13 |
+| T-83 | **Riepilogo**: una settimana (lunedì–domenica) e una fascia alla volta (`capacity-summary?band=`), una riga per giorno anche senza fascia quel giorno | — |
+| T-84 | **Menu pubblico**: i chip non filtrano più, portano alla sezione (scorrimento morbido sotto intestazione e barra) con la categoria attiva evidenziata durante lo scorrimento; la ricerca filtra ancora; `?cat=` apre la categoria | — |
+| T-85 | **Animazione iniziale**: sfondo scuro in linea in `index.html`; la schermata d'attesa diventa un velo che sfuma sulla pagina già pronta (≈ 0,5 s, solo opacità/scala, `pointer-events: none`); ingresso del hero solo alla prima apertura; nessuna seconda dissolvenza sulla prima pagina; niente velo con «riduci movimento» | — |
+| T-86 | **Menu dei gestori sul telefono**: intestazione 60 px (logo · pagina attuale · «Menu»), pannello con sfondo scurito e pagina ferma, «Vedi il sito» ed «Esci» in fondo al pannello; desktop invariato (`display: contents`) | supera T-68 per l'aspetto |
+| T-87 | Audit degli accessi negati: `object_id` troncato a 64 caratteri e percorso intero nei metadati (prima un 403 su percorsi lunghi diventava 500) | — |
 
 ## 3. Proposte — stato dopo l'approvazione della FASE 1
 

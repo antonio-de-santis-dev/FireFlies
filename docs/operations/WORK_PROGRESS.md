@@ -1,6 +1,7 @@
 # WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Ultimo aggiornamento: 21/10/2026, **FIX-1 — correzioni UX/UI, prenotazioni, impostazioni** (in corso).
+> Ultimo aggiornamento: 21/10/2026, **FIX-1 — correzioni UX/UI, prenotazioni, impostazioni** (completato, **in attesa
+> del collaudo manuale del titolare**).
 
 ## Fase e branch
 - **FIX-1** sul branch `fix-1`, creato da `main` @ `395dcf5` (= FASE 8 completa, C-32).
@@ -10,24 +11,24 @@
 ## Piano di lavoro
 | # | Requisito | Stato |
 |---|---|---|
-| 1 | Animazione iniziale più fluida | da fare |
-| 2 | Menu pubblico: navigazione categorie sul telefono | da fare |
-| 3 | «Perché FireFlies» (pagina Il locale): foto adattata | da fare |
-| 4 | Rate limiting equilibrato, doppio invio, idempotenza | backend fatto (WebRateLimitIT, WebRequestLimiterTest); frontend da fare |
-| 5 | Navbar area gestori sul telefono | da fare |
-| 6.1–6.2 | Impostazioni: layout desktop, orari su telefono | da fare |
-| 6.3 | Capienza unica del locale (V12, `PUT /admin/venue-capacity`) | backend fatto; frontend da fare |
-| 6.4 | Riepilogo settimanale con una fascia (`capacity-summary?band=`) | backend fatto; frontend da fare |
-| 6.5 | Via «persone massime dal sito» e limiti per data | backend fatto (V12); frontend da fare |
-| 6.6 | Chiusure/aperture su giorno o intervallo (V12, vincolo di esclusione) | backend fatto; frontend da fare |
-| 7 | BOOKING_FLOW_AUDIT.md | da fare |
-| 8–9 | Test completi, documenti, FIX1_REPORT | da fare |
+| 1 | Animazione iniziale più fluida | fatto |
+| 2 | Menu pubblico: navigazione categorie sul telefono | fatto |
+| 3 | «Perché FireFlies» (pagina Il locale): foto adattata | fatto |
+| 4 | Rate limiting equilibrato, doppio invio, idempotenza, 429 con attesa | fatto |
+| 5 | Navbar area gestori sul telefono | fatto |
+| 6.1–6.2 | Impostazioni: layout desktop, orari su telefono | fatto |
+| 6.3 | Capienza unica del locale (V12, `PUT /admin/venue-capacity`) | fatto |
+| 6.4 | Riepilogo settimanale con una fascia | fatto |
+| 6.5 | Via «persone massime dal sito» e limiti per data/fascia | fatto |
+| 6.6 | Chiusure/aperture su giorno o intervallo | fatto |
+| 7 | BOOKING_FLOW_AUDIT.md | fatto |
+| 8–9 | Test (82 + 334 + 136, tutti verdi), documenti, FIX1_REPORT | fatto |
 
 ## Note per la ripresa
 - **Non compilare il backend mentre gira l'e2e** (il jar in `backend/target/` è quello usato da `scripts/e2e.mjs`).
 - Docker: se non risponde, avviare `dockerd` (vedi FASE 8).
-- Bug pre-esistente trovato e corretto: 403 dello staff su percorsi lunghi diventava 500 (audit `object_id` > 64).
+- Punti aperti da decidere con il titolare: FIX1_REPORT §9 (tetto di 30 persone dal sito, chiusure per singola fascia).
 
 ## Prossima azione esatta
-Frontend: Impostazioni (capienza unica, chiusure a intervallo, riepilogo settimanale, orari su telefono), modulo
-pubblico (doppio invio, 429), poi animazione, menu, «Perché FireFlies», navbar gestori; test Playwright; documenti.
+Nessuna: **fermo per il collaudo manuale** (istruzioni in FIX1_REPORT §11). Merge di `fix-1` in `main` solo dopo
+l'approvazione esplicita del titolare.

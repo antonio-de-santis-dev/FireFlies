@@ -92,9 +92,11 @@ compila e avvia il backend sulla porta 18080 con i contenuti demo e una cartella
 la procedura del passo 3 e uno staff via API con password **casuali generate a ogni esecuzione**, esegue Playwright e
 alla fine cancella database, volume e foto. Non tocca il database di sviluppo del passo 1.
 I test che modificano menu, foto o testi riportano i dati com'erano alla fine (`tests/baseline.ts`); le prenotazioni
-create dai test usano nomi, giorni e numeri di prova sempre diversi. Il backend e2e alza il limite per IP delle richieste
-dal sito (`--fireflies.reservations.web-requests-per-hour=1000`) perché tutte arrivano da 127.0.0.1: il limite reale
-(5 all'ora) è verificato dai test del backend.
+create dai test usano nomi, giorni e numeri di prova sempre diversi. Il backend e2e alza i limiti per IP del modulo
+pubblico (`web-requests-per-hour`, `web-attempts-per-10-minutes`, `availability-reads-per-minute`) perché tutte le
+richieste arrivano da 127.0.0.1; i limiti reali (FIX-1: 10 richieste create all'ora, 30 tentativi in 10 minuti, 120
+letture al minuto) sono verificati dai test del backend (`WebRateLimitIT`). Nelle prove manuali in locale gli invii
+rifiutati non consumano più il limite delle richieste; per ripartire da zero basta riavviare il backend.
 
 **Altre verifiche (FASE 8)**, da eseguire **una alla volta** e mai mentre gira `mvnw verify` (l'e2e usa il jar in
 `backend/target/`):

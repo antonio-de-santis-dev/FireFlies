@@ -142,15 +142,15 @@ erDiagram
 | first_start, last_start time | `CHECK (last_start >= first_start)`; minuti multipli di 15; nessuna fascia oltre mezzanotte |
 | slot_minutes smallint | `CHECK (IN (15, 30, 60))` |
 | default_duration_minutes smallint | `CHECK (BETWEEN 30 AND 360 AND default_duration_minutes % 15 = 0)` |
-| **max_covers int null** | limite di **presenze contemporanee** nella fascia, `CHECK (>= 0)`; null = capienza fisica della zona; non può superare la capienza fisica (controllo applicativo sotto lock della zona) |
+| ~~max_covers~~ | **rimossa in V12 (FIX-1)**: la capienza è unica per tutto il locale (`capacity_zones.physical_capacity`) |
 | valid_from date, valid_to date null | `CHECK (valid_to IS NULL OR valid_to >= valid_from)` |
 | active | |
 
 Fasce sovrapposte nella stessa zona e giorno: rifiutate dall'applicazione sotto lock della zona. Indice `(zone_id, iso_day, active)`.
 
-**`booking_policies`**: `id`; `effective_from date UNIQUE`; **`confirmation_mode text CHECK (confirmation_mode = 'MANUAL')`**; `web_booking_enabled`; `min_lead_minutes CHECK (BETWEEN 0 AND 10080)`; `max_advance_days CHECK (BETWEEN 1 AND 365)`; `max_party_size_web CHECK (BETWEEN 1 AND 50)`; `pending_expiry_minutes_before_start CHECK (BETWEEN 0 AND 1440)`; `created_by`, `created_at`.
+**`booking_policies`**: `id`; `effective_from date UNIQUE`; **`confirmation_mode text CHECK (confirmation_mode = 'MANUAL')`**; `web_booking_enabled`; `min_lead_minutes CHECK (BETWEEN 0 AND 10080)`; `max_advance_days CHECK (BETWEEN 1 AND 365)`; ~~`max_party_size_web`~~ (rimossa in V12: il limite segue la capienza del locale, tetto fisso 30 nel codice); `pending_expiry_minutes_before_start CHECK (BETWEEN 0 AND 1440)`; `created_by`, `created_at`.
 
-**`booking_exceptions`**: `id`; `service_date date`; `service_window_id null FK CASCADE` (null = tutte le fasce del giorno); `kind CHECK (IN ('CLOSED','CAPACITY_OVERRIDE'))`; `capacity_override int null` con `CHECK ((kind = 'CAPACITY_OVERRIDE') = (capacity_override IS NOT NULL))` e `>= 0` (limite di presenze per quella data); `reason varchar(140)`; `created_by`, `created_at`. `UNIQUE NULLS NOT DISTINCT (service_date, service_window_id)`. `CLOSED` blocca gli arrivi ordinari, non cambia la capienza dei quanti.
+**`booking_exceptions`**: `id`; `service_date date`; `service_window_id null FK CASCADE` (null = tutte le fasce del giorno); `kind CHECK (kind = 'CLOSED')` (V12: `CAPACITY_OVERRIDE` e `capacity_override` rimossi, le righe di quel tipo cancellate — erano solo configurazione); `reason varchar(140)`; `created_by`, `created_at`. `UNIQUE NULLS NOT DISTINCT (service_date, service_window_id)`. `CLOSED` blocca gli arrivi ordinari, non cambia la capienza dei quanti.
 
 ### 3.3 Capienza (`capacity`)
 
@@ -338,7 +338,7 @@ Nessun nome, telefono, email, nota, riferimento o id di prenotazione.
 della riga con `INSERT … ON CONFLICT DO UPDATE … WHERE status = 'FAILED' OR (RUNNING da più di 2 ore)` rende la pulizia
 idempotente e concorrente (ora legale compresa).
 
-**Tabelle esistenti usate in modo nuovo**: `service_windows.max_covers` = capienza per giorno e fascia; `opening_exceptions`
+**Tabelle esistenti usate in modo nuovo**: ~~`service_windows.max_covers` = capienza per giorno e fascia~~ (rimossa in FIX-1); `opening_exceptions`
 (V2) = chiusure e aperture straordinarie (ora con API); `notification_outbox.expires_at` = fine della prenotazione;
 `notification_attempts.provider = 'fake'` = invio simulato. Le tabelle dei tavoli restano (non più usate dalla UI).
 
@@ -347,6 +347,17 @@ idempotente e concorrente (ora legale compresa).
 del worker legge solo le notifiche da inviare, in ordine di scadenza (25,4 → 0,1 ms con 100.000 notifiche,
 `evidence/PERFORMANCE.md`). Nessuna colonna nuova; gli eventi della FASE 8 usano le colonne esistenti (`ends_at` e
 `capacity_covers` ricavati dal backend, BOOKING_RULES §7.5).
+
+### 3.11 Capienza unica e date straordinarie su intervalli (V12, FIX-1)
+- **Capienza**: unica fonte `capacity_zones.physical_capacity` («Capienza massima del locale»). Rimossi
+  `service_windows.max_covers`, `booking_exceptions.capacity_override` (con le righe `CAPACITY_OVERRIDE`) e
+  `booking_policies.max_party_size_web`. I quanti esistenti di `capacity_slots` sono riallineati alla capienza della
+  zona solo dove `occupied_covers <= physical_capacity` (mai sovraprenotati). Nessun dato dei clienti toccato.
+- **`opening_exceptions`**: `day` (primo giorno) e **`end_day date NOT NULL`** (ultimo, compreso; i dati esistenti con
+  `end_day = day`); `ck_opening_exception_range` (`end_day >= day`, al massimo 366 giorni); il vincolo unico su `day`
+  è sostituito da **`ex_opening_exception_overlap EXCLUDE USING gist (daterange(day, end_day, '[]') WITH &&)`**: nessun
+  giorno può stare in due eccezioni, anche con salvataggi contemporanei. Scelta: una riga per intervallo invece di
+  espandere in date singole (inserimento, modifica ed eliminazione atomici, nessun duplicato, elenco leggibile).
 
 ## 4. Invarianti
 

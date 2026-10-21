@@ -47,7 +47,7 @@ export function Locale() {
           )}
         </div>
         <figure className="story__photo">
-          <Img asset={photos.insegnaFermati} />
+          <Img asset={photos.insegnaFermati} sizes="(min-width: 900px) 560px, 100vw" />
           <figcaption className="small muted">Sulla parete del locale: «Fermati. La giornata può aspettare. Il tuo momento no.»</figcaption>
         </figure>
       </section>

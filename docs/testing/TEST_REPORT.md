@@ -1,7 +1,27 @@
 # Report dei test — backend e frontend
 
-> Aggiornato in **FASE 8** (hardening e preparazione al deploy) il 20/10/2026. Seguono le FASI 7, 6, 5, 4, 3 e, in fondo, la FASE 2.
+> Aggiornato in **FIX-1** (branch `fix-1`) il 21/10/2026. Seguono le FASI 8, 7, 6, 5, 4, 3 e, in fondo, la FASE 2.
 > Ambiente: OpenJDK 21.0.12, Maven 3.9.11, Node 22, Playwright 1.56.1 (Chromium), Docker 29.8.2, PostgreSQL **17.11**.
+
+## FIX-1 — Riepilogo
+
+Suite eseguite **in sequenza** (mai backend ed e2e insieme) sul branch `fix-1`.
+
+| Suite | Comando | Test | Esito locale |
+|---|---|---|---|
+| Backend unità | `cd backend && ./mvnw -o verify` | 82 (+4 `WebRequestLimiterTest`) | ✅ 82/82 |
+| Backend integrazione (PostgreSQL 17 reale) | stesso comando | 334 (+14: `WebRateLimitIT` 7, `OperationsIT` +4, `MigrationIT` +1, `DatabaseConstraintsIT` +1, altri estesi) | ✅ 334/334 |
+| Frontend typecheck + Playwright con backend e DB reali | `cd frontend && npm run verifica` | 136 (+25 `fix1.spec`) | ✅ 136/136 al giro completo finale |
+
+Dettaglio delle verifiche e regressioni: `docs/architecture/FIX1_REPORT.md` §7–8. Screenshot: allegati di
+`fix1.spec` e `docs/architecture/evidence/fix1/`.
+
+### Difetti trovati dai test e corretti
+- `ApiSecurityMatrixIT` esteso / `OperationsIT`: `403` dello staff su percorsi lunghi diventava `500` (audit).
+- `fix1.spec`: un fotogramma senza velo tra la schermata d'attesa e la home → velo presente dal primo fotogramma.
+- Revisione degli screenshot: orari di apertura troncati su desktop, buco nel riquadro delle chiusure senza voci,
+  riepilogo troppo alto sul telefono → corretti.
+- `navigation.spec` (2 prove): si aspettavano i chip del menu come filtri → aggiornate al nuovo comportamento.
 
 ## FASE 8 — Riepilogo
 

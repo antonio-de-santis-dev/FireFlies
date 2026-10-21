@@ -24,7 +24,7 @@ function BookingSwitch() {
     try {
       const saved = await savePolicy({
         webBookingEnabled: !policy.webBookingEnabled, minLeadMinutes: policy.minLeadMinutes, maxAdvanceDays: policy.maxAdvanceDays,
-        maxPartySizeWeb: policy.maxPartySizeWeb, pendingExpiryMinutesBeforeStart: policy.pendingExpiryMinutesBeforeStart,
+        pendingExpiryMinutesBeforeStart: policy.pendingExpiryMinutesBeforeStart,
       });
       setPolicy(saved);
       notify(saved.webBookingEnabled ? 'Richieste dal sito aperte.' : 'Richieste dal sito chiuse: il modulo invita a chiamare.');
@@ -38,7 +38,7 @@ function BookingSwitch() {
   return (
     <>
       <Switch checked={on} onChange={() => void toggle()} label={on ? 'Richieste tavolo attive' : 'Richieste tavolo disattivate'} />
-      <p className="hint">Vale subito per il sito. Persone per fascia, chiusure e limiti si impostano qui sotto, in <a href="#capienza" onClick={(e) => { e.preventDefault(); document.getElementById('capienza')?.scrollIntoView(); }}>Capienza</a>.</p>
+      <p className="hint">Vale subito per il sito. Capienza del locale, chiusure e regole si impostano qui sotto, in <a href="#capienza" onClick={(e) => { e.preventDefault(); document.getElementById('capienza')?.scrollIntoView(); }}>Capienza e calendario</a>.</p>
     </>
   );
 }
@@ -74,39 +74,32 @@ export function Settings() {
   return (
     <>
     <form className="editor" noValidate onSubmit={save}>
-      <AdminHead title="Impostazioni" lead="Orari, indirizzo, contatti, mappa e capienza. Riservato al titolare.">
+      <AdminHead title="Impostazioni" lead="Orari, contatti, mappa, capienza e calendario. Riservato al titolare.">
         <button type="submit" className="btn btn--action" disabled={busy}><Save size={18} aria-hidden="true" /> {busy ? 'Salvataggio…' : 'Salva'}</button>
       </AdminHead>
       {failure && <p className="error" role="alert"><CircleAlert size={16} aria-hidden="true" /> {failure}</p>}
 
       <div className="settings">
-        <section className="panel" aria-labelledby="set-hours">
+        <section className="panel hours-panel" aria-labelledby="set-hours">
           <h2 id="set-hours" className="panel__title">Orari di apertura</h2>
-          <table className="hours-table">
-            <caption className="sr-only">Orari per giorno</caption>
-            <thead>
-              <tr><th scope="col">Giorno</th><th scope="col">Aperto</th><th scope="col">Apertura</th><th scope="col">Chiusura</th></tr>
-            </thead>
-            <tbody>
-              {s.hours.map((h, i) => (
-                <tr key={h.day}>
-                  <th scope="row">{h.day}</th>
-                  <td>
-                    <Switch checked={!!h.open} label={h.open ? 'Sì' : 'Chiuso'}
-                      onChange={() => upHour(i, h.open ? { open: null, close: null } : { open: '07:00', close: '23:00' })} />
-                  </td>
-                  <td>
-                    <label className="sr-only" htmlFor={`h-open-${i}`}>Apertura {h.day}</label>
-                    <input id={`h-open-${i}`} className="input input--sm" type="time" value={h.open ?? ''} disabled={!h.open} onChange={(e) => upHour(i, { open: e.target.value })} />
-                  </td>
-                  <td>
-                    <label className="sr-only" htmlFor={`h-close-${i}`}>Chiusura {h.day}</label>
-                    <input id={`h-close-${i}`} className="input input--sm" type="time" value={h.close ?? ''} disabled={!h.open} onChange={(e) => upHour(i, { close: e.target.value })} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* FIX-1, req. 6.2: una riga per giorno (scheda sul telefono): nome, interruttore Aperto/Chiuso, orari solo se aperto */}
+          <ul className="hours-list" aria-label="Orari per giorno">
+            {s.hours.map((h, i) => (
+              <li key={h.day} className={`hours-day${h.open ? '' : ' is-closed'}`}>
+                <span className="hours-day__name" id={`h-day-${i}`}>{h.day}</span>
+                <Switch checked={!!h.open} label={h.open ? 'Aperto' : 'Chiuso'} ariaLabel={`${h.day}: ${h.open ? 'aperto' : 'chiuso'}`}
+                  onChange={() => upHour(i, h.open ? { open: null, close: null } : { open: '07:00', close: '23:00' })} />
+                {h.open ? (
+                  <div className="hours-day__times" role="group" aria-labelledby={`h-day-${i}`}>
+                    <label htmlFor={`h-open-${i}`}>Dalle<span className="sr-only"> ({h.day})</span></label>
+                    <input id={`h-open-${i}`} className="input input--sm" type="time" value={h.open ?? ''} onChange={(e) => upHour(i, { open: e.target.value })} />
+                    <label htmlFor={`h-close-${i}`}>alle<span className="sr-only"> ({h.day})</span></label>
+                    <input id={`h-close-${i}`} className="input input--sm" type="time" value={h.close ?? ''} onChange={(e) => upHour(i, { close: e.target.value })} />
+                  </div>
+                ) : <span className="hours-day__closed">Chiuso tutto il giorno</span>}
+              </li>
+            ))}
+          </ul>
           <label className="check">
             <input type="checkbox" checked={s.hoursConfirmed} onChange={(e) => up('hoursConfirmed', e.target.checked)} />
             <span>Orari verificati dal gestore (toglie l'etichetta «Da confermare» dal sito)</span>

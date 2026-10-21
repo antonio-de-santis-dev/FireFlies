@@ -97,12 +97,15 @@ Header: `Idempotency-Key: <UUID>` (obbligatorio) e `X-XSRF-TOKEN` (come ogni scr
 - Telefono obbligatorio (normalizzato in E.164, prefisso +39 se manca), email facoltativa, note max 500, nome 2–80.
 - `website` è il campo trappola: se compilato → `422`.
 - Stessa chiave e stessi dati → di nuovo `201` con lo stesso corpo (nessuna seconda riga); stessa chiave e dati diversi →
-  `422 IDEMPOTENCY_KEY_REUSED`; due invii simultanei con la stessa chiave → uno `201`, l'altro `409 DUPLICATE_REQUEST`.
+  `422 IDEMPOTENCY_KEY_REUSED`; due invii simultanei con la stessa chiave → **entrambi `201` con la stessa ricevuta** (FIX-1; prima il secondo riceveva `409 DUPLICATE_REQUEST`).
 - Errori: `400 IDEMPOTENCY_KEY_REQUIRED`, `403 CSRF_INVALID`, `409 DUPLICATE_REQUEST` (stesso telefono e stesso orario già
   attivo), `422 VALIDATION_FAILED` (`context.field`), `422 WEB_BOOKING_DISABLED`, `422 PARTY_TOO_LARGE`
   (`context.maxPartySize`), `422 TOO_FAR`, `422 SLOT_NOT_AVAILABLE`, `422 DAY_CLOSED`, `422 TOO_EARLY`,
-  `422 FULLY_BOOKED`, `422 EVENT_BLOCKS_SLOT`, `429 RATE_LIMITED` (`context.retryAfterSeconds`; 5/ora per IP, 3/24 h per
-  telefono).
+  `422 FULLY_BOOKED`, `422 EVENT_BLOCKS_SLOT`, `429 RATE_LIMITED` (`Retry-After` e `context.retryAfterSeconds`, attesa
+  scritta nel messaggio). **FIX-1**: per IP 30 tentativi in 10 minuti e 10 richieste **create** all'ora (gli invii
+  rifiutati e i reinvii con la stessa chiave non le consumano), 3/24 h per telefono; `PARTY_TOO_LARGE` oltre la capienza
+  del locale o oltre 30 persone.
+- `GET /public/booking-options`: limite separato di 120 letture al minuto per IP (`429 RATE_LIMITED` + `Retry-After`).
 
 ## 3. Autenticazione (implementata in FASE 3)
 
@@ -187,21 +190,21 @@ valgono tutti i controlli della conferma e tutto si annulla se i posti non basta
 
 ## 5. Area gestori — configurazione prenotazioni (implementata in FASE 5)
 
-`GET /admin/booking-config` (STAFF e OWNER): `{ zones, areas, tables, windows, policy, exceptions }`. Tutte le scritture
+`GET /admin/booking-config` (STAFF e OWNER): `{ zones, areas, tables, windows, policy, exceptions, venueCapacity, openingExceptions }` (FIX-1: ultimi due). Tutte le scritture
 solo OWNER (regola sull'URL e `@PreAuthorize`).
 
 
 | Metodo e percorso | Descrizione |
 |---|---|
+| `PUT /admin/venue-capacity` **(FIX-1)** | `{ capacity: 1…1000 }`: «Capienza massima del locale», unica capienza, uguale in ogni giorno e fascia; sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` (`context.conflicts[{ slotStart, occupiedCovers, newCapacity }]`), nulla cambia; più zone attive → `409 MULTIPLE_ZONES` |
 | `POST /admin/capacity-zones`, `PUT /admin/capacity-zones/{id}` | zone e capienza fisica (`version`); riduzione sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` con i quanti in conflitto; nome già usato → `409 NAME_TAKEN` |
 | `POST /admin/areas`, `PUT/DELETE /admin/areas/{id}` | aree, ognuna in una zona (`DELETE` con tavoli → `409`) |
 | `POST /admin/tables`, `PUT/DELETE /admin/tables/{id}` | tavoli con posti min/max; `DELETE` → `204`, oppure `200 { deactivated: true }` se ha storico |
-| `POST /admin/service-windows`, `PUT/DELETE /admin/service-windows/{id}` | fasce per giorno della settimana: primo e ultimo arrivo (multipli di 15'), passo 15/30/60, permanenza 30–360', `maxCovers` facoltativo, validità; mai oltre la mezzanotte; la capienza dei quanti futuri viene ricalcolata (stesso controllo `409`) |
-| `PUT /admin/booking-policy` | regole: `webBookingEnabled` (aprirle richiede una zona attiva), `minLeadMinutes`, `maxAdvanceDays`, `maxPartySizeWeb`, `pendingExpiryMinutesBeforeStart` |
-| `POST /admin/booking-exceptions`, `DELETE /admin/booking-exceptions/{id}` | `CLOSED` (chiusura agli arrivi) o `CAPACITY_OVERRIDE` (limite di presenze) per data, di una fascia o di tutto il giorno (stesso controllo `409`) |
-| `GET /admin/capacity-matrix` (STAFF) · `PUT /admin/capacity-matrix` (OWNER) **(FASE 7)** | tabella giorni × fasce: `{ physicalCapacity, cells: [{ isoDay, band: COLAZIONE\|POMERIGGIO\|APERITIVO\|SERA, offered, maxCovers }], exceptions, openingExceptions }`; `PUT { cells: [{ isoDay, band, maxCovers (null = capienza del locale, 0…1000) }] }` aggiorna `maxCovers` delle fasce prenotabili di quel giorno e fascia e ricalcola il registro; sotto i confermati → `409 CAPACITY_BELOW_CONFIRMED` (`context.conflicts[{ slotStart, occupiedCovers, newCapacity }]`), nulla cambia; fascia sconosciuta → `422` |
-| `POST /admin/opening-exceptions`, `DELETE /admin/opening-exceptions/{id}` (OWNER) **(FASE 7)** | chiusura o apertura straordinaria `{ day, closed, opensAt?, closesAt?, note? }` → `201 { exception, activeReservations }` (le prenotazioni già presenti restano, il numero va gestito a mano); data passata → `422`; data già presente → `409 EXCEPTION_EXISTS` |
-| `GET /admin/capacity-summary?from=&to=` (STAFF) **(FASE 7)** | righe per giorno e fascia `{ date, band, label, closed, requests, pending, confirmed, guests, capacity, available, fromStatistics }` (al massimo 62 giorni, `no-store`); `available` = gruppo più grande ancora accoglibile in un orario della fascia |
+| `POST /admin/service-windows`, `PUT/DELETE /admin/service-windows/{id}` | fasce per giorno della settimana: primo e ultimo arrivo (multipli di 15'), passo 15/30/60, permanenza 30–360', validità (FIX-1: niente più `maxCovers`); mai oltre la mezzanotte; la capienza dei quanti futuri viene ricalcolata (stesso controllo `409`) |
+| `PUT /admin/booking-policy` | regole: `webBookingEnabled` (aprirle richiede una zona attiva), `minLeadMinutes`, `maxAdvanceDays`, `pendingExpiryMinutesBeforeStart` (FIX-1: via `maxPartySizeWeb`, il limite segue la capienza del locale, mai oltre 30) |
+| `POST /admin/booking-exceptions`, `DELETE /admin/booking-exceptions/{id}` | `CLOSED` (chiusura agli arrivi) per data, di una fascia o di tutto il giorno (FIX-1: `CAPACITY_OVERRIDE` non esiste più → `422`) |
+| `GET /admin/opening-exceptions`, `POST /admin/opening-exceptions`, `PUT/DELETE /admin/opening-exceptions/{id}` (OWNER) **(FASE 7, FIX-1)** | chiusura o apertura straordinaria di un giorno o di un intervallo con estremi compresi `{ from, to?, closed, opensAt?, closesAt?, note? }` (`day` = nome della FASE 7 per il giorno singolo, accettato) → `201/200 { exception: { id, day, endDay, … }, activeReservations, conflicts: [{ date, pending, confirmed, confirmedGuests }] }`: le prenotazioni restano valide, si gestiscono a mano; data passata, fine prima dell'inizio, intervallo oltre un anno, apertura senza orari → `422`; giorni sovrapposti a un'altra eccezione → `409 EXCEPTION_OVERLAPS` (anche con salvataggi contemporanei) |
+| `GET /admin/capacity-summary?from=&to=&band=` (STAFF) **(FASE 7, `band` FIX-1)** | righe per giorno e fascia (con `band` una sola fascia e una riga per ogni giorno) `{ date, band, label, closed, requests, pending, confirmed, guests, capacity, available, fromStatistics }` (al massimo 62 giorni, `no-store`); `available` = gruppo più grande ancora accoglibile in un orario della fascia |
 | `GET /admin/reservations/today?band=` (STAFF) **(FASE 7)** | solo `CONFIRMED` di oggi (Europe/Rome): `{ date, band, items: [{ id, reference, time, name, guests, band, bandLabel, event }], bands: [{ band, label, reservations, guests }], reservations, guests }`; niente telefono, email o note; `no-store` |
 
 ## 6. Eventi (implementato in FASE 6)

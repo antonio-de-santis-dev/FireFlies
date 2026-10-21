@@ -2,7 +2,7 @@
 // Ogni test usa nomi, giorni e numeri di prova diversi: le prenotazioni restano nel database come per i gestori veri.
 import { expect, request, test, type Page } from '@playwright/test';
 import { ownerApi } from './baseline';
-import { bookableDay, go, openTableBooking, requestCard, signIn, testPhone, watchProblems } from './helpers';
+import { bookableDay, go, openTableBooking, requestCard, signIn, testPhone, watchProblems, weekSummaryRow } from './helpers';
 
 const BACKEND = () => process.env.FIREFLIES_BACKEND_URL ?? 'http://localhost:18080';
 
@@ -104,14 +104,13 @@ test.describe('Prenotazioni', () => {
     await detail.getByRole('button', { name: 'Conferma', exact: true }).click();
     await expect(detail.locator('.res-detail__facts')).toContainText('Confermata');
     await detail.getByRole('button', { name: 'Chiudi' }).first().click();
-    // persone confermate nel riepilogo per giorno e fascia (Impostazioni › Capienza, solo titolare)
+    // persone confermate nel riepilogo settimanale per fascia (Impostazioni › Capienza e calendario, solo titolare)
     const persons = async () => {
       await signIn(page);
       await go(page, '/gestione/impostazioni');
-      await page.getByLabel('Dal', { exact: true }).fill(day);
-      const row = page.locator('.cap-summary tbody tr', { hasText: 'Aperitivo' }).first();
-      await expect(row.locator('td[data-label="Persone"]')).toHaveText(/^\d+$/);
-      return Number(await row.locator('td[data-label="Persone"]').textContent());
+      const row = await weekSummaryRow(page, day, 'Aperitivo');
+      await expect(row.locator('td[data-label="Persone confermate"]')).toHaveText(/^\d+$/);
+      return Number(await row.locator('td[data-label="Persone confermate"]').textContent());
     };
     const before = await persons();
     expect(before).toBeGreaterThanOrEqual(10);
@@ -187,10 +186,10 @@ test.describe('Prenotazioni', () => {
     await signIn(page, 'Staff');
     await expect(page.getByRole('navigation', { name: 'Area gestori' }).getByRole('link', { name: 'Impostazioni' })).toHaveCount(0);
     await go(page, '/gestione/impostazioni');
-    await expect(page.getByRole('heading', { name: /Persone al massimo per giorno e fascia/ })).toHaveCount(0);
+    await expect(page.getByLabel('Capienza massima del locale (persone)')).toHaveCount(0);
     const status = await page.evaluate(async () => {
       const csrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '');
-      const r = await fetch('/api/v1/admin/capacity-matrix', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrf }, body: JSON.stringify({ cells: [] }) });
+      const r = await fetch('/api/v1/admin/venue-capacity', { method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrf }, body: JSON.stringify({ capacity: 5 }) });
       return r.status;
     });
     expect(status, 'il backend rifiuta lo staff').toBe(403);

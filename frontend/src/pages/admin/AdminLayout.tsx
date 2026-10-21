@@ -86,16 +86,18 @@ function usePendingCount() {
 }
 
 /**
- * Menu dei telefoni (FASE 7, req. 2): un pulsante apre l'elenco completo sopra la pagina. Si chiude con il pulsante,
- * con Esc, scegliendo una voce o toccando fuori; aprendolo il focus va sulla voce attiva, chiudendolo torna al pulsante.
+ * Menu dei telefoni (FASE 7, req. 2; ridisegnato in FIX-1, req. 5): un pulsante apre un pannello sopra la pagina con le
+ * voci, «Vedi il sito» ed «Esci», e scurisce il resto. Si chiude con il pulsante, con Esc, scegliendo una voce o toccando
+ * fuori; aprendolo il focus va sulla voce attiva, chiudendolo torna al pulsante; la pagina sotto non scorre.
  */
 function useMobileNav(path: string) {
   const [open, setOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const navRef = useRef<HTMLElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
   useEffect(() => setOpen(false), [path]);
   useEffect(() => {
     if (!open) return;
+    document.body.classList.add('is-locked');
     const focusFrame = requestAnimationFrame(() => {
       const nav = navRef.current;
       (nav?.querySelector<HTMLAnchorElement>('a[aria-current="page"]') ?? nav?.querySelector<HTMLAnchorElement>('a'))?.focus();
@@ -113,6 +115,7 @@ function useMobileNav(path: string) {
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onClick);
     return () => {
+      document.body.classList.remove('is-locked');
       cancelAnimationFrame(focusFrame);
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onClick);
@@ -151,31 +154,37 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <Img asset={logo.mark} decorative eager />
             <span>Gestione<small>{role === 'titolare' ? 'Titolare' : 'Staff'}</small></span>
           </Link>
-          <button ref={mobile.toggleRef} type="button" className="admin__menu-btn" aria-expanded={mobile.open} aria-controls="admin-nav"
+          {/* telefono: la pagina attuale scritta nell'intestazione, accanto al logo */}
+          <p className="admin__current" aria-hidden="true"><current.icon size={18} /> <span>{current.label}</span></p>
+          <button ref={mobile.toggleRef} type="button" className="admin__menu-btn" aria-expanded={mobile.open} aria-controls="admin-drawer"
             aria-label={`Menu, pagina attuale: ${current.label}`} onClick={() => mobile.setOpen(!mobile.open)}>
             {mobile.open ? <X size={22} aria-hidden="true" /> : <MenuIcon size={22} aria-hidden="true" />}
-            <span className="admin__menu-label" aria-hidden="true">{current.label}</span>
+            <span className="admin__menu-label" aria-hidden="true">{mobile.open ? 'Chiudi' : 'Menu'}</span>
           </button>
-          <nav ref={mobile.navRef} id="admin-nav" aria-label="Area gestori" className={`admin__nav${mobile.open ? ' is-open' : ''}`}>
-            <ul>
-              {ADMIN_NAV.filter((n) => !n.owner || role === 'titolare').map(({ to, label, icon: Icon }) => (
-                <li key={to}>
-                  <Link to={to}>
-                    <Icon size={20} aria-hidden="true" />
-                    <span>{label}</span>
-                    {to === '/gestione/richieste' && fresh > 0 && (
-                      <span className="admin__count" aria-label={`${fresh} in attesa`}>{fresh}</span>
-                    )}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          <div className="admin__side-foot">
-            <a href="#/" className="admin__site"><ExternalLink size={18} aria-hidden="true" /> Vedi il sito</a>
-            <button type="button" className="admin__logout" onClick={logout}><LogOut size={18} aria-hidden="true" /> Esci</button>
+          {/* desktop: il contenitore non esiste per l'impaginazione (display: contents); telefono: pannello a comparsa */}
+          <div ref={mobile.navRef} id="admin-drawer" className={`admin__drawer${mobile.open ? ' is-open' : ''}`}>
+            <nav id="admin-nav" aria-label="Area gestori" className="admin__nav">
+              <ul>
+                {ADMIN_NAV.filter((n) => !n.owner || role === 'titolare').map(({ to, label, icon: Icon }) => (
+                  <li key={to}>
+                    <Link to={to}>
+                      <Icon size={20} aria-hidden="true" />
+                      <span>{label}</span>
+                      {to === '/gestione/richieste' && fresh > 0 && (
+                        <span className="admin__count" aria-label={`${fresh} in attesa`}>{fresh}</span>
+                      )}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <div className="admin__side-foot">
+              <a href="#/" className="admin__site"><ExternalLink size={18} aria-hidden="true" /> <span>Vedi il sito</span></a>
+              <button type="button" className="admin__logout" onClick={logout}><LogOut size={18} aria-hidden="true" /> <span>Esci</span></button>
+            </div>
           </div>
         </aside>
+        {mobile.open && <div className="admin__backdrop" aria-hidden="true" />}
         <main id="admin-main" className="admin__main" tabIndex={-1} aria-busy={!ready}>{ready ? children : <p className="muted">Caricamento dei dati…</p>}</main>
       </div>
       <Toast />

@@ -1,4 +1,4 @@
-# SECURITY_PRIVACY — sicurezza e dati personali (stato alla FASE 8)
+# SECURITY_PRIVACY — sicurezza e dati personali (stato a FIX-1)
 
 > Sintesi operativa. Decisioni in DECISION_LOG (ADR-0003, T-17, T-39, T-40, T-63, T-66, T-67, T-74, T-75); verifiche
 > aperte in PRE_DEPLOY.md; audit completo della FASE 8 in FASE8_REPORT §3.
@@ -8,11 +8,16 @@
   richiesta pubblica di prenotazione).
 - Ruoli **OWNER** e **STAFF** decisi dal backend; doppio controllo: regola sull'URL e `@PreAuthorize`.
   - Solo titolare: utenti, contenuti e impostazioni del sito, configurazione prenotazioni (zone, fasce, regole,
-    eccezioni, **capienza per giorno e fascia**, **chiusure e aperture straordinarie**), eventi non esclusivi,
+    eccezioni, **capienza del locale**, **chiusure e aperture straordinarie su giorni o intervalli**), eventi non esclusivi,
     annullamento di eventi con prenotazioni.
   - STAFF e titolare: prenotazioni, eventi esclusivi, menu, foto, avvisi, calendario di oggi, riepilogo della capienza,
     nuovo invio di una notifica.
-- Limiti: login per account e per IP, richieste dal sito per IP (memoria) e per telefono (database).
+- Limiti: login per account e per IP; modulo pubblico (FIX-1, T-80) per IP in memoria — letture della disponibilità
+  120/min, tentativi di invio 30 in 10 minuti, richieste create 10/ora contate solo al salvataggio — e per telefono sul
+  database (3 in 24 ore); `429` con `Retry-After`. I messaggi non contengono dati personali; l'audit della creazione
+  registra solo origine, persone e riferimento.
+- **Accessi negati** (FIX-1): ogni `403` di un gestore resta un `403` anche su percorsi lunghi (prima diventava `500`
+  perché l'audit non si salvava); il percorso completo va nei metadati dell'audit, mai dati dei clienti.
 - **IP del client in produzione** (FASE 8, V-01): solo dal `RemoteIpValve` con fiducia nelle reti private/loopback dove
   sta Caddy; un `X-Forwarded-For` inventato non cambia l'IP usato dai limiti. Il backend non ha porte pubbliche.
 - **Matrice dei permessi automatica** (`ApiSecurityMatrixIT`): ogni endpoint registrato è sotto `/api/v1/public`,

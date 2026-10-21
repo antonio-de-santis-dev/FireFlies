@@ -751,6 +751,7 @@ paths:
       parameters:
         - { name: from, in: query, required: false, schema: { type: string, format: date } }
         - { name: to, in: query, required: false, schema: { type: string, format: date } }
+        - { name: band, in: query, required: false, description: 'FIX-1: una sola fascia (una riga per ogni giorno del periodo)', schema: { type: string, enum: [COLAZIONE, POMERIGGIO, APERITIVO, SERA] } }
       responses:
         '200':
           description: Righe per giorno e fascia (al massimo 62 giorni); i giorni puliti sommano reservation_stats
@@ -780,19 +781,11 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
-  /admin/capacity-matrix:
-    get:
-      tags: [admin-reservations]
-      operationId: capacityMatrix
-      summary: Persone al massimo per giorno della settimana e fascia, limiti e date straordinarie (FASE 7)
-      security: [{ session: [] }]
-      responses:
-        '200': { description: 'Tabella { physicalCapacity, cells[{ isoDay, band, offered, maxCovers }], exceptions, openingExceptions }' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
+  /admin/venue-capacity:
     put:
       tags: [admin-reservations]
-      operationId: saveCapacityMatrix
-      summary: Salva la tabella (solo OWNER); ricalcola il registro dei posti
+      operationId: saveVenueCapacity
+      summary: Capienza massima del locale, la stessa in ogni giorno e fascia (solo OWNER) — FIX-1
       security: [{ session: [] }]
       requestBody:
         required: true
@@ -800,49 +793,59 @@ paths:
           application/json:
             schema:
               type: object
-              required: [cells]
+              required: [capacity]
               properties:
-                cells:
-                  type: array
-                  items:
-                    type: object
-                    required: [isoDay, band]
-                    properties:
-                      isoDay: { type: integer, minimum: 1, maximum: 7 }
-                      band: { type: string, enum: [COLAZIONE, POMERIGGIO, APERITIVO, SERA] }
-                      maxCovers: { type: [integer, 'null'], minimum: 0, maximum: 1000 }
+                capacity: { type: integer, minimum: 1, maximum: 1000 }
       responses:
-        '200': { description: Tabella aggiornata }
+        '200': { description: 'Zona del locale aggiornata { id, name, physicalCapacity, active, sortOrder, version }' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '409': { description: 'CAPACITY_BELOW_CONFIRMED (context.conflicts[{ slotStart, occupiedCovers, newCapacity }]) oppure MULTIPLE_ZONES' }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
   /admin/opening-exceptions:
+    get:
+      tags: [admin-reservations]
+      operationId: listOpeningExceptions
+      summary: Chiusure e aperture straordinarie da oggi in poi (solo OWNER) — FIX-1
+      security: [{ session: [] }]
+      responses:
+        '200': { description: 'Elenco [{ id, day, endDay, closed, opensAt, closesAt, note }]' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [admin-reservations]
       operationId: addOpeningException
-      summary: Chiusura o apertura straordinaria del locale (solo OWNER, FASE 7)
+      summary: Chiusura o apertura straordinaria di un giorno o di un intervallo, estremi compresi (solo OWNER, FASE 7 / FIX-1)
       security: [{ session: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [day, closed]
-              properties:
-                day: { type: string, format: date }
-                closed: { type: boolean }
-                opensAt: { type: [string, 'null'], example: '18:00' }
-                closesAt: { type: [string, 'null'], example: '23:00' }
-                note: { type: [string, 'null'], maxLength: 140 }
+            schema: { $ref: '#/components/schemas/OpeningExceptionRequest' }
       responses:
-        '201': { description: '{ exception, activeReservations }' }
+        '201': { description: '{ exception, activeReservations, conflicts[{ date, pending, confirmed, confirmedGuests }] } — le prenotazioni restano valide' }
         '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
+        '409': { description: EXCEPTION_OVERLAPS (giorni già in un'altra eccezione, context.overlaps) }
         '422': { $ref: '#/components/responses/Unprocessable' }
 
   /admin/opening-exceptions/{id}:
+    put:
+      tags: [admin-reservations]
+      operationId: updateOpeningException
+      summary: Modifica di una data straordinaria (stesse regole dell'inserimento) — FIX-1
+      security: [{ session: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpeningExceptionRequest' }
+      responses:
+        '200': { description: '{ exception, activeReservations, conflicts }' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: EXCEPTION_OVERLAPS }
+        '422': { $ref: '#/components/responses/Unprocessable' }
     delete:
       tags: [admin-reservations]
       operationId: deleteOpeningException
@@ -979,6 +982,17 @@ components:
       content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
 
   schemas:
+    OpeningExceptionRequest:
+      type: object
+      required: [closed]
+      properties:
+        from: { type: string, format: date, description: primo giorno }
+        to: { type: [string, 'null'], format: date, description: 'ultimo giorno compreso (assente = un giorno solo; al massimo un anno)' }
+        day: { type: [string, 'null'], format: date, description: 'nome usato fino alla FASE 8 per il giorno singolo, ancora accettato' }
+        closed: { type: boolean }
+        opensAt: { type: [string, 'null'], example: '18:00' }
+        closesAt: { type: [string, 'null'], example: '23:00' }
+        note: { type: [string, 'null'], maxLength: 140 }
     ReservationStatus:
       type: string
       enum: [PENDING, CONFIRMED, REJECTED, CANCELLED, COMPLETED, NO_SHOW]
@@ -1029,7 +1043,7 @@ components:
       required: [webBookingEnabled, maxPartySize, maxAdvanceDays, minLeadMinutes, groups]
       properties:
         webBookingEnabled: { type: boolean }
-        maxPartySize: { type: integer }
+        maxPartySize: { type: integer, description: 'FIX-1: capienza del locale, mai oltre 30 (tetto fisso)' }
         maxAdvanceDays: { type: integer }
         minLeadMinutes: { type: integer }
         firstDate: { type: [string, 'null'], format: date }
