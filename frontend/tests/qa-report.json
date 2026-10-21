@@ -73,14 +73,14 @@
   "broken": [],
   "under44": [
    {
-    "name": "30 ottobre 2026: Serata E2E 179259757144",
+    "name": "30 ottobre 2026: Serata E2E 179259964455",
     "w": 41,
     "h": 41,
     "inline": false,
     "type": ""
    },
    {
-    "name": "31 ottobre 2026: Condivisa E2E 179259757",
+    "name": "31 ottobre 2026: Condivisa E2E 179259964",
     "w": 41,
     "h": 41,
     "inline": false,
@@ -223,112 +223,112 @@
   "broken": [],
   "under44": [
    {
-    "name": "+393007752883",
+    "name": "+393009821139",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007698169",
+    "name": "+393009766977",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007701300",
+    "name": "+393009770308",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621375",
+    "name": "+393009693045",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621403",
+    "name": "+393009693075",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621432",
+    "name": "+393009693111",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606053",
+    "name": "+393009677262",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606428",
+    "name": "+393009677644",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007507879",
+    "name": "+393009577960",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007571449",
+    "name": "+393009644550",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601887",
+    "name": "+393009672936",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601944",
+    "name": "+393009672980",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007568660",
+    "name": "+393009641854",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007706904",
+    "name": "+393009775966",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007735013",
+    "name": "+393009805255",
     "w": 283,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007737837",
+    "name": "+393009808013",
     "w": 283,
     "h": 32,
     "inline": false,
@@ -1110,204 +1110,7 @@
   "route": "/gestione/impostazioni",
   "overflow": 0,
   "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di mercoled",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
+  "under44": [],
   "under24": []
  },
  {
@@ -1384,14 +1187,14 @@
   "broken": [],
   "under44": [
    {
-    "name": "30 ottobre 2026: Serata E2E 179259757144",
+    "name": "30 ottobre 2026: Serata E2E 179259964455",
     "w": 43,
     "h": 43,
     "inline": false,
     "type": ""
    },
    {
-    "name": "31 ottobre 2026: Condivisa E2E 179259757",
+    "name": "31 ottobre 2026: Condivisa E2E 179259964",
     "w": 43,
     "h": 43,
     "inline": false,
@@ -1534,112 +1337,112 @@
   "broken": [],
   "under44": [
    {
-    "name": "+393007752883",
+    "name": "+393009821139",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007698169",
+    "name": "+393009766977",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007701300",
+    "name": "+393009770308",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621375",
+    "name": "+393009693045",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621403",
+    "name": "+393009693075",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621432",
+    "name": "+393009693111",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606053",
+    "name": "+393009677262",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606428",
+    "name": "+393009677644",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007507879",
+    "name": "+393009577960",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007571449",
+    "name": "+393009644550",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601887",
+    "name": "+393009672936",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601944",
+    "name": "+393009672980",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007568660",
+    "name": "+393009641854",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007706904",
+    "name": "+393009775966",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007735013",
+    "name": "+393009805255",
     "w": 298,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007737837",
+    "name": "+393009808013",
     "w": 298,
     "h": 32,
     "inline": false,
@@ -2421,204 +2224,7 @@
   "route": "/gestione/impostazioni",
   "overflow": 0,
   "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di mercoled",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
+  "under44": [],
   "under24": []
  },
  {
@@ -2831,112 +2437,112 @@
   "broken": [],
   "under44": [
    {
-    "name": "+393007752883",
+    "name": "+393009821139",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007698169",
+    "name": "+393009766977",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007701300",
+    "name": "+393009770308",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621375",
+    "name": "+393009693045",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621403",
+    "name": "+393009693075",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621432",
+    "name": "+393009693111",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606053",
+    "name": "+393009677262",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606428",
+    "name": "+393009677644",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007507879",
+    "name": "+393009577960",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007571449",
+    "name": "+393009644550",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601887",
+    "name": "+393009672936",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601944",
+    "name": "+393009672980",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007568660",
+    "name": "+393009641854",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007706904",
+    "name": "+393009775966",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007735013",
+    "name": "+393009805255",
     "w": 313,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007737837",
+    "name": "+393009808013",
     "w": 313,
     "h": 32,
     "inline": false,
@@ -3718,204 +3324,7 @@
   "route": "/gestione/impostazioni",
   "overflow": 0,
   "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di mercoled",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
+  "under44": [],
   "under24": []
  },
  {
@@ -4065,112 +3474,112 @@
   "broken": [],
   "under44": [
    {
-    "name": "+393007752883",
+    "name": "+393009821139",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007698169",
+    "name": "+393009766977",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007701300",
+    "name": "+393009770308",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621375",
+    "name": "+393009693045",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621403",
+    "name": "+393009693075",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621432",
+    "name": "+393009693111",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606053",
+    "name": "+393009677262",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606428",
+    "name": "+393009677644",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007507879",
+    "name": "+393009577960",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007571449",
+    "name": "+393009644550",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601887",
+    "name": "+393009672936",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601944",
+    "name": "+393009672980",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007568660",
+    "name": "+393009641854",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007706904",
+    "name": "+393009775966",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007735013",
+    "name": "+393009805255",
     "w": 461,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007737837",
+    "name": "+393009808013",
     "w": 461,
     "h": 32,
     "inline": false,
@@ -4216,204 +3625,7 @@
   "route": "/gestione/impostazioni",
   "overflow": 0,
   "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di mercoled",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
+  "under44": [],
   "under24": []
  },
  {
@@ -4563,112 +3775,112 @@
   "broken": [],
   "under44": [
    {
-    "name": "+393007752883",
+    "name": "+393009821139",
     "w": 247,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007698169",
+    "name": "+393009766977",
     "w": 247,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007701300",
+    "name": "+393009770308",
     "w": 247,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621375",
+    "name": "+393009693045",
     "w": 247,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621403",
+    "name": "+393009693075",
     "w": 247,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621432",
+    "name": "+393009693111",
     "w": 247,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606053",
+    "name": "+393009677262",
     "w": 245,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606428",
+    "name": "+393009677644",
     "w": 245,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007507879",
+    "name": "+393009577960",
     "w": 247,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007571449",
+    "name": "+393009644550",
     "w": 245,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601887",
+    "name": "+393009672936",
     "w": 245,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601944",
+    "name": "+393009672980",
     "w": 245,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007568660",
+    "name": "+393009641854",
     "w": 245,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007706904",
+    "name": "+393009775966",
     "w": 245,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007735013",
+    "name": "+393009805255",
     "w": 245,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007737837",
+    "name": "+393009808013",
     "w": 245,
     "h": 32,
     "inline": false,
@@ -4714,204 +3926,7 @@
   "route": "/gestione/impostazioni",
   "overflow": 0,
   "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di mercoled",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
+  "under44": [],
   "under24": []
  },
  {
@@ -5061,112 +4076,112 @@
   "broken": [],
   "under44": [
    {
-    "name": "+393007752883",
+    "name": "+393009821139",
     "w": 274,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007698169",
+    "name": "+393009766977",
     "w": 274,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007701300",
+    "name": "+393009770308",
     "w": 274,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621375",
+    "name": "+393009693045",
     "w": 274,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621403",
+    "name": "+393009693075",
     "w": 274,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621432",
+    "name": "+393009693111",
     "w": 274,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606053",
+    "name": "+393009677262",
     "w": 272,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606428",
+    "name": "+393009677644",
     "w": 272,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007507879",
+    "name": "+393009577960",
     "w": 274,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007571449",
+    "name": "+393009644550",
     "w": 272,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601887",
+    "name": "+393009672936",
     "w": 272,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601944",
+    "name": "+393009672980",
     "w": 272,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007568660",
+    "name": "+393009641854",
     "w": 272,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007706904",
+    "name": "+393009775966",
     "w": 272,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007735013",
+    "name": "+393009805255",
     "w": 272,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007737837",
+    "name": "+393009808013",
     "w": 272,
     "h": 32,
     "inline": false,
@@ -5212,204 +4227,7 @@
   "route": "/gestione/impostazioni",
   "overflow": 0,
   "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di mercoled",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
+  "under44": [],
   "under24": []
  },
  {
@@ -5559,112 +4377,112 @@
   "broken": [],
   "under44": [
    {
-    "name": "+393007752883",
+    "name": "+393009821139",
     "w": 355,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007698169",
+    "name": "+393009766977",
     "w": 355,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007701300",
+    "name": "+393009770308",
     "w": 355,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621375",
+    "name": "+393009693045",
     "w": 355,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621403",
+    "name": "+393009693075",
     "w": 355,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007621432",
+    "name": "+393009693111",
     "w": 355,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606053",
+    "name": "+393009677262",
     "w": 352,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007606428",
+    "name": "+393009677644",
     "w": 352,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007507879",
+    "name": "+393009577960",
     "w": 355,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007571449",
+    "name": "+393009644550",
     "w": 352,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601887",
+    "name": "+393009672936",
     "w": 352,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007601944",
+    "name": "+393009672980",
     "w": 352,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007568660",
+    "name": "+393009641854",
     "w": 352,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007706904",
+    "name": "+393009775966",
     "w": 352,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007735013",
+    "name": "+393009805255",
     "w": 352,
     "h": 32,
     "inline": false,
     "type": ""
    },
    {
-    "name": "+393007737837",
+    "name": "+393009808013",
     "w": 352,
     "h": 32,
     "inline": false,
@@ -5710,204 +4528,7 @@
   "route": "/gestione/impostazioni",
   "overflow": 0,
   "broken": [],
-  "under44": [
-   {
-    "name": "Elimina la fascia Colazione di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di lunedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di martedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di mercoled",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di mercoledì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di giovedì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di venerdì",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di sabato",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Colazione di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Pomeriggio di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Aperitivo di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   },
-   {
-    "name": "Elimina la fascia Sera di domenica",
-    "w": 30,
-    "h": 30,
-    "inline": false,
-    "type": "button"
-   }
-  ],
+  "under44": [],
   "under24": []
  }
 ]

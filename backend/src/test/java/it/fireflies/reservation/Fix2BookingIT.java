@@ -208,8 +208,12 @@ class Fix2BookingIT extends ReservationTestSupport {
                     Map.of("Idempotency-Key", UUID.randomUUID().toString())).status());
         }
         List<Integer> statuses = Concurrency.run(tasks).stream().map(Result::value).toList();
-        assertThat(statuses).filteredOn(s -> s == 201).hasSize(1);
-        assertThat(statuses).filteredOn(s -> s == 409).hasSize(5);
+        assertThat(statuses).as("tutte le risposte").hasSize(6);
+        assertThat(statuses).filteredOn(s -> s == 201).as(statuses.toString()).hasSize(1);
+        // gli altri: 409 DUPLICATE_REQUEST; con 6 invii nello stesso istante dallo stesso IP uno può ricevere 429 perché
+        // il limite di 5 richieste create all'ora prenota il posto prima del salvataggio (restituito se fallisce)
+        assertThat(statuses).filteredOn(s -> s != 201).as(statuses.toString()).allMatch(s -> s == 409 || s == 429);
+        assertThat(statuses).filteredOn(s -> s == 409).as(statuses.toString()).hasSizeGreaterThanOrEqualTo(4);
         assertThat(jdbc.sql("SELECT count(*) FROM reservations").query(Long.class).single()).isEqualTo(1);
     }
 

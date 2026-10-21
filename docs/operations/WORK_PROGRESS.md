@@ -28,6 +28,11 @@
 - **Il reset sul database locale del titolare NON è stato eseguito**: in attesa della sua seconda conferma dopo
   anteprima e backup.
 
+## Branch fix2/fasceorarie (21/10/2026)
+- Creato da `fix2/prenotatavolo` @ `ee3ba4c`. Orari di apertura come unica impostazione del calendario, fasce interne
+  (`ArrivalRules`/`ArrivalCatalog`), pannello «Orari di arrivo delle fasce» rimosso. Nessuna migrazione.
+- Report: `docs/architecture/FIX2_FASCEORARIE_REPORT.md`. In attesa del collaudo; nessun merge.
+
 ## Note per la ripresa
 - **Non compilare il backend mentre gira l'e2e** (il jar in `backend/target/` è quello usato da `scripts/e2e.mjs`).
 - Docker: se non risponde, avviare `dockerd` (vedi FASE 8).
