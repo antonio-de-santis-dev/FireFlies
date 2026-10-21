@@ -41,13 +41,15 @@
 | C-31 | **FASE 7 approvata** (482 test, CI verde); **FASE 8**: hardening, performance, UX responsive, preparazione al deploy **senza pubblicare**, senza servizi a pagamento, notifiche reali spente; editor eventi senza ora di fine e senza coperti (valori ricavati nel backend) | 20/10 |
 | C-32 | **Autorizzazione del titolare a portare la FASE 8 su `main`** (fast-forward da `fase-8/hardening-deploy`, nessun force push). **Non** autorizza il deploy, servizi a pagamento o notifiche reali | 21/10 |
 | C-33 | **FIX-1** sul branch di collaudo `fix-1` (da `main`): animazione iniziale, categorie del menu sul telefono, foto di «Perché FireFlies», rate limiting equilibrato, menu dei gestori sul telefono, Impostazioni (capienza unica, riepilogo settimanale, chiusure su intervalli), report sul flusso di prenotazione. Merge in `main` solo dopo il collaudo manuale | 21/10 |
+| C-34 | **FIX-1 approvato dal titolare** dopo il collaudo: `fix-1` portato su `main` (fast-forward, nessun force push). Nuovo branch `fix2/prenotatavolo` da `main` per il lavoro successivo. Non autorizza il deploy | 21/10 |
 
 ## 1-bis. Strategia Git (C-21, regola definitiva)
 
 | Branch | Deriva da | Stato |
 |---|---|---|
 | `main` | — | dal 21/10/2026 allineato a `fase-8/hardening-deploy` (C-32); si modifica solo con autorizzazione |
-| `fix-1` | `main` (`395dcf5`) | correzioni FIX-1 in collaudo (C-33), nessun merge senza approvazione |
+| `fix-1` | `main` (`395dcf5`) | correzioni FIX-1, approvate e portate su `main` il 21/10/2026 (C-34) |
+| `fix2/prenotatavolo` | `main` dopo FIX-1 | nuovo branch di lavoro (C-34) |
 | `fase-0/audit` | `main` | completato e approvato |
 | `fase-1/progettazione` | `fase-0/audit` | completato e approvato |
 | `fase-2/backend-foundation` | `fase-1/progettazione` | completato e approvato |

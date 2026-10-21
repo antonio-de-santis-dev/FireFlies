@@ -1,7 +1,7 @@
 # WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Ultimo aggiornamento: 21/10/2026, **FIX-1 — correzioni UX/UI, prenotazioni, impostazioni** (completato, **in attesa
-> del collaudo manuale del titolare**).
+> Ultimo aggiornamento: 21/10/2026, **FIX-1 — correzioni UX/UI, prenotazioni, impostazioni** (completato e **approvato**:
+> portato su `main` il 21/10/2026, C-34).
 
 ## Fase e branch
 - **FIX-1** sul branch `fix-1`, creato da `main` @ `395dcf5` (= FASE 8 completa, C-32).
@@ -30,5 +30,5 @@
 - Punti aperti da decidere con il titolare: FIX1_REPORT §9 (tetto di 30 persone dal sito, chiusure per singola fascia).
 
 ## Prossima azione esatta
-Nessuna: **fermo per il collaudo manuale** (istruzioni in FIX1_REPORT §11). Merge di `fix-1` in `main` solo dopo
-l'approvazione esplicita del titolare.
+FIX-1 approvato e su `main`. Creato `fix2/prenotatavolo` da `main`: in attesa delle istruzioni del titolare per il
+nuovo lavoro (nessuna modifica avviata).
