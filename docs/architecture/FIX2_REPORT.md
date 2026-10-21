@@ -117,7 +117,47 @@ più di una richiesta attiva per fascia e più di tre richieste al giorno dallo 
 - STAFF e titolare possono pubblicare (come prima); anonimi `401`.
 
 ## 10. Test con i risultati reali
-_Compilato al termine delle esecuzioni (vedi sotto)._
+Eseguiti il 21/10/2026 nel container di sviluppo, PostgreSQL 17 reale (Testcontainers per il backend, Docker Compose
+per l'e2e), in sequenza (mai backend ed e2e insieme).
+
+| Suite | Comando | Esito |
+|---|---|---|
+| Backend unit | `./mvnw -o verify` (surefire) | **82 / 82** superati |
+| Backend integrazione | `./mvnw -o verify` (failsafe) | **349 / 349** superati, BUILD SUCCESS |
+| Frontend typecheck + e2e | `npm run verifica` (Playwright, 13 file) | **142 superati, 1 fallito** al primo giro (vedi sotto) |
+| Riesecuzione del fallito | `e2e.mjs tests/fix1.spec.ts -g "Animazione iniziale" --repeat-each=3` | **6 / 6** superati, prima e dopo la correzione del test |
+
+Il fallito: `fix1.spec.ts` «il velo con il logo sfuma…» (FIX-1, codice non toccato da FIX 2). Il test leggeva lo stile
+del velo dopo che questo era già sparito e restava in attesa fino al timeout. Ho corretto solo il test (se il velo non
+c'è più, la verifica non attende), senza toccare l'animazione. La suite completa non è stata rieseguita dopo questa
+correzione di una sola riga.
+
+Nuovi test FIX 2:
+- `Fix2BookingIT` (10): budget con arrivi diversi e ricambio, annullamento che restituisce, completata/non presentata che
+  non restituiscono (anche con correzione del titolare), modifica di giorno/fascia/persone, sovrapposizioni tra fasce
+  diverse (budget libero ma posti contemporanei no), conferme contemporanee senza sforare né stalli, capienza sotto il
+  budget rifiutata, duplicati per telefono/giorno/fascia (anche con numero scritto diversamente, senza dati dell'altra
+  prenotazione, di nuovo possibile dopo il rifiuto), duplicati contemporanei bloccati dal database, 5 richieste create
+  per IP con rifiuti non contati, giorno settimanale aperto/chiuso con conferma dei conflitti e precedenza delle date
+  straordinarie.
+- `Fix2EventIT` (4): eventi alle 18:07, 19:23, 21:58, fine dopo mezzanotte, durata automatica invariata alla modifica
+  dell'orario, quanti toccati in parte (ordinarie ai confini, prenotazioni per l'evento), sovrapposizioni esclusive ai
+  confini, nuovo evento bozza, interruttore di pubblicazione (idempotente, versione superata, anonimi, persistenza,
+  sito pubblico), nascondere con prenotazioni attive rifiutato.
+- `MigrationIT`: 13 migrazioni da database vuoto; V13 su un database V12 con prenotazioni di ogni stato (budget
+  inizializzato solo dalle reali, nessuna riga persa, duplicati storici intatti, nuovo duplicato bloccato).
+- Aggiornati alle nuove regole: `WebRateLimitIT`, `ProxyHeadersIT` (5/ora), `WebReservationIT`, `ReservationLifecycleIT`,
+  `ReservationConcurrencyIT`, `OperationsIT`, `EventApiIT` (codice `BAND_CAPACITY_EXCEEDED` dove il budget scatta
+  prima dei posti contemporanei; ricambio limitato dal budget; chiusure con conferma; orari al minuto).
+- Riconciliazione dopo ogni test di integrazione: anche budget per fascia = persone che lo consumano e fascia coerente.
+- e2e: `fix2.spec.ts` (7: minuto e fine dopo mezzanotte, interruttore disabilitato durante il salvataggio e persistente
+  dopo il ricaricamento, errore di rete che riporta l'interruttore com'era, layout a 360/390/768 px senza
+  sovrapposizioni, riepilogo con budget, conferma della chiusura settimanale); `event-visibility.spec.ts`,
+  `events.spec.ts`, `navigation.spec.ts`, `fix1.spec.ts`, `fase7.spec.ts`, `reservations.spec.ts` aggiornati
+  (pubblicazione dall'elenco, nuove colonne del riepilogo, conferma delle chiusure). Regressioni su prenotazioni,
+  notifiche, calendario, chiusure, eventi e statistiche: tutte comprese nelle suite sopra.
+- Permessi: OWNER/STAFF su visibilità (STAFF può pubblicare, anonimo 401) in `Fix2EventIT`; matrice generale invariata
+  (`ApiSecurityMatrixIT`).
 
 ## 11. Punti aperti
 1. Una prenotazione per un evento conta nella fascia dell'**inizio** dell'evento (una serata 21:58–01:58 conta tutta in

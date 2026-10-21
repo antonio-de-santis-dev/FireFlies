@@ -31,7 +31,10 @@ test.describe('1. Animazione iniziale', () => {
     await expect(page.locator('.intro-veil')).toHaveCount(1, { timeout: 10_000 });
     await shot(page, 'intro: velo in uscita');
     // il velo non intercetta i tocchi e se ne va da solo
-    expect(await page.locator('.intro-veil').evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none');
+    // FIX 2: il velo può essere già sparito su una macchina veloce; se c'è ancora, non intercetta i tocchi
+    const pointer = await page.locator('.intro-veil').evaluate((el) => getComputedStyle(el).pointerEvents, undefined, { timeout: 1_000 })
+      .catch(() => 'none');
+    expect(pointer).toBe('none');
     await expect(page.locator('.intro-veil')).toHaveCount(0, { timeout: 2_000 });
     await expect(page.locator('.hero')).toHaveClass(/hero--intro/);
     await page.getByRole('link', { name: 'Scopri il menu' }).click();

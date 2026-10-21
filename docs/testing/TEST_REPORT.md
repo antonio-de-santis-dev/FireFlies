@@ -3,6 +3,19 @@
 > Aggiornato in **FIX-1** (branch `fix-1`) il 21/10/2026. Seguono le FASI 8, 7, 6, 5, 4, 3 e, in fondo, la FASE 2.
 > Ambiente: OpenJDK 21.0.12, Maven 3.9.11, Node 22, Playwright 1.56.1 (Chromium), Docker 29.8.2, PostgreSQL **17.11**.
 
+## FIX 2 — Riepilogo
+21/10/2026, branch `fix2/prenotatavolo`, PostgreSQL 17 reale.
+
+| Suite | Esito |
+|---|---|
+| Backend unit (`./mvnw -o verify`) | 82 / 82 |
+| Backend integrazione (Testcontainers) | 349 / 349 (nuovi: `Fix2BookingIT` 10, `Fix2EventIT` 4, `MigrationIT` V13) |
+| Frontend `npm run verifica` (typecheck + Playwright) | 142 superati, 1 fallito al primo giro |
+| Riesecuzione `fix1.spec.ts` «Animazione iniziale» ×3 | 6 / 6 |
+
+Il fallito (`fix1.spec.ts:24`, animazione iniziale di FIX-1) dipendeva dai tempi: il velo spariva prima che il test ne
+leggesse lo stile. Corretto il test, non l'animazione. Dettaglio in `docs/architecture/FIX2_REPORT.md` §10.
+
 ## FIX-1 — Riepilogo
 
 Suite eseguite **in sequenza** (mai backend ed e2e insieme) sul branch `fix-1`.
