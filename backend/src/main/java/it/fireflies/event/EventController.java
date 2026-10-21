@@ -46,6 +46,9 @@ class EventController {
     record PublishBody(@NotNull Integer version, Boolean acknowledgePending) {
     }
 
+    record VisibilityBody(@NotNull Integer version, @NotNull Boolean visible, Boolean acknowledgePending) {
+    }
+
     record CancelBody(@NotNull Integer version, Boolean cancelReservations) {
     }
 
@@ -99,6 +102,15 @@ class EventController {
     EventService.AdminEvent publish(@AuthenticationPrincipal GestoreDetails gestore, @PathVariable UUID id,
             @Valid @RequestBody PublishBody body) {
         return events.publish(actor(gestore), id, body.version(), Boolean.TRUE.equals(body.acknowledgePending()));
+    }
+
+    /** FIX 2: interruttore «Pubblica sul sito» dell'elenco eventi (stesso ruolo e stessi controlli di publish). */
+    @PutMapping("/api/v1/admin/events/{id}/visibility")
+    @PreAuthorize("hasRole('STAFF')")
+    EventService.AdminEvent visibility(@AuthenticationPrincipal GestoreDetails gestore, @PathVariable UUID id,
+            @Valid @RequestBody VisibilityBody body) {
+        return events.setVisibility(actor(gestore), id, body.version(), body.visible(),
+                Boolean.TRUE.equals(body.acknowledgePending()));
     }
 
     @PostMapping("/api/v1/admin/events/{id}/cancel")

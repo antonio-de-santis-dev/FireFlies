@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -274,6 +275,17 @@ public class DiningStore {
     // --- giorni di apertura (orari settimanali del sito e date straordinarie) -----------------------------------
 
     /** Giorno della settimana chiuso negli orari del sito; senza orari inseriti nessun giorno è chiuso. */
+    /** FIX 2: fasce da {@code from} in poi con più persone confermate di {@code capacity} (giorno, fascia, persone). */
+    List<Map<String, Object>> bandsAbove(LocalDate from, int capacity) {
+        return jdbc.sql("""
+                SELECT service_date, band, confirmed_covers FROM band_capacity_usage
+                 WHERE service_date >= ? AND confirmed_covers > ? ORDER BY service_date, band
+                """).params(from, capacity)
+                .query((rs, n) -> Map.<String, Object>of("date", rs.getObject(1, LocalDate.class).toString(), "band", rs.getString(2),
+                        "confirmed", rs.getInt(3)))
+                .list();
+    }
+
     boolean weeklyClosed(int isoDay) {
         return jdbc.sql("SELECT coalesce(bool_and(closed), false) FROM opening_hours WHERE iso_day = ?").param(isoDay)
                 .query(Boolean.class).single();

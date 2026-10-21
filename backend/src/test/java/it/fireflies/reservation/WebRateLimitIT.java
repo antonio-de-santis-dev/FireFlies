@@ -92,7 +92,8 @@ class WebRateLimitIT extends ReservationTestSupport {
     @Test
     void richiesteCreateOltreIlLimiteOrario429ConAttesa() {
         ApiClient client = browser();
-        for (int i = 0; i < 10; i++) {
+        // FIX 2: 5 richieste create per IP all'ora, la sesta 429
+        for (int i = 0; i < 5; i++) {
             assertThat(web(client, webBody(DAY, i % 2 == 0 ? "19:00" : "19:30", 2, nextPhone())).status()).as("richiesta %d", i + 1)
                     .isEqualTo(201);
         }
@@ -102,7 +103,7 @@ class WebRateLimitIT extends ReservationTestSupport {
         long retry = Long.parseLong(blocked.headers().get("Retry-After").getFirst());
         assertThat(retry).isBetween(3000L, 3600L);
         assertThat(blocked.body().path("detail").asString()).as("attesa scritta nel messaggio").containsPattern("tra (\\d+ minuti|circa 1 ore|circa \\d ore)");
-        assertThat(requests()).isEqualTo(10);
+        assertThat(requests()).isEqualTo(5);
     }
 
     @Test

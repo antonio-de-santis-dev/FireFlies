@@ -76,11 +76,15 @@ export async function loadPublicEvents(mediaIndex: Record<string, Asset>): Promi
 
 export const listEvents = () => api.get<AdminEvent[]>('/admin/events');
 export const getEvent = (id: string) => api.get<AdminEvent>(`/admin/events/${id}`);
-/** Un solo salvataggio: `visible` vero = pubblicato nella stessa transazione (se un controllo fallisce non resta nulla). */
-export const createEvent = (e: EventInput, visible: boolean, acknowledgePending = false) =>
-  api.post<AdminEvent>('/admin/events', { ...e, visible, acknowledgePending });
-export const updateEvent = (id: string, version: number, e: EventInput, visible: boolean, acknowledgePending = false) =>
-  api.put<AdminEvent>(`/admin/events/${id}`, { ...e, version, visible, acknowledgePending });
+/** FIX 2: un nuovo evento nasce sempre come bozza; si pubblica dall'elenco con {@link setEventVisibility}. */
+export const createEvent = (e: EventInput, acknowledgePending = false) =>
+  api.post<AdminEvent>('/admin/events', { ...e, visible: false, acknowledgePending });
+/** Modifica dei contenuti: la visibilità resta quella salvata (il campo `visible` non si invia). */
+export const updateEvent = (id: string, version: number, e: EventInput, acknowledgePending = false) =>
+  api.put<AdminEvent>(`/admin/events/${id}`, { ...e, version, acknowledgePending });
+/** FIX 2: interruttore «Pubblica sul sito» dell'elenco, con gli stessi controlli atomici della pubblicazione. */
+export const setEventVisibility = (id: string, version: number, visible: boolean, acknowledgePending = false) =>
+  api.put<AdminEvent>(`/admin/events/${id}/visibility`, { version, visible, acknowledgePending });
 export const cancelEvent = (id: string, version: number, cancelReservations: boolean) =>
   api.post<AdminEvent>(`/admin/events/${id}/cancel`, { version, cancelReservations });
 export const deleteEvent = (id: string) => api.del(`/admin/events/${id}`);

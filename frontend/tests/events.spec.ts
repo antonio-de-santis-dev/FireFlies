@@ -2,7 +2,7 @@
 // prenotazioni ordinarie e dalla serata demo; titoli e numeri sempre diversi.
 import { expect, request, test, type Page } from '@playwright/test';
 import { ownerApi } from './baseline';
-import { bookableDay, go, openTableBooking, requestCard, signIn, testPhone, watchProblems } from './helpers';
+import { bookableDay, go, openTableBooking, publishFromList, publishSwitch, requestCard, signIn, testPhone, watchProblems } from './helpers';
 
 const BACKEND = () => process.env.FIREFLIES_BACKEND_URL ?? 'http://localhost:18080';
 
@@ -101,8 +101,8 @@ test.describe('Eventi', () => {
     await signIn(page, 'Staff');
     await go(page, '/gestione/eventi/nuovo');
     await fillEvent(page, title, day, '19:30', '22:00', '20');
-    await page.getByRole('switch', { name: 'Visibile sul sito' }).click();
     await page.getByRole('button', { name: 'Salva', exact: true }).click();
+    await publishSwitch(page, title).click(); // FIX 2: si pubblica dall'elenco
     const alert = page.getByRole('alert').filter({ hasText: 'prenotazioni già confermate' });
     await expect(alert).toContainText(receipt.reference);
     await expect(alert).toContainText('4 persone');
@@ -115,8 +115,8 @@ test.describe('Eventi', () => {
     } finally {
       await again.dispose();
     }
-    await page.getByRole('button', { name: 'Salva', exact: true }).click();
-    await expect(page.locator('.toast')).toContainText(`«${title}» pubblicato sul sito`);
+    await expect(publishSwitch(page, title)).toHaveAttribute('aria-checked', 'false'); // rifiutato: torna spento
+    await publishFromList(page, title);
     await expect(page.locator('.ev-admin__item', { hasText: title })).toContainText('Pubblicato');
     await expect(page.locator('.ev-admin__item', { hasText: title })).toContainText('Esclusiva');
 
@@ -158,11 +158,9 @@ test.describe('Eventi', () => {
     await fillEvent(page, title, day, '18:00', '20:00', '40');
     await page.getByRole('switch', { name: /Esclusiva/ }).click();
     await expect(page.getByRole('switch', { name: /Posti condivisi/ })).toHaveAttribute('aria-checked', 'false');
-    await page.getByRole('switch', { name: 'Visibile sul sito' }).click();
     await page.getByRole('button', { name: 'Salva', exact: true }).click();
     // quota 40 su un locale da 40: l'avviso «posti non garantiti» compare solo se il servizio ordinario ne ha già occupati
-    await expect(page.locator('.toast')).toContainText(`«${title}» pubblicato sul sito`);
-    await go(page, '/gestione/eventi');
+    await publishFromList(page, title);
     await expect(page.locator('.ev-admin__item', { hasText: title })).toContainText('Posti condivisi');
     const owner = await ownerApi();
     try {

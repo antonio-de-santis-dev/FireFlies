@@ -246,6 +246,31 @@ public class EventService {
         return publishLocked(actor, row, acknowledgePending);
     }
 
+    /**
+     * Interruttore «Pubblica sul sito» nell'elenco eventi (FIX 2): {@code visible} vero pubblica, falso nasconde (torna
+     * bozza), con gli stessi controlli atomici di {@link #publish} e del ritorno a bozza. Se l'evento è già nello stato
+     * chiesto risponde con lo stato attuale (doppio clic, due schede aperte). Nessuno stato parziale: un errore annulla
+     * tutto e l'interfaccia riporta l'interruttore com'era.
+     */
+    @Transactional
+    public AdminEvent setVisibility(Actor actor, UUID id, int version, boolean visible, boolean acknowledgePending) {
+        EventStore.Row row = store.lock(id).orElseThrow(EventService::notFound);
+        if (row.status().equals("CANCELLED")) {
+            throw transition("Un evento annullato non si pubblica né si nasconde: resta visibile come «Annullata».");
+        }
+        boolean published = row.status().equals("PUBLISHED");
+        if (published == visible) {
+            return admin(row, List.of());
+        }
+        if (row.version() != version) {
+            throw ApiErrors.versionConflict();
+        }
+        if (visible) {
+            return publishLocked(actor, row, acknowledgePending);
+        }
+        return admin(unpublishLocked(actor, row), List.of());
+    }
+
     /** Pubblicazione di una riga già bloccata (dall'endpoint dedicato o dal salvataggio con «Visibile sul sito»). */
     private AdminEvent publishLocked(Actor actor, EventStore.Row row, boolean acknowledgePending) {
         if (row.status().equals("CANCELLED")) {
@@ -342,7 +367,8 @@ public class EventService {
                     .mapToInt(CapacityLedger.QuantumState::free).min().orElse(0)).sum();
             return row.capacityCovers() > free ? List.of("EVENT_QUOTA_NOT_GUARANTEED") : List.of();
         }
-        OccupancyInterval interval = new OccupancyInterval(row.startsAt(), row.endsAt());
+        // FIX 2: orari a qualunque minuto → tutti i quanti toccati anche in parte (19:07–23:07 riserva 19:00–23:15)
+        OccupancyInterval interval = OccupancyInterval.covering(row.startsAt(), row.endsAt());
         boolean blocked = false;
         boolean otherEvent = false;
         for (UUID zone : zones) {
@@ -410,10 +436,12 @@ public class EventService {
             if (c.date() == null || c.startTime() == null) {
                 throw ApiErrors.invalid("date", "Indica giorno e ora di inizio (oppure nessuno dei due).");
             }
-            if (c.startTime().getMinute() % 15 != 0 || c.startTime().getSecond() != 0
-                    || (c.endTime() != null && (c.endTime().getMinute() % 15 != 0 || c.endTime().getSecond() != 0))) {
-                throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "NOT_ALIGNED_15_MIN", "Orario non valido",
-                        "Gli orari degli eventi sono a passi di 15 minuti (es. 21:30, 21:45).");
+            // FIX 2: qualunque minuto (18:07, 21:58); niente secondi. Nel registro l'evento occupa ogni quanto da 15'
+            // che tocca anche in parte (OccupancyInterval.covering)
+            if (c.startTime().getSecond() != 0 || c.startTime().getNano() != 0
+                    || (c.endTime() != null && (c.endTime().getSecond() != 0 || c.endTime().getNano() != 0))) {
+                throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "INVALID_TIME", "Orario non valido",
+                        "Indica gli orari in ore e minuti (es. 21:58), senza secondi.");
             }
             start = BusinessTime.toInstant(c.date(), c.startTime());
             if (c.endTime() != null) {

@@ -280,9 +280,11 @@ export async function loadSettings(base: SiteSettings): Promise<SiteSettings> {
   return settings(await api.get<SettingsDto>('/admin/site-settings'), base);
 }
 
-export async function saveSettings(s: SiteSettings): Promise<SiteSettings> {
+/** FIX 2: chiudere un giorno con prenotazioni attive risponde `409 CLOSURE_HAS_RESERVATIONS` finché non si conferma. */
+export async function saveSettings(s: SiteSettings, confirmClosures = false): Promise<SiteSettings> {
   const dto = await api.put<SettingsDto>('/admin/site-settings', {
     version: s.version,
+    confirmClosures,
     addressLine: s.addressLine,
     addressConfirmed: s.addressConfirmed,
     mapQuery: s.mapQuery,

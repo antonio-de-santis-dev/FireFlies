@@ -34,6 +34,9 @@ public final class ConstraintViolationTranslator {
                     "Tavolo già occupato", "Il tavolo è già assegnato a un'altra prenotazione in quell'orario.")),
             Map.entry("ux_res_web_duplicate", new Translation(HttpStatus.CONFLICT, "DUPLICATE_REQUEST",
                     "Richiesta già inviata", "Esiste già una richiesta attiva con questo telefono per lo stesso orario.")),
+            Map.entry("ux_res_web_band_duplicate", new Translation(HttpStatus.CONFLICT, "DUPLICATE_REQUEST",
+                    "Richiesta già inviata", "Con questo telefono c'è già una richiesta attiva per la stessa fascia di quel giorno: "
+                            + "attendi la risposta del locale o chiamaci per modificarla.")),
             Map.entry("ux_res_idempotency_key", new Translation(HttpStatus.CONFLICT, "DUPLICATE_REQUEST",
                     "Richiesta già inviata", "Questa richiesta è già in elaborazione: attendi la risposta senza reinviarla.")),
             Map.entry("ck_slot_not_overbooked", new Translation(HttpStatus.CONFLICT, "CAPACITY_EXCEEDED",

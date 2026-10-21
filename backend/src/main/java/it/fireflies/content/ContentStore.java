@@ -195,6 +195,27 @@ class ContentStore {
                 .list();
     }
 
+    /**
+     * FIX 2: prenotazioni attive (in attesa o confermate) da {@code from} in poi nei giorni della settimana indicati,
+     * escluse le date con una chiusura o apertura straordinaria (che hanno la precedenza sull'orario settimanale).
+     */
+    List<it.fireflies.dining.DiningStore.DayReservations> activeOnWeekdays(java.time.LocalDate from, List<Integer> isoDays) {
+        return jdbc.sql("""
+                SELECT reservation_date,
+                       count(*) FILTER (WHERE status = 'PENDING'),
+                       count(*) FILTER (WHERE status = 'CONFIRMED'),
+                       coalesce(sum(guest_count) FILTER (WHERE status = 'CONFIRMED'), 0)
+                  FROM reservations r
+                 WHERE reservation_date >= ? AND status IN ('PENDING', 'CONFIRMED')
+                   AND extract(isodow FROM reservation_date)::int = ANY (?)
+                   AND NOT EXISTS (SELECT 1 FROM opening_exceptions e WHERE r.reservation_date BETWEEN e.day AND e.end_day)
+                 GROUP BY reservation_date ORDER BY reservation_date
+                """).params(from, isoDays.toArray(Integer[]::new))
+                .query((rs, n) -> new it.fireflies.dining.DiningStore.DayReservations(rs.getObject(1, java.time.LocalDate.class),
+                        rs.getInt(2), rs.getInt(3), rs.getInt(4)))
+                .list();
+    }
+
     void replaceHours(List<HoursRow> hours) {
         jdbc.sql("DELETE FROM opening_hours").update();
         for (HoursRow h : hours) {

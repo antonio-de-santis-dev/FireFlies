@@ -140,7 +140,20 @@ public class DiningService {
                 ? (zones.isEmpty() ? store.insertZone("Locale", 1) : zones.getFirst().id())
                 : active.getFirst().id();
         DiningStore.ZoneRow zone = store.zone(id).orElseThrow();
-        ledger.changePhysicalCapacity(id, capacity, Instant.now(clock));
+        Instant now = Instant.now(clock);
+        ledger.changePhysicalCapacity(id, capacity, now);
+        // FIX 2: anche il budget di ogni fascia futura (persone confermate nel giorno e fascia) deve stare nella nuova
+        // capienza. La zona è già bloccata dal registro: nessuna conferma può entrare a metà (BandBudget la blocca FOR SHARE)
+        List<Map<String, Object>> bands = store.bandsAbove(BusinessTime.serviceDate(now), capacity);
+        if (!bands.isEmpty()) {
+            Map<String, Object> first = bands.getFirst();
+            throw new ApiException(HttpStatus.CONFLICT, "CAPACITY_BELOW_CONFIRMED", "Capienza inferiore ai confermati",
+                    "Il " + first.get("date") + " (" + it.fireflies.dining.Band.valueOf((String) first.get("band")).label().toLowerCase(java.util.Locale.ROOT)
+                            + ") sono già confermate " + first.get("confirmed") + " persone, più della nuova capienza"
+                            + (bands.size() > 1 ? " (" + bands.size() + " fasce coinvolte)" : "")
+                            + ". Nessuna prenotazione è stata annullata: decidi tu come procedere.",
+                    Map.of("zoneId", id, "conflicts", List.of(), "bandConflicts", bands));
+        }
         // il registro ha già incrementato la versione della zona: si attiva con quella nuova
         store.updateZone(id, zone.version() + 1, zone.name(), true, zone.sortOrder());
         audit(actor, "VENUE_CAPACITY", id, Map.of("capacity", capacity));
@@ -342,7 +355,18 @@ public class DiningService {
      */
     @Transactional
     public OpeningResult addOpeningException(UUID actor, OpeningCommand c) {
+        return addOpeningException(actor, c, true);
+    }
+
+    /**
+     * FIX 2: una chiusura su giorni con prenotazioni attive (in attesa o confermate) si salva solo con
+     * {@code confirmReservations}: altrimenti {@code 409 CLOSURE_HAS_RESERVATIONS} con l'elenco dei giorni, e il
+     * gestore decide consapevolmente. Le prenotazioni non vengono mai annullate né rifiutate in automatico.
+     */
+    @Transactional
+    public OpeningResult addOpeningException(UUID actor, OpeningCommand c, boolean confirmReservations) {
         OpeningCommand clean = validate(c, null);
+        requireClosureConfirmed(clean, confirmReservations);
         UUID id = store.insertOpeningException(clean.from(), clean.to(), clean.closed(), clean.opensAt(), clean.closesAt(), clean.note());
         audit(actor, "OPENING_EXCEPTION", id, Map.of("from", clean.from().toString(), "to", clean.to().toString(), "closed", clean.closed()));
         return result(id, clean);
@@ -350,8 +374,14 @@ public class DiningService {
 
     @Transactional
     public OpeningResult updateOpeningException(UUID actor, UUID id, OpeningCommand c) {
+        return updateOpeningException(actor, id, c, true);
+    }
+
+    @Transactional
+    public OpeningResult updateOpeningException(UUID actor, UUID id, OpeningCommand c, boolean confirmReservations) {
         store.openingException(id).orElseThrow(() -> ApiErrors.notFound("La data straordinaria non esiste."));
         OpeningCommand clean = validate(c, id);
+        requireClosureConfirmed(clean, confirmReservations);
         store.updateOpeningException(id, clean.from(), clean.to(), clean.closed(), clean.opensAt(), clean.closesAt(), clean.note());
         audit(actor, "OPENING_EXCEPTION", id, Map.of("from", clean.from().toString(), "to", clean.to().toString(),
                 "closed", clean.closed(), "updated", true));
@@ -400,6 +430,27 @@ public class DiningService {
                             "closed", e.closed())).toList()));
         }
         return new OpeningCommand(from, to, c.closed(), c.closed() ? null : c.opensAt(), c.closed() ? null : c.closesAt(), note);
+    }
+
+    private void requireClosureConfirmed(OpeningCommand c, boolean confirmed) {
+        if (!c.closed() || confirmed) {
+            return;
+        }
+        List<DiningStore.DayReservations> days = store.activeReservationsBetween(c.from(), c.to());
+        if (!days.isEmpty()) {
+            throw closureHasReservations(days);
+        }
+    }
+
+    /** Giorni che si stanno chiudendo con prenotazioni attive: il gestore deve confermare (FIX 2, nessun annullamento). */
+    public static ApiException closureHasReservations(List<DiningStore.DayReservations> days) {
+        long pending = days.stream().mapToLong(DiningStore.DayReservations::pending).sum();
+        long confirmed = days.stream().mapToLong(DiningStore.DayReservations::confirmed).sum();
+        return new ApiException(HttpStatus.CONFLICT, "CLOSURE_HAS_RESERVATIONS", "Ci sono prenotazioni nei giorni chiusi",
+                "Nei giorni che stai chiudendo ci sono " + confirmed + " prenotazioni confermate e " + pending
+                        + " richieste in attesa. Non verranno annullate né rifiutate: conferma la chiusura e poi gestiscile "
+                        + "una per una (chiama i clienti).",
+                Map.of("conflicts", days, "pending", pending, "confirmed", confirmed));
     }
 
     private OpeningResult result(UUID id, OpeningCommand c) {

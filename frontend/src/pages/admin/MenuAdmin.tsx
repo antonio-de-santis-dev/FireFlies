@@ -10,9 +10,12 @@ import { useStore } from '../../store';
 import { AdminHead } from './AdminLayout';
 
 /** `ariaLabel`: nome accessibile completo quando l'etichetta visibile da sola è ambigua (es. «Lunedì aperto»). */
-export function Switch({ checked, onChange, label, ariaLabel }: { checked: boolean; onChange: () => void; label: string; ariaLabel?: string }) {
+export function Switch({ checked, onChange, label, ariaLabel, disabled, busy }: {
+  checked: boolean; onChange: () => void; label: string; ariaLabel?: string; disabled?: boolean; busy?: boolean;
+}) {
   return (
-    <button type="button" role="switch" aria-checked={checked} aria-label={ariaLabel} className="switch" onClick={onChange}>
+    <button type="button" role="switch" aria-checked={checked} aria-label={ariaLabel} className="switch" onClick={onChange}
+      disabled={disabled} aria-busy={busy || undefined}>
       <span className="switch__track" aria-hidden="true"><span className="switch__thumb" /></span>
       <span className="switch__label">{label}</span>
     </button>

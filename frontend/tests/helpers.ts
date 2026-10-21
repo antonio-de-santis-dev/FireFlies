@@ -156,3 +156,17 @@ export async function weekSummaryRow(page: Page, day: string, band: 'Colazione' 
   await expect(row).toBeVisible();
   return row;
 }
+
+/** FIX 2: interruttore «Pubblica sul sito» di un evento nell'elenco Gestione › Eventi. */
+export function publishSwitch(page: Page, title: string) {
+  return page.getByRole('switch', { name: `Pubblica sul sito: ${title}` });
+}
+
+/** FIX 2: dopo «Salva» di un nuovo evento (bozza) si torna all'elenco: lo pubblica con l'interruttore della riga. */
+export async function publishFromList(page: Page, title: string) {
+  const toggle = publishSwitch(page, title);
+  await expect(toggle).toHaveAttribute('aria-checked', 'false');
+  await toggle.click();
+  await expect(page.locator('.toast')).toContainText(`«${title}» pubblicato sul sito`);
+  await expect(toggle).toHaveAttribute('aria-checked', 'true');
+}

@@ -231,17 +231,14 @@ test.describe('Area gestori', () => {
   test('eventi: nuova bozza con validazione', async ({ page }) => {
     await signIn(page);
     await go(page, '/gestione/eventi/nuovo');
-    const visible = page.getByRole('switch', { name: 'Visibile sul sito' });
-    await expect(visible).toHaveAttribute('aria-checked', 'false'); // un evento nuovo nasce bozza
+    await expect(page.getByRole('switch', { name: 'Visibile sul sito' })).toHaveCount(0); // FIX 2: nasce sempre bozza
+    await expect(page.getByText('Nasce come bozza')).toBeVisible();
     await page.getByRole('button', { name: 'Salva', exact: true }).click();
     await expect(page.getByText('Dai un titolo alla serata')).toBeVisible();
     await page.getByLabel('Titolo').fill('Serata di prova');
-    await visible.click();
-    await page.getByRole('button', { name: 'Salva', exact: true }).click();
-    await expect(page.getByText('Per mettere una serata sul sito servono la data')).toBeVisible();
-    await visible.click();
     await page.getByRole('button', { name: 'Salva', exact: true }).click();
     await expect(page.getByRole('heading', { level: 2, name: 'Serata di prova' })).toBeVisible();
+    await expect(page.getByRole('switch', { name: 'Pubblica sul sito: Serata di prova' }).first()).toHaveAttribute('aria-checked', 'false');
   });
 
   test('impostazioni: orari verificati tolgono l’etichetta dal sito', async ({ page }) => {

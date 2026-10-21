@@ -195,6 +195,10 @@ export const BANDS: { id: Band; label: string }[] = [
 export type SummaryRow = {
   date: string; band: Band; label: string; closed: boolean; requests: number; pending: number; confirmed: number; guests: number;
   capacity: number | null; available: number | null; fromStatistics: boolean;
+  /** FIX 2: budget della fascia (capienza del locale), persone confermate che lo consumano e quante ne restano. */
+  bandCapacity: number | null; bandConfirmed: number; bandRemaining: number | null;
+  /** Gruppo più grande che sta fisicamente in un orario della fascia; arrivi riservati a un evento su arrivi totali. */
+  physicalAvailable: number | null; eventArrivals: number; arrivals: number; limitedByPhysical: boolean;
 };
 export const capacitySummary = (from: string, to: string, band?: Band) =>
   api.get<{ from: string; to: string; rows: SummaryRow[] }>(`/admin/capacity-summary?from=${from}&to=${to}${band ? `&band=${band}` : ''}`);
@@ -209,8 +213,11 @@ export type OpeningResult = {
   exception: OpeningException; activeReservations: number;
   conflicts: { date: string; pending: number; confirmed: number; confirmedGuests: number }[];
 };
-export const addOpeningException = (e: OpeningInput) => api.post<OpeningResult>('/admin/opening-exceptions', e);
-export const updateOpeningException = (id: string, e: OpeningInput) => api.put<OpeningResult>(`/admin/opening-exceptions/${id}`, e);
+/** FIX 2: una chiusura su giorni con prenotazioni attive risponde `409 CLOSURE_HAS_RESERVATIONS` finché non si conferma. */
+export const addOpeningException = (e: OpeningInput, confirmReservations = false) =>
+  api.post<OpeningResult>('/admin/opening-exceptions', { ...e, confirmReservations });
+export const updateOpeningException = (id: string, e: OpeningInput, confirmReservations = false) =>
+  api.put<OpeningResult>(`/admin/opening-exceptions/${id}`, { ...e, confirmReservations });
 export const deleteOpeningException = (id: string) => api.del(`/admin/opening-exceptions/${id}`);
 
 /** Testo per lo stato di una notifica: mai «inviata» se non è partita davvero. */

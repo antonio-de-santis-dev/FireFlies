@@ -24,7 +24,8 @@ class ReservationStore {
             Instant startsAt, Instant endsAt, Instant occupiedUntil, int guestCount, UUID serviceWindowId, UUID zoneId,
             String customerName, String customerPhone, String customerEmail, String customerNotes, String internalNote,
             boolean needsCallback, UUID idempotencyKey, String fingerprint, UUID createdBy, UUID handledBy,
-            Instant confirmedAt, Instant closedAt, Instant createdAt, Instant updatedAt, int version, UUID eventId) {
+            Instant confirmedAt, Instant closedAt, Instant createdAt, Instant updatedAt, int version, UUID eventId,
+            String serviceBand) {
 
         boolean occupying() {
             return "CONFIRMED".equals(status) || "COMPLETED".equals(status) || "NO_SHOW".equals(status);
@@ -53,7 +54,7 @@ class ReservationStore {
             id, public_ref, status, status_reason, source, reservation_date, starts_at, ends_at, occupied_until,
             guest_count, service_window_id, capacity_zone_id, customer_name, customer_phone_e164, customer_email,
             customer_notes, internal_note, needs_callback, idempotency_key, request_fingerprint, created_by_user_id,
-            handled_by_user_id, confirmed_at, closed_at, created_at, updated_at, version, event_id
+            handled_by_user_id, confirmed_at, closed_at, created_at, updated_at, version, event_id, service_band
             """;
 
     private final JdbcClient jdbc;
@@ -99,6 +100,18 @@ class ReservationStore {
 
     Optional<Row> byIdempotencyKey(UUID key) {
         return jdbc.sql("SELECT " + COLUMNS + " FROM reservations WHERE idempotency_key = ?").param(key).query(ReservationStore::row).optional();
+    }
+
+    /**
+     * FIX 2: c'è già una richiesta attiva (in attesa o confermata, da qualunque canale) dello stesso telefono nello
+     * stesso giorno e nella stessa fascia? Solo sì/no: nessun dato dell'altra prenotazione esce da qui.
+     */
+    boolean activeSamePhoneBand(String phone, LocalDate date, String band) {
+        return jdbc.sql("""
+                SELECT EXISTS (SELECT 1 FROM reservations
+                                WHERE customer_phone_e164 = ? AND reservation_date = ? AND service_band = ?
+                                  AND status IN ('PENDING', 'CONFIRMED'))
+                """).params(phone, date, band).query(Boolean.class).single();
     }
 
     long webRequestsFromPhoneSince(String phone, Instant since) {
@@ -290,7 +303,7 @@ class ReservationStore {
                 rs.getObject("idempotency_key", UUID.class), rs.getString("request_fingerprint"),
                 rs.getObject("created_by_user_id", UUID.class), rs.getObject("handled_by_user_id", UUID.class),
                 instant(rs, "confirmed_at"), instant(rs, "closed_at"), instant(rs, "created_at"), instant(rs, "updated_at"),
-                rs.getInt("version"), rs.getObject("event_id", UUID.class));
+                rs.getInt("version"), rs.getObject("event_id", UUID.class), rs.getString("service_band"));
     }
 
     private static Instant instant(ResultSet rs, String column) throws SQLException {

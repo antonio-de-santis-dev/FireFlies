@@ -229,7 +229,7 @@ export function WeekSummaryPanel({ refreshKey = 0 }: { refreshKey?: number }) {
         <div className="table-wrap week-wrap">
           <table className="table week-table">
             <caption className="sr-only">{bandLabel}, settimana {weekLabel(monday)}</caption>
-            <thead><tr><th scope="col">Giorno</th><th scope="col">Prenotazioni</th><th scope="col">Persone confermate</th><th scope="col">Capienza</th><th scope="col">Disponibili</th></tr></thead>
+            <thead><tr><th scope="col">Giorno</th><th scope="col">Prenotazioni</th><th scope="col">Confermate / capienza</th><th scope="col">Restano nella fascia</th><th scope="col">Disponibili adesso</th></tr></thead>
             <tbody>
               {rows.map((r) => {
                 const offered = r.capacity != null;
@@ -243,9 +243,17 @@ export function WeekSummaryPanel({ refreshKey = 0 }: { refreshKey?: number }) {
                       {!offered && !r.closed && <span className="badge badge--neutral">Fascia non prevista</span>}
                     </th>
                     <td data-label="Prenotazioni">{r.confirmed}{r.pending > 0 && <span className="muted small"> + {r.pending} in attesa</span>}</td>
-                    <td data-label="Persone confermate">{r.guests}</td>
-                    <td data-label="Capienza">{r.capacity ?? '—'}</td>
-                    <td data-label="Disponibili"><strong>{offered && !r.closed && r.date >= today ? r.available : '—'}</strong></td>
+                    <td data-label="Confermate / capienza">{r.bandCapacity != null ? `${r.bandConfirmed} / ${r.bandCapacity}` : r.guests}</td>
+                    <td data-label="Restano nella fascia">{r.bandRemaining ?? '—'}</td>
+                    <td data-label="Disponibili adesso">
+                      <strong>{offered && !r.closed && r.date >= today ? r.available : '—'}</strong>
+                      {offered && !r.closed && r.date >= today && r.eventArrivals > 0 && (
+                        <span className="muted small week-table__note">{r.eventArrivals === r.arrivals ? 'Riservata a un evento' : `Evento in ${r.eventArrivals} orari su ${r.arrivals}`}</span>
+                      )}
+                      {offered && !r.closed && r.date >= today && r.limitedByPhysical && r.eventArrivals < r.arrivals && (
+                        <span className="muted small week-table__note">Limitati dai posti occupati nello stesso momento</span>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -253,8 +261,10 @@ export function WeekSummaryPanel({ refreshKey = 0 }: { refreshKey?: number }) {
           </table>
         </div>
       )}
-      <p className="hint">«Disponibili» è il gruppo più grande che si può ancora accogliere in almeno un orario della fascia. I giorni già
-        puliti dalla conservazione mostrano le statistiche anonime.</p>
+      <p className="hint">Ogni fascia di ogni giorno accoglie al massimo la capienza del locale in persone confermate, anche con il
+        ricambio dei tavoli: annullare una confermata restituisce i posti, completata e non presentata no. «Disponibili adesso» è il
+        gruppo più grande che si può ancora accogliere in almeno un orario della fascia: tiene conto anche dei posti occupati nello
+        stesso momento e degli eventi. I giorni già puliti dalla conservazione mostrano le statistiche anonime.</p>
     </section>
   );
 }
@@ -268,6 +278,37 @@ function conflictText(r: OpeningResult): string | null {
   return `Attenzione: in ${r.conflicts.length === 1 ? 'questo giorno ci sono' : `${r.conflicts.length} giorni ci sono`} già prenotazioni — ${parts.join('; ')}${r.conflicts.length > 3 ? '…' : ''}. Restano valide: gestiscile da Richieste.`;
 }
 
+type ClosureConflict = { date: string; pending: number; confirmed: number; confirmedGuests: number };
+
+/** FIX 2: giorni che si stanno chiudendo con prenotazioni attive (409 CLOSURE_HAS_RESERVATIONS), da confermare. */
+export function closureConflicts(e: unknown): ClosureConflict[] | null {
+  if (!(e instanceof ApiError) || e.code !== 'CLOSURE_HAS_RESERVATIONS') return null;
+  return ((e.problem as { context?: { conflicts?: ClosureConflict[] } } | undefined)?.context?.conflicts) ?? [];
+}
+
+/** Riquadro di conferma consapevole: elenco dei giorni, nessuna prenotazione annullata in automatico. */
+export function ClosureConfirm({ conflicts, busy, onConfirm, onCancel }: {
+  conflicts: ClosureConflict[]; busy: boolean; onConfirm: () => void; onCancel: () => void;
+}) {
+  return (
+    <div className="panel panel--warn closure-confirm" role="alertdialog" aria-labelledby="closure-confirm-title" aria-describedby="closure-confirm-desc">
+      <p className="error" id="closure-confirm-title"><CircleAlert size={16} aria-hidden="true" /> Nei giorni che stai chiudendo ci sono prenotazioni attive</p>
+      <ul className="res-detail__list" aria-label="Giorni con prenotazioni">
+        {conflicts.slice(0, 8).map((c) => (
+          <li key={c.date}><span>{fmtShort(c.date)}</span><span>{c.confirmed} confermate ({c.confirmedGuests} persone){c.pending ? ` · ${c.pending} in attesa` : ''}</span></li>
+        ))}
+        {conflicts.length > 8 && <li><span>…e altri {conflicts.length - 8} giorni</span><span /></li>}
+      </ul>
+      <p className="small" id="closure-confirm-desc">Chiudendo, il sito non accetterà nuove richieste in quei giorni. Le prenotazioni già presenti
+        <strong> non vengono annullate né rifiutate</strong>: dovrai gestirle tu dalla pagina Richieste (chiama i clienti).</p>
+      <div className="confirm-row">
+        <button type="button" className="btn btn--quiet btn--sm" disabled={busy} onClick={onCancel}>Non chiudere</button>
+        <button type="button" className="btn btn--action btn--sm" disabled={busy} onClick={onConfirm}>Chiudi comunque</button>
+      </div>
+    </div>
+  );
+}
+
 function OpeningDatesPanel({ items, act }: { items: OpeningException[]; act: Act }) {
   const [form, setForm] = useState<OpeningForm>(emptyForm);
   const [editing, setEditing] = useState<string | null>(null);
@@ -275,6 +316,7 @@ function OpeningDatesPanel({ items, act }: { items: OpeningException[]; act: Act
   const [invalid, setInvalid] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState<{ input: OpeningInput; conflicts: ClosureConflict[] } | null>(null);
   const up = <K extends keyof OpeningForm>(k: K, v: OpeningForm[K]) => setForm((f) => ({ ...f, [k]: v }));
 
   const startEdit = (e: OpeningException) => {
@@ -284,7 +326,24 @@ function OpeningDatesPanel({ items, act }: { items: OpeningException[]; act: Act
       opensAt: hhmm(e.opensAt) || '18:00', closesAt: hhmm(e.closesAt) || '23:00', note: e.note ?? '' });
     requestAnimationFrame(() => document.getElementById('od-from')?.focus());
   };
-  const cancel = () => { setEditing(null); setForm(emptyForm()); setInvalid(null); };
+  const cancel = () => { setEditing(null); setForm(emptyForm()); setInvalid(null); setConfirming(null); };
+
+  const save = async (input: OpeningInput, confirm: boolean) => {
+    setBusy(true);
+    const ok = await act(() => (editing ? updateOpeningException(editing, input, confirm) : addOpeningException(input, confirm))
+      .catch((e: unknown) => {
+        const conflicts = closureConflicts(e);
+        if (conflicts) setConfirming({ input, conflicts });
+        throw e;
+      }), (r: OpeningResult) => {
+      setConfirming(null);
+      setWarning(conflictText(r));
+      const what = r.exception.closed ? 'Chiusura straordinaria' : 'Apertura straordinaria';
+      return `${what} ${editing ? 'aggiornata' : 'salvata'}: ${rangeLabel(r.exception)}.`;
+    });
+    setBusy(false);
+    if (ok) cancel();
+  };
 
   const submit = async (ev: FormEvent) => {
     ev.preventDefault();
@@ -294,16 +353,10 @@ function OpeningDatesPanel({ items, act }: { items: OpeningException[]; act: Act
     if (to < form.from) return setInvalid("L'ultimo giorno non può essere prima del primo.");
     if (!form.closed && (!form.opensAt || !form.closesAt)) return setInvalid("Per un'apertura straordinaria indica gli orari.");
     setInvalid(null);
-    setBusy(true);
+    setConfirming(null);
     const input: OpeningInput = { from: form.from, to, closed: form.closed, opensAt: form.closed ? null : form.opensAt,
       closesAt: form.closed ? null : form.closesAt, note: form.note.trim() || undefined };
-    const ok = await act(() => (editing ? updateOpeningException(editing, input) : addOpeningException(input)), (r: OpeningResult) => {
-      setWarning(conflictText(r));
-      const what = r.exception.closed ? 'Chiusura straordinaria' : 'Apertura straordinaria';
-      return `${what} ${editing ? 'aggiornata' : 'salvata'}: ${rangeLabel(r.exception)}.`;
-    });
-    setBusy(false);
-    if (ok) cancel();
+    await save(input, false);
   };
 
   return (
@@ -311,6 +364,10 @@ function OpeningDatesPanel({ items, act }: { items: OpeningException[]; act: Act
       <h3 id="cap-dates" className="panel__title">Chiusure e aperture straordinarie</h3>
       <p className="hint">Valgono su tutto il giorno e prevalgono sugli orari della settimana. Un giorno chiuso non si può scegliere nel
         calendario del sito; le prenotazioni già presenti non vengono mai cancellate da sole.</p>
+      {confirming && (
+        <ClosureConfirm conflicts={confirming.conflicts} busy={busy} onCancel={() => setConfirming(null)}
+          onConfirm={() => void save(confirming.input, true)} />
+      )}
       {warning && <p className="notice notice--warn" role="status"><CircleAlert size={16} aria-hidden="true" /> {warning}
         <button type="button" className="icon-btn icon-btn--sm" aria-label="Chiudi l'avviso" onClick={() => setWarning(null)}><X size={14} aria-hidden="true" /></button></p>}
       <div className={`dates-layout${items.length === 0 ? ' is-empty' : ''}`}>

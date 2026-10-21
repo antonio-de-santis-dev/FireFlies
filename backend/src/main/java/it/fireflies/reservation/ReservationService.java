@@ -35,6 +35,7 @@ import it.fireflies.capacity.OccupancyInterval;
 import it.fireflies.common.ApiErrors;
 import it.fireflies.common.ApiException;
 import it.fireflies.common.BusinessTime;
+import it.fireflies.dining.Band;
 import it.fireflies.dining.BookingCalendar;
 import it.fireflies.dining.DiningStore;
 import it.fireflies.event.EventBooking;
@@ -92,10 +93,12 @@ public class ReservationService {
     private final AuditLog audit;
     private final Clock clock;
     private final EventBooking events;
+    private final BandBudget budget;
 
     ReservationService(ReservationStore store, CapacityLedger ledger, BookingCalendar calendar, NotificationOutbox outbox,
-            WebRequestLimiter limiter, AuditLog audit, Clock clock, EventBooking events) {
+            WebRequestLimiter limiter, AuditLog audit, Clock clock, EventBooking events, BandBudget budget) {
         this.events = events;
+        this.budget = budget;
         this.store = store;
         this.ledger = ledger;
         this.calendar = calendar;
@@ -169,6 +172,20 @@ public class ReservationService {
         UUID zoneId = event == null ? slot.window().zoneId() : eventZone(event);
         Instant start = event == null ? slot.start() : event.startsAt();
         Instant end = event == null ? slot.end() : event.endsAt();
+        LocalDate serviceDate = BusinessTime.serviceDate(start);
+        Band band = event == null ? Band.of(slot.window().name(), start.atZone(BusinessTime.ZONE).toLocalTime())
+                : Band.at(start.atZone(BusinessTime.ZONE).toLocalTime());
+        // FIX 2: una sola richiesta attiva (in attesa o confermata) per telefono, giorno e fascia, anche con orari diversi
+        // nella fascia e anche per una serata evento. Il messaggio non dice nulla dell'altra prenotazione; il vincolo
+        // vero è l'indice unico ux_res_web_band_duplicate (due invii contemporanei: il secondo fallisce al salvataggio)
+        if (store.activeSamePhoneBand(phone, serviceDate, band.name())) {
+            throw duplicateRequest();
+        }
+        // FIX 2: anteprima del budget della fascia (persone confermate nel giorno e fascia), senza lock
+        if (budget.read(serviceDate, band).remaining() < r.guests()) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "FULLY_BOOKED", "Fascia al completo",
+                    "Per " + band.label().toLowerCase(Locale.ROOT) + " di quel giorno siamo al completo: scegli un altro giorno o chiamaci.");
+        }
         // controllo preventivo, solo informativo (senza lock): quello vincolante avviene alla conferma (§5)
         if (zoneId != null) {
             for (CapacityLedger.QuantumState q : ledger.read(zoneId, start, end)) {
@@ -188,7 +205,7 @@ public class ReservationService {
             throw rateLimited(createWait, "Da questa connessione sono già arrivate molte richieste nell'ultima ora: riprova "
                     + waitText(createWait) + " o chiamaci.");
         }
-        UUID id = store.insert(new ReservationStore.NewRow(newReference(), "PENDING", "WEB", BusinessTime.serviceDate(start), start,
+        UUID id = store.insert(new ReservationStore.NewRow(newReference(), "PENDING", "WEB", serviceDate, start,
                 end, r.guests(), slot == null ? null : slot.window().id(), zoneId, name, phone, email, notes, null,
                 PRIVACY_VERSION, now, idempotencyKey, fingerprint, null, event == null ? null : event.id()));
         store.history(id, null, "PENDING", null, null, null);
@@ -431,6 +448,7 @@ public class ReservationService {
         if (row.eventId() != null) {
             events.lock(row.eventId()); // l'evento prima della zona e dei quanti
         }
+        budget.lock(row.reservationDate(), Band.valueOf(row.serviceBand())); // FIX 2: zone → fascia → quanti
         ledger.release(occupancy(row));
         store.releaseAssignments(row.id());
         outbox.supersede(AGGREGATE, row.id(), List.of("RESERVATION_CONFIRMED", "RESERVATION_UPDATED"));
@@ -472,11 +490,15 @@ public class ReservationService {
                 : eventZone != null ? eventZone : singleActiveZone();
         calendar.zone(zoneId).filter(DiningStore.ZoneRow::active).orElseThrow(() -> ApiErrors.invalid("zoneId", "Scegli una zona attiva."));
         ReservationStore.Row placed = withZone(row, zoneId, row.endsAt());
+        Band band = Band.valueOf(row.serviceBand());
         if (row.eventId() != null) {
-            // ordine dei lock: prenotazione → evento → zona → quanti; quota dell'evento e registro nella stessa transazione
+            // ordine dei lock: prenotazione → evento → zone → fascia → quanti; quota dell'evento, budget della fascia e
+            // registro nella stessa transazione
             events.acquire(row.eventId(), row.guestCount());
+            budget.require(row.reservationDate(), band, row.guestCount());
             ledger.occupyForEvent(occupancy(placed), row.eventId());
         } else {
+            budget.require(row.reservationDate(), band, row.guestCount()); // FIX 2: BAND_CAPACITY_EXCEEDED
             ledger.occupy(occupancy(placed)); // CAPACITY_EXCEEDED / EVENT_BLOCKS_SLOT: tutta la transazione si annulla
         }
         store.updateStatus(row.id(), "CONFIRMED", null, zoneId, row.endsAt(), actor.id(), true, false);
@@ -501,11 +523,13 @@ public class ReservationService {
     private void finish(Actor actor, ReservationStore.Row row, String status, String note, Instant now) {
         Instant freeFrom = ceilToQuantum(now);
         if (!freeFrom.isAfter(row.startsAt())) {
-            freeFrom = row.startsAt().plus(OccupancyInterval.QUANTUM);
+            // primo confine di quanto dopo l'arrivo (19:00 → 19:15; per un evento delle 19:07 → 19:15)
+            freeFrom = ceilToQuantum(row.startsAt().plusSeconds(1));
         }
         Instant occupiedUntil = row.occupiedUntil();
         if (freeFrom.isBefore(occupiedUntil)) {
-            ledger.release(new Occupancy(row.zoneId(), new OccupancyInterval(freeFrom, occupiedUntil), row.guestCount()));
+            // il budget della fascia NON torna (FIX 2): si liberano solo i posti contemporanei dei quanti futuri
+            ledger.release(new Occupancy(row.zoneId(), OccupancyInterval.covering(freeFrom, occupiedUntil), row.guestCount()));
             store.shortenAssignments(row.id(), freeFrom);
             occupiedUntil = freeFrom;
         }
@@ -596,11 +620,17 @@ public class ReservationService {
         Instant occupiedUntil = row.occupiedUntil();
         if (row.status().equals("CONFIRMED") && !changed.isEmpty()) {
             // libera il vecchio intervallo e occupa il nuovo insieme: se non sta, nulla cambia (409)
+            // FIX 2: stesso controllo del budget della fascia (vecchio giorno/fascia restituito, nuovo occupato insieme)
+            Band newBand = row.eventId() != null ? Band.valueOf(row.serviceBand()) : bandOf(windowId, start);
             if (row.eventId() != null) {
                 events.change(row.eventId(), guests - row.guestCount());
-                ledger.changeForEvent(occupancy(row), new Occupancy(zoneId, new OccupancyInterval(start, end), guests), row.eventId());
+                budget.require(date, newBand, guests, new BandBudget.Slot(row.reservationDate(), Band.valueOf(row.serviceBand())),
+                        row.guestCount());
+                ledger.changeForEvent(occupancy(row), new Occupancy(zoneId, OccupancyInterval.covering(start, end), guests), row.eventId());
             } else {
-                ledger.change(occupancy(row), new Occupancy(zoneId, new OccupancyInterval(start, end), guests));
+                budget.require(date, newBand, guests, new BandBudget.Slot(row.reservationDate(), Band.valueOf(row.serviceBand())),
+                        row.guestCount());
+                ledger.change(occupancy(row), new Occupancy(zoneId, OccupancyInterval.covering(start, end), guests));
             }
             occupiedUntil = end;
         }
@@ -785,6 +815,13 @@ public class ReservationService {
         }
     }
 
+    /** FIX 2: stessa risposta del vincolo ux_res_web_band_duplicate; nessun dato dell'altra prenotazione. */
+    static ApiException duplicateRequest() {
+        return new ApiException(HttpStatus.CONFLICT, "DUPLICATE_REQUEST", "Richiesta già inviata",
+                "Con questo telefono c'è già una richiesta attiva per la stessa fascia di quel giorno: attendi la risposta "
+                        + "del locale o chiamaci per modificarla.");
+    }
+
     private Receipt receipt(ReservationStore.Row row) {
         ZonedDateTime local = row.startsAt().atZone(BusinessTime.ZONE);
         return new Receipt(row.publicRef(), row.status(), local.toLocalDate(), local.toLocalTime(), row.guestCount(),
@@ -792,9 +829,16 @@ public class ReservationService {
                         + (row.customerEmail() != null ? " via email o telefono." : " al telefono indicato."));
     }
 
+    /** Fascia come la calcola il database (V13 {@code fireflies_band}): nome della fascia prenotabile o orario. */
+    private Band bandOf(UUID windowId, Instant start) {
+        String name = windowId == null ? null : calendar.window(windowId).map(DiningStore.WindowRow::name).orElse(null);
+        return Band.of(name, start.atZone(BusinessTime.ZONE).toLocalTime());
+    }
+
+    /** Quanti occupati da una prenotazione: per gli eventi a qualunque minuto, ogni quanto toccato anche in parte (FIX 2). */
     private static Occupancy occupancy(ReservationStore.Row row) {
-        return new Occupancy(row.zoneId(), new OccupancyInterval(row.startsAt(), row.occupiedUntil() != null ? row.occupiedUntil() : row.endsAt()),
-                row.guestCount());
+        return new Occupancy(row.zoneId(), OccupancyInterval.covering(row.startsAt(),
+                row.occupiedUntil() != null ? row.occupiedUntil() : row.endsAt()), row.guestCount());
     }
 
     private static ReservationStore.Row withZone(ReservationStore.Row r, UUID zoneId, Instant occupiedUntil) {
@@ -802,7 +846,7 @@ public class ReservationService {
                 r.startsAt(), r.endsAt(), occupiedUntil, r.guestCount(), r.serviceWindowId(), zoneId, r.customerName(),
                 r.customerPhone(), r.customerEmail(), r.customerNotes(), r.internalNote(), r.needsCallback(),
                 r.idempotencyKey(), r.fingerprint(), r.createdBy(), r.handledBy(), r.confirmedAt(), r.closedAt(),
-                r.createdAt(), r.updatedAt(), r.version(), r.eventId());
+                r.createdAt(), r.updatedAt(), r.version(), r.eventId(), r.serviceBand());
     }
 
     static Instant ceilToQuantum(Instant instant) {

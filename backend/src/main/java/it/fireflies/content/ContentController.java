@@ -55,7 +55,7 @@ class ContentController {
 
     record SettingsRequest(@NotNull Integer version, String addressLine, @NotNull Boolean addressConfirmed,
             String mapQuery, String mapMode, String phone, String email, String instagramUrl,
-            @NotNull Boolean hoursConfirmed, @Size(max = 7) List<@Valid @NotNull HoursRequest> hours) {
+            @NotNull Boolean hoursConfirmed, @Size(max = 7) List<@Valid @NotNull HoursRequest> hours, Boolean confirmClosures) {
     }
 
     record AnnouncementRequest(String text, String tone, @NotNull Boolean active, LocalDate visibleUntil) {
@@ -111,7 +111,8 @@ class ContentController {
         return content.updateSettings(actor.id(), body.version(), new ContentService.SettingsCommand(body.addressLine(),
                 body.addressConfirmed(), body.mapQuery(), body.mapMode(), body.phone(), body.email(), body.instagramUrl(),
                 body.hoursConfirmed(), body.hours() == null ? null : body.hours().stream()
-                        .map(h -> new ContentService.HoursView(h.isoDay(), h.closed(), h.opensAt(), h.closesAt())).toList()));
+                        .map(h -> new ContentService.HoursView(h.isoDay(), h.closed(), h.opensAt(), h.closesAt())).toList(),
+                Boolean.TRUE.equals(body.confirmClosures())));
     }
 
     @GetMapping("/api/v1/admin/announcements")

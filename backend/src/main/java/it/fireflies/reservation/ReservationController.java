@@ -108,8 +108,13 @@ class ReservationController {
             receipt = reservations.createWeb(web, idempotencyKey, request.getRemoteAddr());
         } catch (DataIntegrityViolationException e) {
             // FIX-1: due invii identici quasi contemporanei (doppio tocco, rete che ripete): il secondo perde sul vincolo
-            // della chiave; si rilegge in una nuova transazione e si risponde con la stessa ricevuta del primo
-            if (!ConstraintViolationTranslator.constraintName(e).filter("ux_res_idempotency_key"::equals).isPresent()) {
+            // della chiave; si rilegge in una nuova transazione e si risponde con la stessa ricevuta del primo.
+            // FIX 2: stesso per il vincolo telefono/giorno/fascia: al secondo giro il servizio vede la richiesta attiva e
+            // risponde con la stessa ricevuta (stessa chiave) o con 409 DUPLICATE_REQUEST, senza dati dell'altra
+            if (!ConstraintViolationTranslator.constraintName(e)
+                    .filter(c -> c.equals("ux_res_idempotency_key") || c.equals("ux_res_web_band_duplicate")
+                            || c.equals("ux_res_web_duplicate"))
+                    .isPresent()) {
                 throw e;
             }
             receipt = reservations.createWeb(web, idempotencyKey, request.getRemoteAddr());

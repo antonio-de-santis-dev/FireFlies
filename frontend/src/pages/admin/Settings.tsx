@@ -7,7 +7,7 @@ import type { SiteSettings } from '../../data/site';
 import { usePageMeta } from '../../router';
 import { useStore } from '../../store';
 import { AdminHead } from './AdminLayout';
-import { CapacitySettings } from './CapacitySettings';
+import { CapacitySettings, ClosureConfirm, closureConflicts } from './CapacitySettings';
 import { Switch } from './MenuAdmin';
 
 /** Interruttore delle richieste dal sito: salva subito la regola sul server (fasce e persone nella sezione «Capienza»). */
@@ -53,22 +53,30 @@ export function Settings() {
 
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [closures, setClosures] = useState<ReturnType<typeof closureConflicts>>(null);
 
-  const save = async (e: FormEvent) => {
-    e.preventDefault();
+  const persist = async (confirmClosures: boolean) => {
     if (busy) return;
     setFailure(null);
     setBusy(true);
     try {
-      const saved = await saveSettings(s);
+      const saved = await saveSettings(s, confirmClosures);
       dispatch({ type: 'settings/save', settings: saved });
       setS(saved);
+      setClosures(null);
       notify('Impostazioni salvate: il sito mostra già i nuovi orari e contatti.');
     } catch (err) {
-      setFailure(err instanceof ApiError ? err.message : 'Salvataggio non riuscito: riprova.');
+      // FIX 2: giorno chiuso con prenotazioni attive → conferma consapevole, nessun annullamento automatico
+      const conflicts = closureConflicts(err);
+      setClosures(conflicts);
+      if (!conflicts) setFailure(err instanceof ApiError ? err.message : 'Salvataggio non riuscito: riprova.');
     } finally {
       setBusy(false);
     }
+  };
+  const save = (e: FormEvent) => {
+    e.preventDefault();
+    void persist(false);
   };
 
   return (
@@ -78,6 +86,7 @@ export function Settings() {
         <button type="submit" className="btn btn--action" disabled={busy}><Save size={18} aria-hidden="true" /> {busy ? 'Salvataggio…' : 'Salva'}</button>
       </AdminHead>
       {failure && <p className="error" role="alert"><CircleAlert size={16} aria-hidden="true" /> {failure}</p>}
+      {closures && <ClosureConfirm conflicts={closures} busy={busy} onCancel={() => setClosures(null)} onConfirm={() => void persist(true)} />}
 
       <div className="settings">
         <section className="panel hours-panel" aria-labelledby="set-hours">

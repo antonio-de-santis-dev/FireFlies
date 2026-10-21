@@ -62,6 +62,6 @@ class ReservationRulesTest {
     private static ReservationStore.Row row(String status, Instant start) {
         return new ReservationStore.Row(UUID.randomUUID(), "FF-ABCDEF", status, null, "WEB", LocalDate.of(2030, 5, 10), start,
                 start.plus(Duration.ofHours(2)), null, 2, null, null, "Cliente", "+390000000000", null, null, null, false, null,
-                null, null, null, null, null, start, start, 0, null);
+                null, null, null, null, null, start, start, 0, null, "APERITIVO");
     }
 }

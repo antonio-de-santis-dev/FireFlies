@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import it.fireflies.capacity.CapacityLedger;
 import it.fireflies.common.BusinessTime;
+import it.fireflies.dining.Band;
 import it.fireflies.dining.BookingCalendar;
 import it.fireflies.dining.DiningStore;
 
@@ -42,8 +43,10 @@ public class BookingOptionsService {
     private final BookingCalendar calendar;
     private final CapacityLedger ledger;
     private final Clock clock;
+    private final BandBudget budget;
 
-    BookingOptionsService(BookingCalendar calendar, CapacityLedger ledger, Clock clock) {
+    BookingOptionsService(BookingCalendar calendar, CapacityLedger ledger, Clock clock, BandBudget budget) {
+        this.budget = budget;
         this.calendar = calendar;
         this.ledger = ledger;
         this.clock = clock;
@@ -68,6 +71,8 @@ public class BookingOptionsService {
         List<Group> groups = new ArrayList<>();
         for (DiningStore.WindowRow w : calendar.windowsOn(date)) {
             boolean closed = calendar.closed(date, w.id());
+            // FIX 2: budget della fascia (persone confermate nel giorno): se non basta, tutta la fascia è piena
+            boolean bandFull = budget.read(date, Band.of(w.name(), w.firstStart())).remaining() < party;
             List<Slot> slots = new ArrayList<>();
             for (LocalTime t = w.firstStart(); !t.isAfter(w.lastStart()); t = t.plusMinutes(w.slotMinutes())) {
                 Instant start = BusinessTime.toInstant(date, t);
@@ -76,6 +81,8 @@ public class BookingOptionsService {
                     reason = "TOO_EARLY";
                 } else if (closed) {
                     reason = "DAY_CLOSED";
+                } else if (bandFull) {
+                    reason = "FULL";
                 } else {
                     for (CapacityLedger.QuantumState q : ledger.read(w.zoneId(), start, start.plus(Duration.ofMinutes(w.defaultDurationMinutes())))) {
                         if (q.exclusiveEventId() != null) {

@@ -70,7 +70,7 @@ class DiningController {
      * nome usato fino alla FASE 8 per il giorno singolo: resta accettato.
      */
     record OpeningExceptionRequest(LocalDate from, LocalDate to, LocalDate day, @NotNull Boolean closed, LocalTime opensAt,
-            LocalTime closesAt, String note) {
+            LocalTime closesAt, String note, Boolean confirmReservations) {
 
         DiningService.OpeningCommand command() {
             LocalDate first = from != null ? from : day;
@@ -205,14 +205,15 @@ class DiningController {
     @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<DiningService.OpeningResult> addOpeningException(@AuthenticationPrincipal GestoreDetails actor,
             @Valid @RequestBody OpeningExceptionRequest body) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(dining.addOpeningException(actor.id(), body.command()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(dining.addOpeningException(actor.id(), body.command(),
+                Boolean.TRUE.equals(body.confirmReservations())));
     }
 
     @PutMapping("/api/v1/admin/opening-exceptions/{id}")
     @PreAuthorize("hasRole('OWNER')")
     DiningService.OpeningResult updateOpeningException(@AuthenticationPrincipal GestoreDetails actor, @PathVariable UUID id,
             @Valid @RequestBody OpeningExceptionRequest body) {
-        return dining.updateOpeningException(actor.id(), id, body.command());
+        return dining.updateOpeningException(actor.id(), id, body.command(), Boolean.TRUE.equals(body.confirmReservations()));
     }
 
     @DeleteMapping("/api/v1/admin/opening-exceptions/{id}")

@@ -156,7 +156,8 @@ public class CapacityLedger {
     @Transactional(readOnly = true)
     public List<QuantumState> read(UUID zoneId, Instant from, Instant to) {
         ZoneRow zone = store.zone(zoneId).orElseThrow(() -> CapacityExceptions.zoneNotFound(zoneId));
-        Map<Instant, SlotRow> existing = store.readSlots(zoneId, from, to).stream()
+        // FIX 2: dal quanto che contiene «from» (orari degli eventi a qualunque minuto)
+        Map<Instant, SlotRow> existing = store.readSlots(zoneId, floorToQuantum(from), to).stream()
                 .collect(Collectors.toMap(SlotRow::slotStart, Function.identity()));
         List<QuantumState> result = new ArrayList<>();
         for (Instant q = floorToQuantum(from); q.isBefore(to); q = q.plus(OccupancyInterval.QUANTUM)) {

@@ -80,7 +80,13 @@ public class ContentService {
     }
 
     public record SettingsCommand(String addressLine, boolean addressConfirmed, String mapQuery, String mapMode,
-            String phone, String email, String instagramUrl, boolean hoursConfirmed, List<HoursView> hours) {
+            String phone, String email, String instagramUrl, boolean hoursConfirmed, List<HoursView> hours,
+            boolean confirmClosures) {
+
+        public SettingsCommand(String addressLine, boolean addressConfirmed, String mapQuery, String mapMode, String phone,
+                String email, String instagramUrl, boolean hoursConfirmed, List<HoursView> hours) {
+            this(addressLine, addressConfirmed, mapQuery, mapMode, phone, email, instagramUrl, hoursConfirmed, hours, false);
+        }
     }
 
     public record AnnouncementCommand(String text, String tone, boolean active, LocalDate visibleUntil) {
@@ -250,6 +256,16 @@ public class ContentService {
             throw ApiErrors.invalid("instagramUrl", "Incolla l'indirizzo del profilo, es. https://www.instagram.com/fireflies.aperitif/.");
         }
         List<ContentStore.HoursRow> hours = hours(c.hours());
+        // FIX 2: un giorno della settimana che passa da aperto a chiuso con prenotazioni attive future si salva solo dopo
+        // la conferma del gestore (confirmClosures); nessuna prenotazione viene annullata o rifiutata in automatico
+        List<Integer> newlyClosed = newlyClosedDays(store.hours(), hours);
+        if (!newlyClosed.isEmpty() && !c.confirmClosures()) {
+            List<it.fireflies.dining.DiningStore.DayReservations> days =
+                    store.activeOnWeekdays(BusinessTime.serviceDate(Instant.now(clock)), newlyClosed);
+            if (!days.isEmpty()) {
+                throw it.fireflies.dining.DiningService.closureHasReservations(days);
+            }
+        }
 
         store.updateSettings(version, new ContentStore.SettingsRow(version, address, c.addressConfirmed(), mapQuery, c.mapMode(),
                 phone, email, instagram, c.hoursConfirmed(), current.menuHeroIntervalSec(), current.demoContent()), actorId);
@@ -257,6 +273,22 @@ public class ContentService {
         audit.record(actorId, AuditAction.SITE_SETTINGS_UPDATED, "SITE_SETTINGS", "1",
                 Map.of("hoursConfirmed", c.hoursConfirmed(), "addressConfirmed", c.addressConfirmed()));
         return settings();
+    }
+
+    /** Giorni (1 = lunedì) chiusi nel nuovo orario e aperti in quello attuale (stessa regola di DiningStore.weeklyClosed). */
+    private static List<Integer> newlyClosedDays(List<ContentStore.HoursRow> before, List<ContentStore.HoursRow> after) {
+        List<Integer> result = new ArrayList<>();
+        for (int day = 1; day <= 7; day++) {
+            if (weeklyClosed(after, day) && !weeklyClosed(before, day)) {
+                result.add(day);
+            }
+        }
+        return result;
+    }
+
+    private static boolean weeklyClosed(List<ContentStore.HoursRow> hours, int isoDay) {
+        List<ContentStore.HoursRow> rows = hours.stream().filter(h -> h.isoDay() == isoDay).toList();
+        return !rows.isEmpty() && rows.stream().allMatch(ContentStore.HoursRow::closed);
     }
 
     // --- avvisi (staff e titolare) ------------------------------------------------------------------------------

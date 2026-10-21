@@ -50,9 +50,16 @@ public class OperationsService {
      * Riga del riepilogo. {@code capacity}: persone al massimo nello stesso momento (null = fascia non prenotabile
      * quel giorno); {@code available}: il gruppo più grande che si può ancora accogliere in almeno un orario della
      * fascia (0 se chiuso, pieno o riservato a un evento).
+     *
+     * <p>FIX 2: {@code bandCapacity} è il budget della fascia (capienza del locale), {@code bandConfirmed} le persone
+     * confermate che lo consumano (anche completate e non presentate), {@code bandRemaining} quante ne restano;
+     * {@code physicalAvailable} il gruppo più grande che sta fisicamente in un orario della fascia (posti contemporanei
+     * ed eventi). {@code available} è il minimo dei due: non si mostrano mai come disponibili posti che non ci sono
+     * davvero. {@code eventArrivals} quanti arrivi della fascia sono riservati a un evento su {@code arrivals}.
      */
     public record SummaryRow(LocalDate date, Band band, String label, boolean closed, int requests, int pending, int confirmed,
-            int guests, Integer capacity, Integer available, boolean fromStatistics) {
+            int guests, Integer capacity, Integer available, boolean fromStatistics, Integer bandCapacity, int bandConfirmed,
+            Integer bandRemaining, Integer physicalAvailable, int eventArrivals, int arrivals, boolean limitedByPhysical) {
     }
 
     public record Summary(LocalDate from, LocalDate to, List<SummaryRow> rows) {
@@ -64,8 +71,10 @@ public class OperationsService {
     private final BookingCalendar calendar;
     private final CapacityLedger ledger;
     private final Clock clock;
+    private final BandBudget budget;
 
-    OperationsService(JdbcClient jdbc, BookingCalendar calendar, CapacityLedger ledger, Clock clock) {
+    OperationsService(JdbcClient jdbc, BookingCalendar calendar, CapacityLedger ledger, Clock clock, BandBudget budget) {
+        this.budget = budget;
         this.jdbc = jdbc;
         this.calendar = calendar;
         this.ledger = ledger;
@@ -154,6 +163,8 @@ public class OperationsService {
                     return null;
                 }).list();
         List<LocalDate> closedDays = calendar.closedDays(start, end);
+        Map<BandBudget.Slot, Integer> usage = budget.usage(start, end);
+        int venueCapacity = budget.capacity();
         List<SummaryRow> rows = new ArrayList<>();
         for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
             LocalDate day = d;
@@ -168,11 +179,22 @@ public class OperationsService {
                 List<DiningStore.WindowRow> of = windows.stream().filter(w -> Band.of(w.name(), w.firstStart()) == band).toList();
                 Integer capacity = null;
                 Integer available = null;
+                Integer physical = null;
+                Integer bandCapacity = null;
+                Integer bandRemaining = null;
+                int bandConfirmed = usage.getOrDefault(new BandBudget.Slot(day, band), 0);
+                int eventArrivals = 0;
+                int arrivals = 0;
                 boolean closed = closedDays.contains(day) || (!of.isEmpty() && of.stream().allMatch(w -> calendar.closed(day, w.id())));
                 if (!of.isEmpty()) {
                     int[] ca = capacityAndAvailable(day, of);
                     capacity = ca[0];
-                    available = closed || day.isBefore(today) ? 0 : ca[1];
+                    eventArrivals = ca[2];
+                    arrivals = ca[3];
+                    bandCapacity = venueCapacity;
+                    bandRemaining = Math.max(0, venueCapacity - bandConfirmed);
+                    physical = closed || day.isBefore(today) ? 0 : ca[1];
+                    available = Math.min(physical, bandRemaining);
                 } else if (s != null && s[3] >= 0) {
                     capacity = s[3];
                 }
@@ -180,16 +202,23 @@ public class OperationsService {
                     continue; // fascia che quel giorno non esiste e senza dati
                 }
                 rows.add(new SummaryRow(day, band, band.label(), closed, l[0] + (s == null ? 0 : s[0]), l[1],
-                        l[2] + (s == null ? 0 : s[1]), l[3] + (s == null ? 0 : s[2]), capacity, available, s != null));
+                        l[2] + (s == null ? 0 : s[1]), l[3] + (s == null ? 0 : s[2]), capacity, available, s != null,
+                        bandCapacity, bandConfirmed, bandRemaining, physical, eventArrivals, arrivals,
+                        physical != null && bandRemaining != null && physical < bandRemaining));
             }
         }
         return new Summary(start, end, rows);
     }
 
-    /** Capienza (minima negli arrivi) e gruppo più grande ancora accoglibile, dai quanti del registro. */
+    /**
+     * Capienza (minima negli arrivi), gruppo più grande ancora accoglibile, arrivi riservati a un evento e arrivi
+     * totali, dai quanti del registro.
+     */
     private int[] capacityAndAvailable(LocalDate day, List<DiningStore.WindowRow> windows) {
         int capacity = Integer.MAX_VALUE;
         int available = 0;
+        int eventArrivals = 0;
+        int arrivals = 0;
         for (DiningStore.WindowRow w : windows) {
             Instant first = BusinessTime.toInstant(day, w.firstStart());
             Instant last = BusinessTime.toInstant(day, w.lastStart());
@@ -203,14 +232,18 @@ public class OperationsService {
                     capacity = Math.min(capacity, at.capacityCovers());
                 }
                 int free = Integer.MAX_VALUE;
+                boolean event = false;
                 for (Instant q = t; q.isBefore(t.plus(stay)); q = q.plus(Duration.ofMinutes(15))) {
                     CapacityLedger.QuantumState state = byStart.get(q);
+                    event |= state != null && state.exclusiveEventId() != null;
                     free = Math.min(free, state == null ? 0 : state.exclusiveEventId() != null ? 0 : state.free());
                 }
+                arrivals++;
+                eventArrivals += event ? 1 : 0;
                 available = Math.max(available, free == Integer.MAX_VALUE ? 0 : free);
             }
         }
-        return new int[] {capacity == Integer.MAX_VALUE ? 0 : capacity, available};
+        return new int[] {capacity == Integer.MAX_VALUE ? 0 : capacity, available, eventArrivals, arrivals};
     }
 
     private static Instant instant(ResultSet rs, int column) throws SQLException {
