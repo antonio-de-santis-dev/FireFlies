@@ -77,12 +77,18 @@ public class BookingOptionsService {
         int party = guests == null ? 1 : Math.max(1, guests);
         Instant earliest = now.plus(Duration.ofMinutes(policy.minLeadMinutes()));
         List<Group> groups = new ArrayList<>();
+        // FIX 2, fasceorarie: solo gli arrivi delle fasce interne che stanno dentro l'orario di apertura del giorno
+        BookingCalendar.Opening opening = calendar.openingOn(date);
         for (DiningStore.WindowRow w : calendar.windowsOn(date)) {
+            List<LocalTime> arrivals = BookingCalendar.arrivals(w, date, opening);
+            if (arrivals.isEmpty()) {
+                continue; // fascia fuori dall'orario di apertura: non si mostra
+            }
             boolean closed = calendar.closed(date, w.id());
             // FIX 2: budget della fascia (persone confermate nel giorno): se non basta, tutta la fascia è piena
             boolean bandFull = budget.read(date, Band.of(w.name(), w.firstStart())).remaining() < party;
             List<Slot> slots = new ArrayList<>();
-            for (LocalTime t = w.firstStart(); !t.isAfter(w.lastStart()); t = t.plusMinutes(w.slotMinutes())) {
+            for (LocalTime t : arrivals) {
                 Instant start = BusinessTime.toInstant(date, t);
                 String reason = null;
                 if (start.isBefore(earliest)) {
@@ -103,9 +109,6 @@ public class BookingOptionsService {
                     }
                 }
                 slots.add(new Slot(t, reason == null, reason));
-                if (t.plusMinutes(w.slotMinutes()).isBefore(t)) {
-                    break; // giro della mezzanotte: le fasce non la attraversano, ma per sicurezza
-                }
             }
             groups.add(new Group(w.name(), slots));
         }

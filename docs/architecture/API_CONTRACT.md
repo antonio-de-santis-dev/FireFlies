@@ -81,8 +81,14 @@ disponibile), `srcset` elenca tutte le varianti (`… 480w, … 960w, … 1600w`
 ```
 - **FIX 2 (audit del calendario)**: `closedDates` (invariato) sono i giorni non selezionabili; `unavailableDays` dà il
   motivo di ciascuno: `VENUE_CLOSED` locale chiuso (orario settimanale o chiusura straordinaria, che prevale),
-  `NO_SERVICE_WINDOWS` locale aperto ma nessuna fascia prenotabile per quel giorno della settimana, `ARRIVALS_CLOSED`
-  fasce chiuse agli arrivi in quella data. Calcolati a ogni richiesta (`no-store`): una modifica degli orari vale subito.
+  `NO_ARRIVAL_TIMES` locale aperto ma nessun arrivo delle fasce interne dentro l'orario di apertura (es. aperto
+  11:00–14:00; branch fasceorarie, sostituisce `NO_SERVICE_WINDOWS`), `ARRIVALS_CLOSED` fasce chiuse agli arrivi in
+  quella data. Calcolati a ogni richiesta (`no-store`): una modifica degli orari vale subito.
+- **fasceorarie**: `groups` contiene solo le fasce con arrivi dentro l'orario di apertura del giorno (data straordinaria
+  o orario settimanale) e, per ciascuna, solo quegli arrivi (arrivo ≥ apertura, arrivo + permanenza prevista ≤
+  chiusura). `POST /public/reservations` rifiuta un orario fuori apertura con `422 SLOT_NOT_AVAILABLE`.
+- `GET/POST/PUT/DELETE /admin/service-windows` restano come API tecniche (titolare) ma non sono più usate
+  dall'interfaccia: le fasce le mantiene il sistema (`ArrivalCatalog`).
 - Senza `date` (o fuori dai giorni prenotabili) restituisce solo le regole con `groups: []`; con le richieste chiuse
   `webBookingEnabled: false` e nient'altro.
 - `reason`: `FULL` (in almeno un quanto della permanenza standard i posti **confermati** liberi sono meno di `guests`,

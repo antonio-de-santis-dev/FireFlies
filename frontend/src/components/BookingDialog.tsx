@@ -94,7 +94,8 @@ export function BookingDialog() {
 
   // giorni chiusi: li dice il backend (orari settimanali, chiusure e aperture straordinarie); il server li rifiuta comunque
   const closedDates = useMemo(() => new Set(general?.closedDates ?? []), [general]);
-  // FIX 2: il motivo distingue «locale chiuso» da «aperto ma senza orari prenotabili» (fasce non configurate o chiuse)
+  // FIX 2: il motivo distingue «locale chiuso» da «aperto ma senza orari prenotabili» (orario di apertura troppo breve
+  // per gli arrivi interni, oppure fasce chiuse agli arrivi in quella data)
   const reasons = useMemo(() => new Map<string, DayClosure>((general?.unavailableDays ?? []).map((d) => [d.date, d.reason])), [general]);
   const isClosed = (iso: string) => (general?.closedDates ? closedDates.has(iso)
     : !settings.hours[(new Date(`${iso}T12:00:00`).getDay() + 6) % 7]?.open);

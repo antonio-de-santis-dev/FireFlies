@@ -46,6 +46,9 @@ class DemoContentLoaderIT extends PostgresIntegrationTest {
     @Autowired
     EventService events;
 
+    @Autowired
+    it.fireflies.dining.ArrivalCatalog arrivals;
+
     @Test
     void nelProfiloTestIlCaricatoreNonEsiste() {
         assertThat(context.getBeanNamesForType(DemoContentLoader.class)).isEmpty();
@@ -55,7 +58,7 @@ class DemoContentLoaderIT extends PostgresIntegrationTest {
     @Test
     void caricaIlMockupUnaSolaVoltaEMarcaIlDatabase() throws Exception {
         DemoContentLoader loader = new DemoContentLoader(new DemoProperties(true, "../frontend/public/assets/fireflies"),
-                media, menu, content, jdbc, json, audit, dining, events);
+                media, menu, content, jdbc, json, audit, dining, events, arrivals);
         loader.run(null);
 
         assertThat(jdbc.sql("SELECT count(*) FROM media_assets").query(Long.class).single()).isEqualTo(32);

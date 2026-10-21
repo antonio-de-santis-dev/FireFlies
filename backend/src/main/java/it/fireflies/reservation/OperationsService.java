@@ -170,7 +170,10 @@ public class OperationsService {
         List<SummaryRow> rows = new ArrayList<>();
         for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
             LocalDate day = d;
-            List<DiningStore.WindowRow> windows = calendar.windowsOn(day);
+            // FIX 2, fasceorarie: solo le fasce con almeno un arrivo dentro l'orario di apertura del giorno
+            BookingCalendar.Opening opening = calendar.openingOn(day);
+            List<DiningStore.WindowRow> windows = calendar.windowsOn(day).stream()
+                    .filter(w -> !BookingCalendar.arrivals(w, day, opening).isEmpty()).toList();
             for (Band band : Band.values()) {
                 if (only != null && band != only) {
                     continue;
@@ -191,7 +194,7 @@ public class OperationsService {
                 boolean closed = why == BookingCalendar.DayClosure.VENUE_CLOSED || why == BookingCalendar.DayClosure.ARRIVALS_CLOSED
                         || (!of.isEmpty() && of.stream().allMatch(w -> calendar.closed(day, w.id())));
                 if (!of.isEmpty()) {
-                    int[] ca = capacityAndAvailable(day, of);
+                    int[] ca = capacityAndAvailable(day, of, opening);
                     capacity = ca[0];
                     eventArrivals = ca[2];
                     arrivals = ca[3];
@@ -218,7 +221,7 @@ public class OperationsService {
      * Capienza (minima negli arrivi), gruppo più grande ancora accoglibile, arrivi riservati a un evento e arrivi
      * totali, dai quanti del registro.
      */
-    private int[] capacityAndAvailable(LocalDate day, List<DiningStore.WindowRow> windows) {
+    private int[] capacityAndAvailable(LocalDate day, List<DiningStore.WindowRow> windows, BookingCalendar.Opening opening) {
         int capacity = Integer.MAX_VALUE;
         int available = 0;
         int eventArrivals = 0;
@@ -231,6 +234,9 @@ public class OperationsService {
             Map<Instant, CapacityLedger.QuantumState> byStart = new HashMap<>();
             quanta.forEach(q -> byStart.put(q.slotStart(), q));
             for (Instant t = first; !t.isAfter(last); t = t.plus(Duration.ofMinutes(w.slotMinutes()))) {
+                if (!opening.admits(t, w.defaultDurationMinutes())) {
+                    continue; // arrivo fuori dall'orario di apertura: non è offerto
+                }
                 CapacityLedger.QuantumState at = byStart.get(t);
                 if (at != null) {
                     capacity = Math.min(capacity, at.capacityCovers());

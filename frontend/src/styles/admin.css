@@ -604,10 +604,6 @@
 .res-detail__list li { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
 .res-tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
 .cap-fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 12px; min-width: 0; }
-.cap-list { display: grid; gap: 8px; padding: 0; list-style: none; }
-.cap-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.cap-list li > strong { min-width: 110px; }
-.cap-tag { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: var(--radius-1); background: var(--ff-ink-800); font-size: var(--fs-small); }
 .cap-form { display: grid; gap: 10px; margin-top: 12px; }
 .cap-day { display: grid; gap: 8px; }
 .table--compact td, .table--compact th { padding-block: 4px; }
@@ -646,10 +642,6 @@
 .capacity-settings { margin-top: 40px; display: grid; gap: 16px; }
 .capacity-settings__head h2 { margin: 0 0 4px; }
 .panel--wide { grid-column: 1 / -1; }
-.cap-windows > summary { cursor: pointer; list-style: none; min-height: 44px; display: flex; align-items: center; }
-.cap-windows > summary::-webkit-details-marker { display: none; }
-.cap-windows > summary::after { content: '▾'; margin-left: 8px; color: var(--ff-gold); }
-.cap-windows[open] > summary::after { content: '▴'; }
 
 
 /* FASE 7, req. 5: richieste come schede ben separate; su desktop una riga per scheda, sul telefono impilate */
@@ -896,6 +888,3 @@
 .notice svg { flex: none; margin-top: 2px; }
 .notice .icon-btn { margin-left: auto; }
 .notice--warn { background: rgb(255 181 71 / 0.1); color: var(--ff-ivory); box-shadow: inset 3px 0 0 var(--ff-warning); }
-/* FIX 2: avviso «aperto ma senza fasce prenotabili» nella sezione Capienza e calendario */
-.cap-grid__notice { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
-.cap-grid__notice svg { flex: none; margin-top: 2px; }

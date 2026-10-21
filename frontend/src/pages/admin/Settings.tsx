@@ -10,7 +10,7 @@ import { AdminHead } from './AdminLayout';
 import { CapacitySettings, ClosureConfirm, closureConflicts } from './CapacitySettings';
 import { Switch } from './MenuAdmin';
 
-/** Interruttore delle richieste dal sito: salva subito la regola sul server (fasce e persone nella sezione «Capienza»). */
+/** Interruttore delle richieste dal sito: salva subito la regola sul server (capienza e calendario nella sezione «Capienza»). */
 function BookingSwitch() {
   const { notify } = useStore();
   const [policy, setPolicy] = useState<Policy | null>(null);
@@ -109,6 +109,10 @@ export function Settings() {
               </li>
             ))}
           </ul>
+          {/* FIX 2, fasceorarie: gli orari di apertura sono l'unica impostazione del calendario delle prenotazioni */}
+          <p className="hint" id="hours-arrivals-hint">Valgono anche per le prenotazioni: il sito propone gli arrivi di Colazione (07:30–10:30),
+            Pomeriggio (15:00–17:00), Aperitivo (18:00–20:30) e Sera (21:00–22:00) che stanno interamente dentro l'apertura, permanenza
+            compresa. Un giorno aperto è subito prenotabile, senza altro da configurare.</p>
           <label className="check">
             <input type="checkbox" checked={s.hoursConfirmed} onChange={(e) => up('hoursConfirmed', e.target.checked)} />
             <span>Orari verificati dal gestore (toglie l'etichetta «Da confermare» dal sito)</span>

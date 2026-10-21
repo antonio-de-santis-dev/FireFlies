@@ -90,9 +90,12 @@ class DemoContentLoader implements ApplicationRunner {
     private final AuditLog audit;
     private final DiningService dining;
     private final EventService events;
+    private final it.fireflies.dining.ArrivalCatalog arrivals;
 
     DemoContentLoader(DemoProperties properties, MediaService media, MenuService menu, ContentService content,
-            JdbcClient jdbc, ObjectMapper json, AuditLog audit, DiningService dining, EventService events) {
+            JdbcClient jdbc, ObjectMapper json, AuditLog audit, DiningService dining, EventService events,
+            it.fireflies.dining.ArrivalCatalog arrivals) {
+        this.arrivals = arrivals;
         this.dining = dining;
         this.events = events;
         this.properties = properties;
@@ -144,7 +147,7 @@ class DemoContentLoader implements ApplicationRunner {
         for (DemoAnnouncement a : manifest.announcements()) {
             content.createAnnouncement(null, new ContentService.AnnouncementCommand(a.text(), a.tone(), a.active(), null));
         }
-        configureBooking(manifest.hours());
+        configureBooking();
         createEvents(photos);
         // modelli dei messaggi attivi solo nei dati demo: il worker locale li «invia» ai gateway finti (nessun invio reale)
         jdbc.sql("UPDATE notification_templates SET active = true").update();
@@ -159,7 +162,7 @@ class DemoContentLoader implements ApplicationRunner {
      * Prenotazioni d'esempio: zona «Locale» con 40 posti, sala e dehors con qualche tavolo, le fasce del modulo di
      * prenotazione approvato, richieste dal sito aperte. Nessuna prenotazione finta.
      */
-    private void configureBooking(List<DemoHours> hours) {
+    private void configureBooking() {
         DiningStore.ZoneRow zone = dining.config().zones().getFirst();
         dining.updateZone(null, zone.id(), zone.version(), new DiningService.ZoneCommand(zone.name(), 40, true, 1));
         DiningStore.AreaRow sala = dining.saveArea(null, null, zone.id(), "Sala", true, 1);
@@ -171,14 +174,9 @@ class DemoContentLoader implements ApplicationRunner {
         for (int i = 0; i < 4; i++) {
             dining.saveTable(null, null, dehors.id(), "D" + (i + 1), 2, 4, true, i + 1);
         }
-        // fasce in tutti i giorni: quelli di chiusura negli orari del sito restano chiusi alle richieste (FASE 7, req. 10),
-        // ma un'apertura straordinaria in quel giorno trova già le sue fasce
-        for (DemoHours h : hours) {
-            window(zone.id(), h.isoDay(), "Colazione", "07:30", "10:30", 30, 60);
-            window(zone.id(), h.isoDay(), "Pomeriggio", "15:00", "17:00", 60, 60);
-            window(zone.id(), h.isoDay(), "Aperitivo", "18:00", "20:30", 30, 90);
-            window(zone.id(), h.isoDay(), "Sera", "21:00", "22:00", 30, 60);
-        }
+        // FIX 2, fasceorarie: le fasce non si configurano più; quelle interne (ArrivalRules) valgono per ogni giorno e il
+        // sito propone solo gli arrivi dentro l'orario di apertura
+        arrivals.ensureStandardWindows();
         dining.updatePolicy(null, new DiningService.PolicyCommand(true, 60, 60, 60));
     }
 
@@ -213,11 +211,6 @@ class DemoContentLoader implements ApplicationRunner {
 
     private static List<UUID> ids(Map<String, UUID> photos, String... keys) {
         return java.util.Arrays.stream(keys).map(photos::get).filter(java.util.Objects::nonNull).toList();
-    }
-
-    private void window(UUID zoneId, int isoDay, String name, String first, String last, int step, int duration) {
-        dining.saveWindow(null, null, new DiningService.WindowCommand(zoneId, isoDay, name, LocalTime.parse(first),
-                LocalTime.parse(last), step, duration, null, null, true));
     }
 
     private boolean databaseIsEmpty() {

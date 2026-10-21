@@ -284,7 +284,24 @@ della settimana **e** (3) non tutte le fasce sono chiuse agli arrivi in quella d
 (`VENUE_CLOSED`, `NO_SERVICE_WINDOWS`, `ARRIVALS_CLOSED`): il sito scrive «chiuso» solo per il primo e «nessun orario
 prenotabile» per gli altri; il riepilogo settimanale segna «Chiuso» solo un locale o una fascia chiusi («Fascia non
 prevista» se mancano le fasce); Impostazioni › Capienza e calendario avvisa quando un giorno aperto non ha fasce.
-Riaprire un giorno negli Orari **non crea fasce**: vanno aggiunte in «Orari di arrivo delle fasce».
+~~Riaprire un giorno negli Orari non crea fasce: vanno aggiunte in «Orari di arrivo delle fasce».~~ Superato dal
+branch fasceorarie (§13-ter).
+
+## 13-ter. Orari di apertura come unica impostazione del calendario (FIX 2, branch fasceorarie, T-95)
+- Il gestore imposta solo giorni e orari di apertura (Impostazioni › Orari) e le date straordinarie. Le fasce di arrivo
+  sono **interne** (`dining/ArrivalRules`): Colazione 07:30–10:30 ogni 30' (60'), Pomeriggio 15:00–17:00 ogni 60' (60'),
+  Aperitivo 18:00–20:30 ogni 30' (90'), Sera 21:00–22:00 ogni 30' (60') — i valori dei dati dimostrativi della FASE 7,
+  già in uso in tutti i giorni configurati.
+- Un arrivo è offerto se sta **interamente** nell'apertura del giorno: arrivo ≥ apertura e arrivo + permanenza prevista
+  ≤ chiusura (chiusura dopo mezzanotte = giorno dopo; Europe/Rome, ora legale compresa). La durata non viene mai
+  accorciata: se la permanenza supererebbe la chiusura, quell'arrivo non si propone. Senza orari configurati per quel
+  giorno nessun limite (comportamento precedente).
+- Le righe `service_windows` restano come catalogo interno (le prenotazioni vi fanno riferimento e la fascia storica ne
+  deriva il nome): `ArrivalCatalog` aggiunge le fasce standard ai giorni che non ne hanno, all'avvio, a ogni salvataggio
+  degli orari e all'attivazione della capienza; non modifica né cancella mai fasce esistenti. Un giorno aperto non è mai
+  chiuso per mancanza di fasce.
+- Invariati: budget per fascia, posti contemporanei, eventi esclusivi, duplicati, anticipo minimo, chiusure di fascia
+  esistenti. Il personale può ancora inserire a mano (telefono/email) anche fuori dagli orari, con gli avvisi di sempre.
 
 ## 12. Cosa NON fa la V1
 Auto-conferma; scelta, combinazione o suggerimento automatico di tavoli; organizzazione di feste private dal sito (solo contatto telefonico, FASE 7); suggerimento di orari alternativi; lista d'attesa; overbooking controllato; durata variabile automatica; tracciamento clienti senza prenotazione; lettura automatica di email/telefonate; area clienti; pagamenti/caparre; SMS reali senza autorizzazione.

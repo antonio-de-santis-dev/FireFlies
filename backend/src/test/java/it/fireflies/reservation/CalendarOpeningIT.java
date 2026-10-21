@@ -20,7 +20,7 @@ import tools.jackson.databind.JsonNode;
 
 /**
  * Audit del calendario (FIX 2): un giorno della settimana riaperto negli orari torna subito prenotabile, senza riavvio;
- * locale chiuso, giorno aperto senza fasce e fasce chiuse agli arrivi sono motivi distinti; le date straordinarie
+ * locale chiuso e fasce chiuse agli arrivi sono motivi distinti, un giorno aperto ha sempre le fasce interne; le date straordinarie
  * prevalgono. Verificato per tutti e sette i giorni (lunedì = 1 … domenica = 7).
  */
 class CalendarOpeningIT extends ReservationTestSupport {
@@ -105,16 +105,16 @@ class CalendarOpeningIT extends ReservationTestSupport {
     }
 
     @Test
-    void giornoApertoSenzaFasceNonEUnaChiusura() {
+    void giornoApertoSenzaFasceDiventaPrenotabileDaSolo() {
+        // fasceorarie: le fasce non si configurano più; salvando gli orari il sistema aggiunge quelle interne
         int withoutWindows = DAY.plusDays(1).getDayOfWeek().getValue(); // configure crea la fascia solo nel giorno di DAY
+        assertThat(jdbc.sql("SELECT count(*) FROM service_windows WHERE iso_day = ?").param(withoutWindows).query(Long.class).single()).isZero();
         assertThat(hours(Set.of()).status()).isEqualTo(200);
         LocalDate date = next(withoutWindows);
-        assertThat(reason(options(), date)).as("aperto ma senza fasce").isEqualTo("NO_SERVICE_WINDOWS");
+        assertThat(reason(options(), date)).as("aperto: subito prenotabile, senza configurare fasce").isNull();
         JsonNode rows = owner.get("/api/v1/admin/capacity-summary?from=" + date + "&to=" + date + "&band=SERA").body().path("rows");
-        assertThat(rows.get(0).path("closed").asBoolean()).as("il riepilogo non lo segna «Chiuso»").isFalse();
-        assertThat(rows.get(0).path("capacity").isNull()).as("fascia non prevista").isTrue();
-        windowOn(withoutWindows);
-        assertThat(reason(options(), date)).as("con una fascia diventa prenotabile").isNull();
+        assertThat(rows.get(0).path("closed").asBoolean()).isFalse();
+        assertThat(rows.get(0).path("capacity").isNull()).as("la Sera interna è prevista").isFalse();
     }
 
     @Test

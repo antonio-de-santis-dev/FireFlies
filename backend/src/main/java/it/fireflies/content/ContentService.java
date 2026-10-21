@@ -97,7 +97,10 @@ public class ContentService {
     private final AuditLog audit;
     private final Clock clock;
 
-    ContentService(ContentStore store, MediaCatalog media, AuditLog audit, Clock clock) {
+    private final it.fireflies.dining.ArrivalCatalog arrivals;
+
+    ContentService(ContentStore store, MediaCatalog media, AuditLog audit, Clock clock, it.fireflies.dining.ArrivalCatalog arrivals) {
+        this.arrivals = arrivals;
         this.store = store;
         this.media = media;
         this.audit = audit;
@@ -270,6 +273,8 @@ public class ContentService {
         store.updateSettings(version, new ContentStore.SettingsRow(version, address, c.addressConfirmed(), mapQuery, c.mapMode(),
                 phone, email, instagram, c.hoursConfirmed(), current.menuHeroIntervalSec(), current.demoContent()), actorId);
         store.replaceHours(hours);
+        // FIX 2, fasceorarie: un giorno aperto ha sempre le fasce interne, senza configurarle (solo inserimenti)
+        arrivals.ensureStandardWindows();
         audit.record(actorId, AuditAction.SITE_SETTINGS_UPDATED, "SITE_SETTINGS", "1",
                 Map.of("hoursConfirmed", c.hoursConfirmed(), "addressConfirmed", c.addressConfirmed()));
         return settings();

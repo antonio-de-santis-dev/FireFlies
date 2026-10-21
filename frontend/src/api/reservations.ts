@@ -49,11 +49,12 @@ export type BookingOptions = {
   closedDates?: string[];
   /**
    * FIX 2: gli stessi giorni con il motivo — `VENUE_CLOSED` locale chiuso (orari settimanali o chiusura straordinaria),
-   * `NO_SERVICE_WINDOWS` aperto ma senza fasce prenotabili, `ARRIVALS_CLOSED` fasce chiuse agli arrivi in quella data.
+   * `NO_ARRIVAL_TIMES` aperto ma nessun orario di arrivo dentro l'orario di apertura (fasceorarie: le fasce sono interne),
+   * `ARRIVALS_CLOSED` fasce chiuse agli arrivi in quella data.
    */
   unavailableDays?: { date: string; reason: DayClosure }[];
 };
-export type DayClosure = 'VENUE_CLOSED' | 'NO_SERVICE_WINDOWS' | 'ARRIVALS_CLOSED';
+export type DayClosure = 'VENUE_CLOSED' | 'NO_ARRIVAL_TIMES' | 'ARRIVALS_CLOSED';
 export type Receipt = { reference: string; status: ReservationStatus; date: string; time: string; guests: number; message: string };
 export type WebRequest = {
   date: string; time: string; guests: number; name: string; phone: string; email: string; notes: string;
@@ -183,10 +184,6 @@ export const createTable = (t: TableInput) => api.post<Table>('/admin/tables', t
 export const updateTable = (id: string, t: TableInput) => api.put<Table>(`/admin/tables/${id}`, t);
 export const deleteTable = (id: string) => api.del(`/admin/tables/${id}`);
 
-export type WindowInput = Omit<ServiceWindow, 'id' | 'validFrom' | 'validTo'> & { validFrom?: string | null; validTo?: string | null };
-export const createWindow = (w: WindowInput) => api.post<ServiceWindow>('/admin/service-windows', w);
-export const updateWindow = (id: string, w: WindowInput) => api.put<ServiceWindow>(`/admin/service-windows/${id}`, w);
-export const deleteWindow = (id: string) => api.del(`/admin/service-windows/${id}`);
 
 export const deleteException = (id: string) => api.del(`/admin/booking-exceptions/${id}`);
 

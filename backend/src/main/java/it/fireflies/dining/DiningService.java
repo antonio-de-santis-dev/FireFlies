@@ -73,7 +73,10 @@ public class DiningService {
     private final AuditLog audit;
     private final Clock clock;
 
-    DiningService(DiningStore store, CapacityLedger ledger, AuditLog audit, Clock clock) {
+    private final ArrivalCatalog arrivals;
+
+    DiningService(DiningStore store, CapacityLedger ledger, AuditLog audit, Clock clock, ArrivalCatalog arrivals) {
+        this.arrivals = arrivals;
         this.store = store;
         this.ledger = ledger;
         this.audit = audit;
@@ -156,6 +159,7 @@ public class DiningService {
         }
         // il registro ha già incrementato la versione della zona: si attiva con quella nuova
         store.updateZone(id, zone.version() + 1, zone.name(), true, zone.sortOrder());
+        arrivals.ensureStandardWindows(); // FIX 2, fasceorarie: zona appena attivata → fasce interne per ogni giorno
         audit(actor, "VENUE_CAPACITY", id, Map.of("capacity", capacity));
         return store.zone(id).orElseThrow();
     }

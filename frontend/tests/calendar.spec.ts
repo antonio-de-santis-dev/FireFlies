@@ -1,7 +1,8 @@
 // FIX 2 — audit del calendario: un giorno della settimana riaperto negli Orari torna selezionabile nel calendario
 // pubblico senza riavvii né svuotare la cache; il calendario aperto prima della modifica e riaperto dopo mostra i dati
 // nuovi; il mese successivo non ha giorni disabilitati per errore; una richiesta in un mercoledì riaperto viene accettata;
-// in area gestori il riepilogo si aggiorna subito e un giorno aperto senza fasce è segnalato (non «chiuso»).
+// in area gestori il riepilogo si aggiorna subito; fasceorarie: nessuna configurazione delle fasce, gli arrivi seguono
+// gli orari di apertura.
 import { expect, test, type Page } from '@playwright/test';
 import { keepBaseline, ownerApi } from './baseline';
 import { go, openTableBooking, signIn, testPhone } from './helpers';
@@ -102,10 +103,14 @@ test('richiesta inviata per un mercoledì riaperto: accettata dal backend', asyn
   }
 });
 
-test('area gestori: riepilogo aggiornato subito dopo «Salva» e avviso «aperto ma senza fasce»', async ({ page }) => {
+test('area gestori: riepilogo aggiornato subito dopo «Salva», nessuna configurazione delle fasce', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 900 });
   await signIn(page);
   await go(page, '/gestione/impostazioni');
+  // fasceorarie: il pannello «Orari di arrivo delle fasce» non esiste più
+  await expect(page.getByText('Orari di arrivo delle fasce')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Aggiungi la fascia' })).toHaveCount(0);
+  await expect(page.locator('#hours-arrivals-hint')).toContainText('Un giorno aperto è subito prenotabile');
   const wedSwitch = page.getByRole('switch', { name: /^Mercoledì: chiuso$/ });
   await expect(wedSwitch).toBeVisible();
   const panel = page.locator('.cap-grid__week');
@@ -122,21 +127,35 @@ test('area gestori: riepilogo aggiornato subito dopo «Salva» e avviso «aperto
   await page.getByRole('button', { name: 'Salva', exact: true }).click();
   await expect(page.locator('.toast')).toContainText('Impostazioni salvate');
   await expect(wedRow.getByText('Chiuso')).toHaveCount(0); // senza ricaricare la pagina
-  await expect(page.getByText('aperto ma senza fasce prenotabili')).toHaveCount(0); // i dati demo hanno le fasce del mercoledì
-
-  // con il mercoledì aperto ma senza fasce (configurazione simulata) compare l'avviso, non «chiuso»
-  await page.route('**/api/v1/admin/booking-config', async (route) => {
-    const res = await route.fetch();
-    const body = await res.json();
-    body.windows = body.windows.filter((w: { isoDay: number }) => w.isoDay !== 3);
-    await route.fulfill({ response: res, json: body });
-  });
-  await page.reload();
-  await expect(page.getByRole('status').filter({ hasText: 'aperto ma senza fasce prenotabili' })).toContainText('Mercoledì');
-  await page.unroute('**/api/v1/admin/booking-config');
+  await expect(wedRow.getByText('Fascia non prevista')).toHaveCount(0);
+  await expect(page.getByText(/senza fasce/)).toHaveCount(0);
 });
 
-test('calendario pubblico: giorno aperto senza fasce indicato come «nessun orario prenotabile», non «chiuso»', async ({ page }) => {
+test('apertura solo 18:00–22:00: il calendario propone soltanto gli arrivi compatibili', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const owner = await ownerApi();
+  try {
+    const s = await owner.call('GET', '/admin/site-settings');
+    const hours = (s.hours as { isoDay: number; closed: boolean; opensAt: string | null; closesAt: string | null }[]).map((h) => (h.isoDay === 3
+      ? { isoDay: 3, closed: false, opensAt: '18:00', closesAt: '22:00' }
+      : h.closed ? { isoDay: h.isoDay, closed: true } : { isoDay: h.isoDay, closed: false, opensAt: h.opensAt!.slice(0, 5), closesAt: h.closesAt!.slice(0, 5) }));
+    await owner.call('PUT', '/admin/site-settings', { ...s, hours, confirmClosures: true });
+  } finally {
+    await owner.dispose();
+  }
+  const wed = wednesday(2);
+  await go(page, '/');
+  const d = await openCalendar(page);
+  await d.getByRole('radio', { name: new RegExp(`^${chipName(wed)}$`, 'i') }).click();
+  await d.getByRole('button', { name: 'Avanti' }).click();
+  await expect(d.getByRole('radio', { name: '18:00', exact: true })).toBeEnabled();
+  await expect(d.getByRole('radio', { name: '20:30', exact: true })).toBeEnabled(); // 20:30 + 90' = 22:00
+  await expect(d.getByRole('radio', { name: '21:00', exact: true })).toBeEnabled(); // 21:00 + 60' = 22:00
+  for (const t of ['08:00', '15:00', '21:30', '22:00']) await expect(d.getByRole('radio', { name: t, exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+});
+
+test('calendario pubblico: giorno aperto senza orari di arrivo indicato come «nessun orario prenotabile», non «chiuso»', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const wed = wednesday(2);
   await setWednesday(true);
@@ -144,7 +163,7 @@ test('calendario pubblico: giorno aperto senza fasce indicato come «nessun orar
     const res = await route.fetch();
     const body = await res.json();
     body.closedDates = [...(body.closedDates ?? []), wed];
-    body.unavailableDays = [...(body.unavailableDays ?? []), { date: wed, reason: 'NO_SERVICE_WINDOWS' }];
+    body.unavailableDays = [...(body.unavailableDays ?? []), { date: wed, reason: 'NO_ARRIVAL_TIMES' }];
     await route.fulfill({ response: res, json: body });
   });
   await go(page, '/');

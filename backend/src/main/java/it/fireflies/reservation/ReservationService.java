@@ -261,9 +261,16 @@ public class ReservationService {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "TOO_FAR", "Data troppo lontana",
                     "Si può chiedere un tavolo al massimo " + policy.maxAdvanceDays() + " giorni prima.");
         }
+        // FIX 2, fasceorarie: un arrivo delle fasce interne e, se il locale è aperto, dentro l'orario di apertura
+        // (arrivo e permanenza prevista): stessa regola degli orari proposti dal sito
         DiningStore.WindowRow window = calendar.windowsOn(date).stream().filter(w -> arrivalOf(w, time)).findFirst()
                 .orElseThrow(() -> new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "SLOT_NOT_AVAILABLE",
                         "Orario non disponibile", "Questo orario non è tra quelli prenotabili: scegline uno dall'elenco."));
+        BookingCalendar.Opening opening = calendar.openingOn(date);
+        if (opening.open() && !opening.admits(BusinessTime.toInstant(date, time), window.defaultDurationMinutes())) {
+            throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "SLOT_NOT_AVAILABLE", "Orario non disponibile",
+                    "Questo orario è fuori dall'orario di apertura del locale: scegline uno dall'elenco.");
+        }
         if (calendar.closed(date, window.id())) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "DAY_CLOSED", "Giorno chiuso",
                     "In questa data il locale non accetta prenotazioni per questo orario.");

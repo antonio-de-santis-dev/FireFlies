@@ -286,6 +286,19 @@ public class DiningStore {
                 .list();
     }
 
+    /** Orario settimanale di un giorno (FIX 2, fasceorarie): una riga per giorno, vuoto se il giorno non è configurato. */
+    record WeeklyHours(int isoDay, boolean closed, LocalTime opensAt, LocalTime closesAt, boolean closesNextDay) {
+    }
+
+    Map<Integer, WeeklyHours> weeklyHours() {
+        Map<Integer, WeeklyHours> out = new java.util.HashMap<>();
+        jdbc.sql("SELECT iso_day, closed, opens_at, closes_at, closes_next_day FROM opening_hours ORDER BY iso_day, opens_at")
+                .query((rs, n) -> new WeeklyHours(rs.getInt(1), rs.getBoolean(2), rs.getObject(3, LocalTime.class),
+                        rs.getObject(4, LocalTime.class), rs.getBoolean(5)))
+                .list().forEach(h -> out.putIfAbsent(h.isoDay(), h));
+        return out;
+    }
+
     boolean weeklyClosed(int isoDay) {
         return jdbc.sql("SELECT coalesce(bool_and(closed), false) FROM opening_hours WHERE iso_day = ?").param(isoDay)
                 .query(Boolean.class).single();

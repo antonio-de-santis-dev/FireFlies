@@ -411,3 +411,9 @@ del worker legge solo le notifiche da inviare, in ordine di scadenza (25,4 → 0
   per le prenotazioni ordinarie e passa a 60 s per quelle di un evento. Nessun orario salvato modificato.
 - Invariante nuova (riconciliazione dei test): `band_capacity_usage` = somma delle persone che consumano per giorno e
   fascia; un quanto è coperto da una prenotazione se `starts_at < slot_start + 15 min AND occupied_until > slot_start`.
+
+### 3.13 Fasce come catalogo interno (branch fasceorarie, nessuna migrazione)
+`service_windows` non si configura più dall'interfaccia: la mantiene `dining/ArrivalCatalog` con le fasce di
+`dining/ArrivalRules` (solo `INSERT` per i giorni della settimana senza fasce attive, mai `UPDATE`/`DELETE`; lock
+consultivo `pg_advisory_xact_lock`). Resta necessaria: `reservations.service_window_id` (`fk_res_window`,
+`ck_res_target`), `booking_exceptions.service_window_id` e `fireflies_band` (nome della fascia) ne dipendono.

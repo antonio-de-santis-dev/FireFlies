@@ -1,5 +1,6 @@
 package it.fireflies.dining;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Collection;
@@ -47,6 +48,79 @@ public class BookingCalendar {
                 .or(() -> windows.stream().findFirst());
     }
 
+    /**
+     * Apertura del locale in una data (FIX 2, fasceorarie): {@code open = false} chiuso; {@code from}/{@code to} null =
+     * aperto senza orario configurato (nessun limite agli arrivi). Una data straordinaria decide: chiusa, oppure aperta
+     * con i suoi orari (senza orari = tutto il giorno); altrimenti l'orario settimanale. Una chiusura prima
+     * dell'apertura (o {@code closes_next_day}) termina il giorno dopo. Istanti in Europe/Rome, ora legale compresa.
+     */
+    public record Opening(boolean open, Instant from, Instant to) {
+        static final Opening CLOSED = new Opening(false, null, null);
+        static final Opening UNRESTRICTED = new Opening(true, null, null);
+
+        /** L'arrivo e tutta la permanenza prevista stanno dentro l'apertura (la durata non viene accorciata). */
+        public boolean admits(Instant arrival, int durationMinutes) {
+            if (!open) {
+                return false;
+            }
+            return (from == null || !arrival.isBefore(from))
+                    && (to == null || !arrival.plusSeconds(durationMinutes * 60L).isAfter(to));
+        }
+    }
+
+    public Opening openingOn(LocalDate date) {
+        return opening(date, store.openingException(date), store.weeklyHours());
+    }
+
+    private static Opening opening(LocalDate date, Optional<DiningStore.OpeningExceptionRow> special,
+            java.util.Map<Integer, DiningStore.WeeklyHours> weekly) {
+        if (special.isPresent()) {
+            DiningStore.OpeningExceptionRow e = special.get();
+            if (e.closed()) {
+                return Opening.CLOSED;
+            }
+            return e.opensAt() == null || e.closesAt() == null ? Opening.UNRESTRICTED
+                    : interval(date, e.opensAt(), e.closesAt(), !e.closesAt().isAfter(e.opensAt()));
+        }
+        DiningStore.WeeklyHours h = weekly.get(date.getDayOfWeek().getValue());
+        if (h == null) {
+            return Opening.UNRESTRICTED; // orari del sito non configurati: nessun limite (come prima)
+        }
+        if (h.closed()) {
+            return Opening.CLOSED;
+        }
+        return h.opensAt() == null || h.closesAt() == null ? Opening.UNRESTRICTED
+                : interval(date, h.opensAt(), h.closesAt(), h.closesNextDay() || !h.closesAt().isAfter(h.opensAt()));
+    }
+
+    private static Opening interval(LocalDate date, LocalTime opens, LocalTime closes, boolean nextDay) {
+        return new Opening(true, at(date, opens), at(nextDay ? date.plusDays(1) : date, closes));
+    }
+
+    /** Istante locale; un orario inesistente al cambio d'ora (es. 02:30) si sposta in avanti come fa java.time. */
+    private static Instant at(LocalDate date, LocalTime time) {
+        return java.time.ZonedDateTime.of(date, time, it.fireflies.common.BusinessTime.ZONE).toInstant();
+    }
+
+    /** Un arrivo della fascia in quella data sta dentro l'apertura del locale (arrivo e permanenza prevista). */
+    public boolean admits(LocalDate date, LocalTime arrival, int durationMinutes) {
+        return openingOn(date).admits(at(date, arrival), durationMinutes);
+    }
+
+    /** Gli arrivi della fascia in quella data che stanno dentro l'apertura. */
+    public static List<LocalTime> arrivals(DiningStore.WindowRow w, LocalDate date, Opening opening) {
+        List<LocalTime> out = new java.util.ArrayList<>();
+        for (LocalTime t = w.firstStart(); !t.isAfter(w.lastStart()); t = t.plusMinutes(w.slotMinutes())) {
+            if (opening.admits(at(date, t), w.defaultDurationMinutes())) {
+                out.add(t);
+            }
+            if (t.plusMinutes(w.slotMinutes()).isBefore(t)) {
+                break; // giro della mezzanotte
+            }
+        }
+        return out;
+    }
+
     /** Chiusura agli arrivi per quella data: della fascia o di tutto il giorno, oppure locale chiuso quel giorno. */
     public boolean closed(LocalDate date, UUID windowId) {
         return !venueOpen(date) || store.exceptionsOn(date).stream()
@@ -58,8 +132,7 @@ public class BookingCalendar {
      * il giorno della settimana negli orari del sito. Un giorno chiuso non accetta richieste dal sito.
      */
     public boolean venueOpen(LocalDate date) {
-        return store.openingException(date).map(e -> !e.closed())
-                .orElseGet(() -> !store.weeklyClosed(date.getDayOfWeek().getValue()));
+        return openingOn(date).open(); // FIX 2, fasceorarie: stessa fonte di orari e calendario
     }
 
     /**
@@ -69,8 +142,11 @@ public class BookingCalendar {
     public enum DayClosure {
         /** Locale chiuso: orario settimanale o chiusura straordinaria. */
         VENUE_CLOSED,
-        /** Locale aperto, ma nessuna fascia prenotabile configurata per quel giorno della settimana. */
-        NO_SERVICE_WINDOWS,
+        /**
+         * Locale aperto, ma nessun arrivo delle fasce interne cade dentro l'orario di apertura (es. aperto 11:00–14:00).
+         * FIX 2, fasceorarie: sostituisce {@code NO_SERVICE_WINDOWS} — le fasce non si configurano più a mano.
+         */
+        NO_ARRIVAL_TIMES,
         /** Ci sono fasce, ma sono tutte chiuse agli arrivi in quella data (chiusura di fascia o del giorno). */
         ARRIVALS_CLOSED
     }
@@ -87,16 +163,13 @@ public class BookingCalendar {
     public java.util.SortedMap<LocalDate, DayClosure> unavailableDays(LocalDate from, LocalDate to) {
         List<UUID> active = activeZones().stream().map(DiningStore.ZoneRow::id).toList();
         List<DiningStore.WindowRow> windows = store.windows().stream().filter(w -> active.contains(w.zoneId())).toList();
-        java.util.Map<LocalDate, Boolean> special = new java.util.HashMap<>();
         // FIX-1: una data straordinaria può coprire un intervallo di giorni
+        java.util.Map<Integer, DiningStore.WeeklyHours> weekly = store.weeklyHours();
+        java.util.Map<LocalDate, DiningStore.OpeningExceptionRow> specialRows = new java.util.HashMap<>();
         for (DiningStore.OpeningExceptionRow e : store.openingExceptionsBetween(from, to)) {
             for (LocalDate d = e.day().isBefore(from) ? from : e.day(); !d.isAfter(e.endDay()) && !d.isAfter(to); d = d.plusDays(1)) {
-                special.put(d, !e.closed());
+                specialRows.put(d, e);
             }
-        }
-        boolean[] weeklyClosed = new boolean[8];
-        for (int d = 1; d <= 7; d++) {
-            weeklyClosed[d] = store.weeklyClosed(d);
         }
         java.util.Map<LocalDate, List<DiningStore.ExceptionRow>> exceptions = store.exceptionsFrom(from).stream()
                 .filter(e -> "CLOSED".equals(e.kind()))
@@ -104,15 +177,16 @@ public class BookingCalendar {
         java.util.SortedMap<LocalDate, DayClosure> closed = new java.util.TreeMap<>();
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
             LocalDate day = d;
-            boolean open = special.getOrDefault(day, !weeklyClosed[day.getDayOfWeek().getValue()]);
+            Opening opening = opening(day, Optional.ofNullable(specialRows.get(day)), weekly);
             List<DiningStore.ExceptionRow> closures = exceptions.getOrDefault(day, List.of());
-            List<DiningStore.WindowRow> ofDay = windows.stream().filter(w -> w.validOn(day)).toList();
+            // fasce con almeno un arrivo dentro l'orario di apertura
+            List<DiningStore.WindowRow> ofDay = windows.stream().filter(w -> w.validOn(day) && !arrivals(w, day, opening).isEmpty()).toList();
             boolean anyArrival = ofDay.stream().anyMatch(w -> closures.stream()
                     .noneMatch(e -> e.serviceWindowId() == null || e.serviceWindowId().equals(w.id())));
-            if (!open) {
+            if (!opening.open()) {
                 closed.put(day, DayClosure.VENUE_CLOSED);
             } else if (ofDay.isEmpty()) {
-                closed.put(day, DayClosure.NO_SERVICE_WINDOWS);
+                closed.put(day, DayClosure.NO_ARRIVAL_TIMES);
             } else if (!anyArrival) {
                 closed.put(day, DayClosure.ARRIVALS_CLOSED);
             }

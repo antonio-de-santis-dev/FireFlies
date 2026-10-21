@@ -196,6 +196,12 @@ Regole: verificare stato e branch prima di iniziare; branch precedente completo 
 | T-93 | **Chiusure con prenotazioni attive**: `409 CLOSURE_HAS_RESERVATIONS` con giorni e conteggi finché il gestore non conferma (`confirmClosures` negli orari settimanali, `confirmReservations` nelle date straordinarie). Nessun annullamento automatico | BOOKING_RULES §13-bis; completa T-82 |
 | T-94 | **Riepilogo settimanale**: per giorno e fascia `bandCapacity`, `bandConfirmed`, `bandRemaining`, `physicalAvailable`, `eventArrivals/arrivals`, `limitedByPhysical`; `available` = minimo tra posti fisici e budget, mai un posto mostrato libero se non lo è davvero | API_CONTRACT §5 |
 
+## 2-octies. Branch fix2/fasceorarie
+
+| ID | Decisione | Riferimenti |
+|---|---|---|
+| T-95 | **Orari di apertura = unica impostazione del calendario**: fasce di arrivo interne (`ArrivalRules`, valori FASE 7) filtrate dall'orario di apertura del giorno (arrivo + permanenza ≤ chiusura, durata mai accorciata); pannello «Orari di arrivo delle fasce» rimosso; `service_windows` mantenuta come catalogo interno da `ArrivalCatalog` (solo inserimenti per i giorni senza fasce: all'avvio, al salvataggio degli orari, all'attivazione della capienza) perché `fk_res_window`/`ck_res_target` e `fireflies_band` ne dipendono. Nessuna migrazione Flyway. `NO_SERVICE_WINDOWS` → `NO_ARRIVAL_TIMES` | BOOKING_RULES §13-ter; FIX2_FASCEORARIE_REPORT |
+
 ## 3. Proposte — stato dopo l'approvazione della FASE 1
 
 > Con l'approvazione della FASE 1 le proposte di questa sezione sono considerate **approvate come impostazione**. Restano da confermare solo i **valori numerici di esempio** (P-05 scadenza 60 min, P-13 anonimizzazione 90 giorni, P-19 massimo 12 persone dal web, P-21 limiti di frequenza, P-27 sessione 8 h) e i dati Q-01…Q-07, che non bloccano lo sviluppo. Le decisioni ancora aperte dopo la FASE 2 sono in FASE2_REPORT §6.

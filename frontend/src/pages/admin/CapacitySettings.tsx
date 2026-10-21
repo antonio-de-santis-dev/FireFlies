@@ -5,15 +5,14 @@ import { CalendarRange, ChevronLeft, ChevronRight, CircleAlert, Pencil, Plus, Sa
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
 import {
-  addOpeningException, BANDS, bookingConfig, capacitySummary, createWindow, deleteException, deleteOpeningException,
-  deleteWindow, hhmm, savePolicy, saveVenueCapacity, updateOpeningException,
-  type Band, type BookingConfig, type OpeningException, type OpeningInput, type OpeningResult, type Policy, type ServiceWindow,
+  addOpeningException, BANDS, bookingConfig, capacitySummary, deleteException, deleteOpeningException,
+  hhmm, savePolicy, saveVenueCapacity, updateOpeningException,
+  type Band, type BookingConfig, type OpeningException, type OpeningInput, type OpeningResult, type Policy,
   type SummaryRow,
 } from '../../api/reservations';
 import { useStore } from '../../store';
 import { fmtShort } from './Requests';
 
-const DAYS = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 const isoOf = (d: Date) => {
   const x = new Date(d);
   x.setMinutes(x.getMinutes() - x.getTimezoneOffset());
@@ -90,16 +89,16 @@ export function CapacitySettings() {
   }, []);
   useEffect(load, [load]);
 
-  // FIX 2 (audit del calendario): dopo «Salva» degli orari settimanali (stessa pagina, modulo sopra) il riepilogo e
-  // l'avviso sulle fasce si aggiornano subito, senza ricaricare la pagina e senza toccare i campi in modifica qui sotto
+  // FIX 2 (audit del calendario): dopo «Salva» degli orari settimanali (stessa pagina, modulo sopra) il riepilogo si
+  // aggiorna subito, senza ricaricare la pagina e senza toccare i campi in modifica qui sotto. Le fasce non si
+  // configurano più (fasceorarie): il sito propone gli arrivi interni che stanno dentro l'orario di apertura
   const hoursKey = JSON.stringify(settings.hours.map((h) => !!h.open));
   const firstHours = useRef(true);
   useEffect(() => {
     if (firstHours.current) { firstHours.current = false; return; }
     bookingConfig().then((c) => { setConfig(c); setHoursTick((t) => t + 1); }).catch(() => undefined);
   }, [hoursKey]);
-  const openWithoutWindows = config ? DAYS.filter((_, i) => !!settings.hours[i]?.open && !config.windows.some((w) => w.isoDay === i + 1
-    && w.active && config.zones.some((z) => z.active && z.id === w.zoneId))) : [];
+
 
   const act: Act = async (op, done) => {
     try {
@@ -127,18 +126,9 @@ export function CapacitySettings() {
         <div className="cap-grid">
           <VenueCapacityPanel key={`v${version}`} capacity={config.venueCapacity} act={act} />
           <PolicyPanel key={`p${version}`} policy={config.policy} act={act} />
-          {openWithoutWindows.length > 0 && (
-            <p className="notice notice--warn cap-grid__notice" role="status">
-              <CircleAlert size={16} aria-hidden="true" />
-              <span><strong>{openWithoutWindows.join(', ')}: aperto ma senza fasce prenotabili.</strong> Negli orari il locale risulta
-                aperto, ma senza fasce il sito non può proporre orari e quel giorno resta non prenotabile. Aggiungi le fasce qui sotto in
-                «Orari di arrivo delle fasce».</span>
-            </p>
-          )}
           <WeekSummaryPanel refreshKey={`${version}-${hoursTick}`} />
           <OpeningDatesPanel items={config.openingExceptions} act={act} />
           {config.exceptions.length > 0 && <ClosedBandsPanel config={config} act={act} />}
-          <WindowsPanel config={config} act={act} />
         </div>
       )}
     </section>
@@ -472,51 +462,5 @@ function ClosedBandsPanel({ config, act }: { config: BookingConfig; act: Act }) 
         ))}
       </ul>
     </section>
-  );
-}
-
-const EMPTY_WINDOW = { isoDay: 5, name: 'Aperitivo', firstStart: '18:00', lastStart: '20:30', slotMinutes: 30, defaultDurationMinutes: 90 };
-
-function WindowsPanel({ config, act }: { config: BookingConfig; act: Act }) {
-  const zone = config.zones.find((z) => z.active) ?? config.zones[0];
-  const [w, setW] = useState(EMPTY_WINDOW);
-  const up = <K extends keyof typeof w>(k: K, v: (typeof w)[K]) => setW((x) => ({ ...x, [k]: v }));
-  const byDay = (d: number) => config.windows.filter((x) => x.isoDay === d && x.active);
-  const add = (e: FormEvent) => {
-    e.preventDefault();
-    if (!zone) return;
-    void act(() => createWindow({ zoneId: zone.id, isoDay: w.isoDay, name: w.name, firstStart: w.firstStart, lastStart: w.lastStart,
-      slotMinutes: w.slotMinutes, defaultDurationMinutes: w.defaultDurationMinutes, active: true }), 'Fascia aggiunta.');
-  };
-  const label = (x: ServiceWindow) => `${x.name} ${hhmm(x.firstStart)}–${hhmm(x.lastStart)} ogni ${x.slotMinutes}' · ${x.defaultDurationMinutes}'`;
-  return (
-    <details className="panel cap-grid__windows cap-windows">
-      <summary><h3 className="panel__title">Orari di arrivo delle fasce</h3></summary>
-      <p className="hint">Primo e ultimo arrivo, passo tra gli arrivi e permanenza prevista. Il nome (Colazione, Pomeriggio, Aperitivo, Sera) decide la fascia.</p>
-      <ul className="cap-list">
-        {DAYS.map((d, i) => (
-          <li key={d}>
-            <strong>{d}</strong>
-            {byDay(i + 1).length === 0 ? <span className="muted">nessuna fascia</span> : byDay(i + 1).map((x) => (
-              <span key={x.id} className="cap-tag">
-                {label(x)}
-                <button type="button" className="icon-btn icon-btn--sm" aria-label={`Elimina la fascia ${x.name} di ${d.toLowerCase()}`} onClick={() => void act(() => deleteWindow(x.id), 'Fascia eliminata.')}><Trash2 size={14} aria-hidden="true" /></button>
-              </span>
-            ))}
-          </li>
-        ))}
-      </ul>
-      <form className="cap-form" onSubmit={add} aria-label="Nuova fascia">
-        <div className="editor__row">
-          <div className="field"><label htmlFor="win-day">Giorno</label><select id="win-day" className="select" value={w.isoDay} onChange={(e) => up('isoDay', Number(e.target.value))}>{DAYS.map((d, i) => <option key={d} value={i + 1}>{d}</option>)}</select></div>
-          <div className="field"><label htmlFor="win-name">Fascia</label><select id="win-name" className="select" value={w.name} onChange={(e) => up('name', e.target.value)}>{BANDS.map((b) => <option key={b.id} value={b.label}>{b.label}</option>)}</select></div>
-          <div className="field"><label htmlFor="win-first">Primo arrivo</label><input id="win-first" className="input" type="time" step={900} value={w.firstStart} onChange={(e) => up('firstStart', e.target.value)} /></div>
-          <div className="field"><label htmlFor="win-last">Ultimo arrivo</label><input id="win-last" className="input" type="time" step={900} value={w.lastStart} onChange={(e) => up('lastStart', e.target.value)} /></div>
-          <div className="field"><label htmlFor="win-step">Ogni (minuti)</label><select id="win-step" className="select" value={w.slotMinutes} onChange={(e) => up('slotMinutes', Number(e.target.value))}>{[15, 30, 60].map((n) => <option key={n} value={n}>{n}</option>)}</select></div>
-          <div className="field"><label htmlFor="win-dur">Permanenza (minuti)</label><input id="win-dur" className="input" type="number" min={30} step={15} value={w.defaultDurationMinutes} onChange={(e) => up('defaultDurationMinutes', Number(e.target.value))} /></div>
-        </div>
-        <button type="submit" className="btn btn--ghost btn--sm"><Plus size={16} aria-hidden="true" /> Aggiungi la fascia</button>
-      </form>
-    </details>
   );
 }
