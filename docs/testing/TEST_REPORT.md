@@ -16,6 +16,14 @@ Suite eseguite **in sequenza** (mai backend ed e2e insieme) sul branch `fix-1`.
 Dettaglio delle verifiche e regressioni: `docs/architecture/FIX1_REPORT.md` §7–8. Screenshot: allegati di
 `fix1.spec` e `docs/architecture/evidence/fix1/`.
 
+### CI (GitHub Actions, branch `fix-1`, commit `4cab96c`)
+| Workflow | Run | Esito |
+|---|---|---|
+| backend (unità + integrazione su PostgreSQL 17) | 39583870591 | ✅ |
+| frontend (typecheck + Playwright con backend reale) | 39583870669 | ✅ |
+| images (build senza push, controlli su segreti, Caddy, utente) | 39583870584 | ✅ |
+I workflow ora partono anche sui branch `fix-*` (prima solo `main` e `fase-*`).
+
 ### Difetti trovati dai test e corretti
 - `ApiSecurityMatrixIT` esteso / `OperationsIT`: `403` dello staff su percorsi lunghi diventava `500` (audit).
 - `fix1.spec`: un fotogramma senza velo tra la schermata d'attesa e la home → velo presente dal primo fotogramma.

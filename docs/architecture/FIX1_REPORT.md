@@ -118,6 +118,14 @@ Verifiche richieste dal mandato:
 | Regressioni eventi e notifiche | suite complete (`EventApiIT`, `EventConcurrencyIT`, `NotificationDispatcherIT`, `OutboxClaimIT`, `events.spec`, `event-visibility.spec`, `posters.spec`, `fase7.spec`) | ✅ |
 | Migrazione V12 da dati V11 | `MigrationIT.v12DaUnDatabaseConLimitiPerFasciaEPerData` | ✅ |
 
+### CI (GitHub Actions, branch `fix-1`, commit `4cab96c`)
+| Workflow | Run | Esito |
+|---|---|---|
+| backend (unità + integrazione su PostgreSQL 17) | 39583870591 | ✅ |
+| frontend (typecheck + Playwright con backend reale) | 39583870669 | ✅ |
+| images (build senza push, controlli su segreti, Caddy, utente) | 39583870584 | ✅ |
+I workflow ora partono anche sui branch `fix-*` (prima solo `main` e `fase-*`).
+
 ## 8. Regressioni
 - Nessuna nelle suite complete finali. Durante lo sviluppo i test hanno trovato e fatto correggere: due prove di
   navigazione (`navigation.spec`) che si aspettavano i chip come filtri — aggiornate al nuovo comportamento richiesto;
