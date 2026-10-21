@@ -61,7 +61,7 @@ public abstract class PostgresIntegrationTest {
             jdbc.sql("DELETE FROM booking_policies WHERE effective_from <> DATE '2026-01-01'").update();
             jdbc.sql("""
                     UPDATE booking_policies SET web_booking_enabled = false, min_lead_minutes = 60, max_advance_days = 60,
-                           max_party_size_web = 12, pending_expiry_minutes_before_start = 60
+                           pending_expiry_minutes_before_start = 60
                     """).update();
             // contenuti e menu prima delle foto: le chiavi esterne verso media_assets sono ON DELETE RESTRICT
             jdbc.sql("""

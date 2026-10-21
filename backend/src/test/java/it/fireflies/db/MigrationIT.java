@@ -39,7 +39,7 @@ class MigrationIT extends PostgresIntegrationTest {
     void tutteLeMigrazioniApplicateEValide() {
         MigrationInfo[] applied = flyway.info().applied();
         assertThat(Arrays.stream(applied).map(m -> m.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12");
         assertThat(applied).allMatch(m -> m.getState().isApplied() && !m.getState().isFailed());
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
     }
@@ -58,11 +58,56 @@ class MigrationIT extends PostgresIntegrationTest {
                     .cleanDisabled(true).load();
             MigrateResult result = fresh.migrate();
             assertThat(result.success).isTrue();
-            assertThat(result.migrationsExecuted).isEqualTo(11);
+            assertThat(result.migrationsExecuted).isEqualTo(12);
             assertThat(fresh.migrate().migrationsExecuted).as("seconda esecuzione: niente da fare").isZero();
             assertThat(fresh.validateWithResult().validationSuccessful).isTrue();
         } finally {
             jdbc.sql("DROP DATABASE IF EXISTS fireflies_vuoto WITH (FORCE)").update();
+        }
+    }
+
+    /**
+     * FIX-1: V12 su un database alla V11 con la vecchia configurazione (limiti per fascia e per data, quanti con capienza
+     * ridotta, chiusura di un giorno): i dati restano coerenti e nessuna prenotazione viene toccata.
+     */
+    @Test
+    void v12DaUnDatabaseConLimitiPerFasciaEPerData() {
+        String baseUrl = ((HikariDataSource) dataSource).getJdbcUrl();
+        String user = ((HikariDataSource) dataSource).getUsername();
+        String password = ((HikariDataSource) dataSource).getPassword();
+        jdbc.sql("DROP DATABASE IF EXISTS fireflies_v11").update();
+        jdbc.sql("CREATE DATABASE fireflies_v11").update();
+        try {
+            DriverManagerDataSource db = new DriverManagerDataSource(
+                    baseUrl.replaceFirst("/[^/?]+(\\?|$)", "/fireflies_v11$1"), user, password);
+            Flyway.configure().dataSource(db).locations("classpath:db/migration").target("11").load().migrate();
+            org.springframework.jdbc.core.simple.JdbcClient old = org.springframework.jdbc.core.simple.JdbcClient.create(db);
+            old.sql("UPDATE capacity_zones SET physical_capacity = 40, active = true WHERE name = 'Locale'").update();
+            java.util.UUID zone = old.sql("SELECT id FROM capacity_zones WHERE name = 'Locale'").query(java.util.UUID.class).single();
+            old.sql("""
+                    INSERT INTO service_windows (zone_id, iso_day, name, first_start, last_start, slot_minutes, default_duration_minutes,
+                                                 max_covers, valid_from)
+                    VALUES (?, 1, 'Colazione', '07:30', '10:30', 30, 60, 20, DATE '2026-01-01')
+                    """).param(zone).update();
+            old.sql("INSERT INTO booking_exceptions (service_date, kind, capacity_override) VALUES (DATE '2031-03-03', 'CAPACITY_OVERRIDE', 10)").update();
+            old.sql("INSERT INTO booking_exceptions (service_date, kind) VALUES (DATE '2031-03-04', 'CLOSED')").update();
+            old.sql("INSERT INTO capacity_slots (zone_id, slot_start, capacity_covers, occupied_covers) VALUES (?, TIMESTAMPTZ '2031-03-03 08:00+01', 10, 6)")
+                    .param(zone).update();
+            old.sql("INSERT INTO opening_exceptions (day, closed) VALUES (DATE '2031-12-25', true)").update();
+
+            MigrateResult result = Flyway.configure().dataSource(db).locations("classpath:db/migration").load().migrate();
+            assertThat(result.success).isTrue();
+            assertThat(result.migrationsExecuted).isEqualTo(1);
+            assertThat(old.sql("SELECT capacity_covers FROM capacity_slots").query(Integer.class).single())
+                    .as("quanto riallineato alla capienza del locale").isEqualTo(40);
+            assertThat(old.sql("SELECT occupied_covers FROM capacity_slots").query(Integer.class).single()).as("confermati intatti").isEqualTo(6);
+            assertThat(old.sql("SELECT kind FROM booking_exceptions").query(String.class).list()).containsExactly("CLOSED");
+            assertThat(old.sql("SELECT end_day FROM opening_exceptions").query(java.time.LocalDate.class).single())
+                    .isEqualTo(java.time.LocalDate.of(2031, 12, 25));
+            assertThat(old.sql("SELECT count(*) FROM information_schema.columns WHERE column_name IN ('max_covers', 'max_party_size_web', 'capacity_override')")
+                    .query(Integer.class).single()).as("nessuna impostazione fantasma").isZero();
+        } finally {
+            jdbc.sql("DROP DATABASE IF EXISTS fireflies_v11 WITH (FORCE)").update();
         }
     }
 

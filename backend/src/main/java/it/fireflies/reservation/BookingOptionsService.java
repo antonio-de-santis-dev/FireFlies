@@ -60,7 +60,7 @@ public class BookingOptionsService {
         LocalDate last = today.plusDays(policy.maxAdvanceDays());
         List<LocalDate> closedDates = calendar.closedDays(today, last);
         if (date == null || date.isBefore(today) || date.isAfter(last)) {
-            return new Options(true, policy.maxPartySizeWeb(), policy.maxAdvanceDays(), policy.minLeadMinutes(), today, last,
+            return new Options(true, calendar.webPartyLimit(), policy.maxAdvanceDays(), policy.minLeadMinutes(), today, last,
                     date, List.of(), closedDates);
         }
         int party = guests == null ? 1 : Math.max(1, guests);
@@ -94,7 +94,7 @@ public class BookingOptionsService {
             }
             groups.add(new Group(w.name(), slots));
         }
-        return new Options(true, policy.maxPartySizeWeb(), policy.maxAdvanceDays(), policy.minLeadMinutes(), today, last, date,
+        return new Options(true, calendar.webPartyLimit(), policy.maxAdvanceDays(), policy.minLeadMinutes(), today, last, date,
                 groups, closedDates);
     }
 }

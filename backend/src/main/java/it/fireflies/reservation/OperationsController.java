@@ -34,7 +34,8 @@ class OperationsController {
     @PreAuthorize("hasRole('STAFF')")
     ResponseEntity<OperationsService.Summary> summary(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(operations.summary(from, to));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) String band) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(operations.summary(from, to, Band.parse(band)));
     }
 }

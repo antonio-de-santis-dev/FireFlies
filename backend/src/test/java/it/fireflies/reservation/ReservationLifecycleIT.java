@@ -41,7 +41,7 @@ class ReservationLifecycleIT extends ReservationTestSupport {
         assertThat(staff.get("/api/v1/admin/reservations").status()).isEqualTo(200);
         assertThat(staff.get("/api/v1/admin/booking-config").status()).as("lo staff legge zone e tavoli").isEqualTo(200);
         assertThat(staff.put("/api/v1/admin/booking-policy", Map.of("webBookingEnabled", false, "minLeadMinutes", 60,
-                "maxAdvanceDays", 60, "maxPartySizeWeb", 12, "pendingExpiryMinutesBeforeStart", 60)).status())
+                "maxAdvanceDays", 60, "pendingExpiryMinutesBeforeStart", 60)).status())
                 .as("le regole le cambia solo il titolare").isEqualTo(403);
         assertThat(staff.post("/api/v1/admin/tables", Map.of("areaId", UUID.randomUUID(), "code", "X", "minSeats", 1, "maxSeats", 2))
                 .status()).isEqualTo(403);

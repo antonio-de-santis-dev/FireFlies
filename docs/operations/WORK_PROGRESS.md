@@ -1,34 +1,33 @@
 # WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Ultimo aggiornamento: 21/10/2026, **FASE 8 — hardening, performance, UX, preparazione al deploy** (completata, **in attesa del collaudo del titolare**).
+> Ultimo aggiornamento: 21/10/2026, **FIX-1 — correzioni UX/UI, prenotazioni, impostazioni** (in corso).
 
 ## Fase e branch
-- **FASE 8** sul branch `fase-8/hardening-deploy`, creato da `fase-7/notifiche` @ `769cd1f` (FASE 7 approvata).
-- **21/10: `main` allineato alla FASE 8 su autorizzazione del titolare (C-32, fast-forward).** Nessun force push, **nessuna pubblicazione**, nessun servizio a pagamento, notifiche reali spente.
+- **FIX-1** sul branch `fix-1`, creato da `main` @ `395dcf5` (= FASE 8 completa, C-32).
+- Branch di collaudo: **nessun merge su `main`** senza approvazione esplicita dopo i test manuali; nessun force push,
+  nessun deploy, nessuna risorsa cloud, nessun dato del committente cancellato.
 
 ## Piano di lavoro
-| # | Requisito | Stato | Commit |
-|---|---|---|---|
-| 1 | Editor eventi senza «Fine» e coperti (valori ricavati nel backend) | fatto | `98568bb` |
-| 2 | Filtri compatti delle Richieste sul telefono | fatto | `4e10a0d` |
-| 3 | Foto più visibili in Menu e prezzi | fatto | `4e10a0d` |
-| 4 | Telefono cliccabile e copiabile per eventi/compleanni | fatto | `4e10a0d` |
-| 5 | Sicurezza: IP dietro proxy, header, matrice permessi, .gitignore dei segreti | fatto (audit in FASE8_REPORT) | `d5468ca`, `d3eaebc` |
-| 6 | Performance: divisione del codice, indice V11, misure prima/dopo (`evidence/PERFORMANCE.md`) | fatto | `07d6da9` |
-| 7 | Backup e ripristino | fatto: prova completa superata (`docs/operations/evidence/RESTORE_DRILL.md`) | `d3eaebc` |
-| 8 | Deploy: Dockerfile, Caddy, compose di produzione, proposta di hosting | fatto (`DEPLOY.md`, nulla acquistato) | `d3eaebc`, `9beade5` |
-| 9 | Test completi e CI | fatto: 78 + 320 + 111 + perf 2 + ripristino, CI verde | `9beade5` |
-| 10 | Documenti e FASE8_REPORT | fatto | ultimo commit |
+| # | Requisito | Stato |
+|---|---|---|
+| 1 | Animazione iniziale più fluida | da fare |
+| 2 | Menu pubblico: navigazione categorie sul telefono | da fare |
+| 3 | «Perché FireFlies» (pagina Il locale): foto adattata | da fare |
+| 4 | Rate limiting equilibrato, doppio invio, idempotenza | backend fatto (WebRateLimitIT, WebRequestLimiterTest); frontend da fare |
+| 5 | Navbar area gestori sul telefono | da fare |
+| 6.1–6.2 | Impostazioni: layout desktop, orari su telefono | da fare |
+| 6.3 | Capienza unica del locale (V12, `PUT /admin/venue-capacity`) | backend fatto; frontend da fare |
+| 6.4 | Riepilogo settimanale con una fascia (`capacity-summary?band=`) | backend fatto; frontend da fare |
+| 6.5 | Via «persone massime dal sito» e limiti per data | backend fatto (V12); frontend da fare |
+| 6.6 | Chiusure/aperture su giorno o intervallo (V12, vincolo di esclusione) | backend fatto; frontend da fare |
+| 7 | BOOKING_FLOW_AUDIT.md | da fare |
+| 8–9 | Test completi, documenti, FIX1_REPORT | da fare |
 
 ## Note per la ripresa
-- **Non compilare il backend mentre gira l'e2e**: `scripts/e2e.mjs` usa `backend/target/*.jar`; un `mvnw verify` in
-  parallelo lo sostituisce e i test falliscono a caso (successo il 20/10, suite fermata e rieseguita).
-- Docker Hub qui risponde 429: le immagini di produzione si verificano nella CI `images` (nessun push).
-- Dipendenze: produzione 0 avvisi; corretti braces e sharp (0.35.5); restano vite 5/esbuild (solo server di sviluppo, aggiornamento maggiore rinviato).
-
-## File modificati non committati
-- Nessuno.
+- **Non compilare il backend mentre gira l'e2e** (il jar in `backend/target/` è quello usato da `scripts/e2e.mjs`).
+- Docker: se non risponde, avviare `dockerd` (vedi FASE 8).
+- Bug pre-esistente trovato e corretto: 403 dello staff su percorsi lunghi diventava 500 (audit `object_id` > 64).
 
 ## Prossima azione esatta
-Nessuna: **fermo per il collaudo manuale del titolare**. `main` = FASE 8; nessun deploy, nessuna fase successiva senza
-autorizzazione esplicita.
+Frontend: Impostazioni (capienza unica, chiusure a intervallo, riepilogo settimanale, orari su telefono), modulo
+pubblico (doppio invio, 429), poi animazione, menu, «Perché FireFlies», navbar gestori; test Playwright; documenti.

@@ -174,12 +174,12 @@ class DemoContentLoader implements ApplicationRunner {
         // fasce in tutti i giorni: quelli di chiusura negli orari del sito restano chiusi alle richieste (FASE 7, req. 10),
         // ma un'apertura straordinaria in quel giorno trova già le sue fasce
         for (DemoHours h : hours) {
-            window(zone.id(), h.isoDay(), "Colazione", "07:30", "10:30", 30, 60, 20);
-            window(zone.id(), h.isoDay(), "Pomeriggio", "15:00", "17:00", 60, 60, null);
-            window(zone.id(), h.isoDay(), "Aperitivo", "18:00", "20:30", 30, 90, null);
-            window(zone.id(), h.isoDay(), "Sera", "21:00", "22:00", 30, 60, null);
+            window(zone.id(), h.isoDay(), "Colazione", "07:30", "10:30", 30, 60);
+            window(zone.id(), h.isoDay(), "Pomeriggio", "15:00", "17:00", 60, 60);
+            window(zone.id(), h.isoDay(), "Aperitivo", "18:00", "20:30", 30, 90);
+            window(zone.id(), h.isoDay(), "Sera", "21:00", "22:00", 30, 60);
         }
-        dining.updatePolicy(null, new DiningService.PolicyCommand(true, 60, 60, 12, 60));
+        dining.updatePolicy(null, new DiningService.PolicyCommand(true, 60, 60, 60));
     }
 
     /**
@@ -215,9 +215,9 @@ class DemoContentLoader implements ApplicationRunner {
         return java.util.Arrays.stream(keys).map(photos::get).filter(java.util.Objects::nonNull).toList();
     }
 
-    private void window(UUID zoneId, int isoDay, String name, String first, String last, int step, int duration, Integer max) {
+    private void window(UUID zoneId, int isoDay, String name, String first, String last, int step, int duration) {
         dining.saveWindow(null, null, new DiningService.WindowCommand(zoneId, isoDay, name, LocalTime.parse(first),
-                LocalTime.parse(last), step, duration, max, null, null, true));
+                LocalTime.parse(last), step, duration, null, null, true));
     }
 
     private boolean databaseIsEmpty() {

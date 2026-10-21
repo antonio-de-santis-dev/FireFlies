@@ -47,29 +47,35 @@ class DiningController {
 
     record WindowRequest(@NotNull UUID zoneId, @NotNull Integer isoDay, String name, @NotNull LocalTime firstStart,
             @NotNull LocalTime lastStart, @NotNull Integer slotMinutes, @NotNull Integer defaultDurationMinutes,
-            Integer maxCovers, LocalDate validFrom, LocalDate validTo, Boolean active) {
+            LocalDate validFrom, LocalDate validTo, Boolean active) {
 
         DiningService.WindowCommand command() {
             return new DiningService.WindowCommand(zoneId, isoDay, name, firstStart, lastStart, slotMinutes,
-                    defaultDurationMinutes, maxCovers, validFrom, validTo, active == null || active);
+                    defaultDurationMinutes, validFrom, validTo, active == null || active);
         }
     }
 
     record PolicyRequest(@NotNull Boolean webBookingEnabled, @NotNull Integer minLeadMinutes, @NotNull Integer maxAdvanceDays,
-            @NotNull Integer maxPartySizeWeb, @NotNull Integer pendingExpiryMinutesBeforeStart) {
+            @NotNull Integer pendingExpiryMinutesBeforeStart) {
     }
 
-    record ExceptionRequest(@NotNull LocalDate serviceDate, UUID serviceWindowId, @NotNull String kind,
-            Integer capacityOverride, String reason) {
+    record ExceptionRequest(@NotNull LocalDate serviceDate, UUID serviceWindowId, String kind, String reason) {
     }
 
-    record CapacityCellRequest(@NotNull Integer isoDay, @NotNull String band, Integer maxCovers) {
+    record VenueCapacityRequest(@NotNull Integer capacity) {
     }
 
-    record CapacityMatrixRequest(@NotNull List<@Valid CapacityCellRequest> cells) {
-    }
+    /**
+     * Un giorno ({@code from}, {@code to} assente o uguale) oppure un intervallo con estremi compresi. {@code day} è il
+     * nome usato fino alla FASE 8 per il giorno singolo: resta accettato.
+     */
+    record OpeningExceptionRequest(LocalDate from, LocalDate to, LocalDate day, @NotNull Boolean closed, LocalTime opensAt,
+            LocalTime closesAt, String note) {
 
-    record OpeningExceptionRequest(@NotNull LocalDate day, @NotNull Boolean closed, LocalTime opensAt, LocalTime closesAt, String note) {
+        DiningService.OpeningCommand command() {
+            LocalDate first = from != null ? from : day;
+            return new DiningService.OpeningCommand(first, to == null ? first : to, closed, opensAt, closesAt, note);
+        }
     }
 
     private final DiningService dining;
@@ -96,6 +102,13 @@ class DiningController {
             @Valid @RequestBody ZoneUpdate body) {
         return dining.updateZone(actor.id(), id, body.version(), new DiningService.ZoneCommand(body.name(),
                 body.physicalCapacity(), body.active(), body.sortOrder() == null ? 0 : body.sortOrder()));
+    }
+
+    /** FIX-1: «Capienza massima del locale», l'unica capienza da configurare (solo titolare). */
+    @PutMapping("/api/v1/admin/venue-capacity")
+    @PreAuthorize("hasRole('OWNER')")
+    DiningStore.ZoneRow venueCapacity(@AuthenticationPrincipal GestoreDetails actor, @Valid @RequestBody VenueCapacityRequest body) {
+        return dining.setVenueCapacity(actor.id(), body.capacity());
     }
 
     @PostMapping("/api/v1/admin/areas")
@@ -164,7 +177,7 @@ class DiningController {
     @PreAuthorize("hasRole('OWNER')")
     DiningStore.PolicyRow updatePolicy(@AuthenticationPrincipal GestoreDetails actor, @Valid @RequestBody PolicyRequest body) {
         return dining.updatePolicy(actor.id(), new DiningService.PolicyCommand(body.webBookingEnabled(), body.minLeadMinutes(),
-                body.maxAdvanceDays(), body.maxPartySizeWeb(), body.pendingExpiryMinutesBeforeStart()));
+                body.maxAdvanceDays(), body.pendingExpiryMinutesBeforeStart()));
     }
 
     @PostMapping("/api/v1/admin/booking-exceptions")
@@ -172,7 +185,7 @@ class DiningController {
     ResponseEntity<DiningStore.ExceptionRow> addException(@AuthenticationPrincipal GestoreDetails actor,
             @Valid @RequestBody ExceptionRequest body) {
         return ResponseEntity.status(HttpStatus.CREATED).body(dining.addException(actor.id(), body.serviceDate(),
-                body.serviceWindowId(), body.kind(), body.capacityOverride(), body.reason()));
+                body.serviceWindowId(), body.kind(), body.reason()));
     }
 
     @DeleteMapping("/api/v1/admin/booking-exceptions/{id}")
@@ -182,26 +195,24 @@ class DiningController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/api/v1/admin/capacity-matrix")
-    @PreAuthorize("hasRole('STAFF')")
-    DiningService.CapacityMatrix capacityMatrix() {
-        return dining.capacityMatrix();
-    }
-
-    @PutMapping("/api/v1/admin/capacity-matrix")
+    @GetMapping("/api/v1/admin/opening-exceptions")
     @PreAuthorize("hasRole('OWNER')")
-    DiningService.CapacityMatrix saveCapacityMatrix(@AuthenticationPrincipal GestoreDetails actor,
-            @Valid @RequestBody CapacityMatrixRequest body) {
-        return dining.saveCapacityMatrix(actor.id(), body.cells().stream()
-                .map(c -> new DiningService.CapacityCell(c.isoDay(), Band.parse(c.band()), true, c.maxCovers())).toList());
+    List<DiningStore.OpeningExceptionRow> openingExceptions() {
+        return dining.config().openingExceptions();
     }
 
     @PostMapping("/api/v1/admin/opening-exceptions")
     @PreAuthorize("hasRole('OWNER')")
-    ResponseEntity<java.util.Map<String, Object>> addOpeningException(@AuthenticationPrincipal GestoreDetails actor,
+    ResponseEntity<DiningService.OpeningResult> addOpeningException(@AuthenticationPrincipal GestoreDetails actor,
             @Valid @RequestBody OpeningExceptionRequest body) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(dining.addOpeningException(actor.id(), body.day(), body.closed(),
-                body.opensAt(), body.closesAt(), body.note()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(dining.addOpeningException(actor.id(), body.command()));
+    }
+
+    @PutMapping("/api/v1/admin/opening-exceptions/{id}")
+    @PreAuthorize("hasRole('OWNER')")
+    DiningService.OpeningResult updateOpeningException(@AuthenticationPrincipal GestoreDetails actor, @PathVariable UUID id,
+            @Valid @RequestBody OpeningExceptionRequest body) {
+        return dining.updateOpeningException(actor.id(), id, body.command());
     }
 
     @DeleteMapping("/api/v1/admin/opening-exceptions/{id}")

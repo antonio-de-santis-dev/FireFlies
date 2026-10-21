@@ -30,30 +30,43 @@ import it.fireflies.common.BusinessTime;
 @Service
 public class DiningService {
 
+    /**
+     * {@code venueCapacity}: capienza massima del locale (FIX-1), la stessa in ogni giorno e fascia;
+     * {@code openingExceptions}: chiusure e aperture straordinarie da oggi in poi.
+     */
     public record Config(List<DiningStore.ZoneRow> zones, List<DiningStore.AreaRow> areas,
             List<DiningStore.TableRow> tables, List<DiningStore.WindowRow> windows, DiningStore.PolicyRow policy,
-            List<DiningStore.ExceptionRow> exceptions) {
+            List<DiningStore.ExceptionRow> exceptions, int venueCapacity, List<DiningStore.OpeningExceptionRow> openingExceptions) {
     }
 
     public record ZoneCommand(String name, int physicalCapacity, boolean active, int sortOrder) {
     }
 
     public record WindowCommand(UUID zoneId, int isoDay, String name, LocalTime firstStart, LocalTime lastStart,
-            int slotMinutes, int defaultDurationMinutes, Integer maxCovers, LocalDate validFrom, LocalDate validTo,
-            boolean active) {
+            int slotMinutes, int defaultDurationMinutes, LocalDate validFrom, LocalDate validTo, boolean active) {
     }
 
-    public record PolicyCommand(boolean webBookingEnabled, int minLeadMinutes, int maxAdvanceDays, int maxPartySizeWeb,
+    public record PolicyCommand(boolean webBookingEnabled, int minLeadMinutes, int maxAdvanceDays,
             int pendingExpiryMinutesBeforeStart) {
     }
 
-    /** Una cella della tabella «Capienza»: persone al massimo nello stesso momento in quella fascia di quel giorno. */
-    public record CapacityCell(int isoDay, Band band, boolean offered, Integer maxCovers) {
+    /** Chiusura ({@code closed}) o apertura straordinaria dal giorno {@code from} al giorno {@code to} compresi. */
+    public record OpeningCommand(LocalDate from, LocalDate to, boolean closed, LocalTime opensAt, LocalTime closesAt, String note) {
     }
 
-    public record CapacityMatrix(int physicalCapacity, List<CapacityCell> cells, List<DiningStore.ExceptionRow> exceptions,
-            List<DiningStore.OpeningExceptionRow> openingExceptions) {
+    /**
+     * Esito del salvataggio di una data straordinaria: per una chiusura, i giorni dell'intervallo con prenotazioni già
+     * in attesa o confermate (restano valide: si gestiscono a mano, mai cancellate da sole).
+     */
+    public record OpeningResult(DiningStore.OpeningExceptionRow exception, long activeReservations,
+            List<DiningStore.DayReservations> conflicts) {
     }
+
+    /** Lunghezza massima di un intervallo straordinario (un anno), uguale al vincolo della V12. */
+    static final int MAX_OPENING_RANGE_DAYS = 366;
+
+    /** Capienza massima del locale accettata dall'interfaccia (persone presenti nello stesso momento). */
+    static final int MAX_VENUE_CAPACITY = 1000; // stesso limite del registro (CapacityLedger.changePhysicalCapacity)
 
     private final DiningStore store;
     private final CapacityLedger ledger;
@@ -70,8 +83,9 @@ public class DiningService {
     @Transactional(readOnly = true)
     public Config config() {
         LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
+        int venue = store.zones().stream().filter(DiningStore.ZoneRow::active).mapToInt(DiningStore.ZoneRow::physicalCapacity).sum();
         return new Config(store.zones(), store.areas(), store.tables(), store.windows(), store.policyOn(today).orElse(null),
-                store.exceptionsFrom(today));
+                store.exceptionsFrom(today), venue, store.openingExceptionsBetween(today, today.plusYears(2)));
     }
 
     // --- zone ---------------------------------------------------------------------------------------------------
@@ -102,6 +116,34 @@ public class DiningService {
         ledger.changePhysicalCapacity(id, c.physicalCapacity(), now);
         store.updateZone(id, version + 1, name, c.active(), c.sortOrder());
         audit(actor, "CAPACITY_ZONE", id, Map.of("physicalCapacity", c.physicalCapacity(), "active", c.active()));
+        return store.zone(id).orElseThrow();
+    }
+
+    /**
+     * «Capienza massima del locale» (FIX-1, unica fonte della capienza): la capienza fisica dell'unica zona attiva.
+     * Stessi controlli di ogni cambio di capienza (lock della zona, ricalcolo dei quanti futuri): se in qualche quarto
+     * d'ora ci sono già più persone confermate → {@code 409 CAPACITY_BELOW_CONFIRMED} con data, ora e persone, e nulla
+     * cambia. Con più zone attive (configurazione non più gestita dall'interfaccia) → {@code 409 MULTIPLE_ZONES}.
+     */
+    @Transactional
+    public DiningStore.ZoneRow setVenueCapacity(UUID actor, int capacity) {
+        if (capacity < 1 || capacity > MAX_VENUE_CAPACITY) {
+            throw ApiErrors.invalid("capacity", "Indica la capienza del locale: da 1 a " + MAX_VENUE_CAPACITY + " persone.");
+        }
+        List<DiningStore.ZoneRow> zones = store.zones();
+        List<DiningStore.ZoneRow> active = zones.stream().filter(DiningStore.ZoneRow::active).toList();
+        if (active.size() > 1) {
+            throw new ApiException(HttpStatus.CONFLICT, "MULTIPLE_ZONES", "Più zone attive",
+                    "Il locale ha più zone con capienze separate: la capienza unica non si può applicare.");
+        }
+        UUID id = active.isEmpty()
+                ? (zones.isEmpty() ? store.insertZone("Locale", 1) : zones.getFirst().id())
+                : active.getFirst().id();
+        DiningStore.ZoneRow zone = store.zone(id).orElseThrow();
+        ledger.changePhysicalCapacity(id, capacity, Instant.now(clock));
+        // il registro ha già incrementato la versione della zona: si attiva con quella nuova
+        store.updateZone(id, zone.version() + 1, zone.name(), true, zone.sortOrder());
+        audit(actor, "VENUE_CAPACITY", id, Map.of("capacity", capacity));
         return store.zone(id).orElseThrow();
     }
 
@@ -180,7 +222,7 @@ public class DiningService {
         validate(c);
         LocalDate validFrom = c.validFrom() == null ? BusinessTime.serviceDate(Instant.now(clock)) : c.validFrom();
         DiningStore.WindowRow row = new DiningStore.WindowRow(id, c.zoneId(), c.isoDay(), c.name().strip(), c.firstStart(),
-                c.lastStart(), c.slotMinutes(), c.defaultDurationMinutes(), c.maxCovers(), validFrom, c.validTo(), c.active());
+                c.lastStart(), c.slotMinutes(), c.defaultDurationMinutes(), validFrom, c.validTo(), c.active());
         UUID windowId = id;
         if (id == null) {
             windowId = store.insertWindow(row);
@@ -188,7 +230,7 @@ public class DiningService {
             store.updateWindow(row);
         }
         recompute(c.zoneId(), previous == null ? null : previous.zoneId());
-        audit(actor, "SERVICE_WINDOW", windowId, Map.of("isoDay", c.isoDay(), "maxCovers", c.maxCovers() == null ? "null" : c.maxCovers()));
+        audit(actor, "SERVICE_WINDOW", windowId, Map.of("isoDay", c.isoDay()));
         return store.window(windowId).orElseThrow();
     }
 
@@ -199,7 +241,7 @@ public class DiningService {
         boolean used = store.windowHasReservations(id);
         if (used) {
             store.updateWindow(new DiningStore.WindowRow(w.id(), w.zoneId(), w.isoDay(), w.name(), w.firstStart(), w.lastStart(),
-                    w.slotMinutes(), w.defaultDurationMinutes(), w.maxCovers(), w.validFrom(), w.validTo(), false));
+                    w.slotMinutes(), w.defaultDurationMinutes(), w.validFrom(), w.validTo(), false));
         } else {
             store.deleteWindow(id);
         }
@@ -228,9 +270,6 @@ public class DiningService {
         if (c.lastStart().toSecondOfDay() / 60 + c.defaultDurationMinutes() > 24 * 60) {
             throw ApiErrors.invalid("lastStart", "In V1 le fasce non superano la mezzanotte: anticipa l'ultimo arrivo o riduci la durata.");
         }
-        if (c.maxCovers() != null && c.maxCovers() < 0) {
-            throw ApiErrors.invalid("maxCovers", "Il limite di presenze non può essere negativo.");
-        }
         if (c.validTo() != null && c.validFrom() != null && c.validTo().isBefore(c.validFrom())) {
             throw ApiErrors.invalid("validTo", "La fine della validità non può essere prima dell'inizio.");
         }
@@ -246,9 +285,6 @@ public class DiningService {
         if (c.maxAdvanceDays() < 1 || c.maxAdvanceDays() > 365) {
             throw ApiErrors.invalid("maxAdvanceDays", "Si può prenotare da 1 a 365 giorni prima.");
         }
-        if (c.maxPartySizeWeb() < 1 || c.maxPartySizeWeb() > 50) {
-            throw ApiErrors.invalid("maxPartySizeWeb", "Il massimo di persone dal sito va da 1 a 50.");
-        }
         if (c.pendingExpiryMinutesBeforeStart() < 0 || c.pendingExpiryMinutesBeforeStart() > 1440) {
             throw ApiErrors.invalid("pendingExpiryMinutesBeforeStart", "La scadenza va da 0 a 24 ore prima dell'arrivo.");
         }
@@ -256,7 +292,7 @@ public class DiningService {
             throw ApiErrors.invalid("webBookingEnabled", "Prima di aprire le richieste dal sito attiva almeno una zona con la sua capienza.");
         }
         LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
-        store.upsertPolicy(today, c.webBookingEnabled(), c.minLeadMinutes(), c.maxAdvanceDays(), c.maxPartySizeWeb(),
+        store.upsertPolicy(today, c.webBookingEnabled(), c.minLeadMinutes(), c.maxAdvanceDays(),
                 c.pendingExpiryMinutesBeforeStart(), actor);
         audit(actor, "BOOKING_POLICY", null, Map.of("webBookingEnabled", c.webBookingEnabled()));
         return store.policyOn(today).orElseThrow();
@@ -265,19 +301,18 @@ public class DiningService {
     // --- eccezioni ----------------------------------------------------------------------------------------------
 
     @Transactional
-    public DiningStore.ExceptionRow addException(UUID actor, LocalDate date, UUID windowId, String kind, Integer override, String reason) {
+    /** Fascia chiusa agli arrivi in una data ({@code kind = CLOSED}, l'unico tipo dalla V12). */
+    public DiningStore.ExceptionRow addException(UUID actor, LocalDate date, UUID windowId, String kind, String reason) {
         LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
         if (date == null || date.isBefore(today)) {
             throw ApiErrors.invalid("serviceDate", "Scegli una data da oggi in poi.");
         }
-        if (!"CLOSED".equals(kind) && !"CAPACITY_OVERRIDE".equals(kind)) {
-            throw ApiErrors.invalid("kind", "Scegli «chiuso agli arrivi» oppure «limite di presenze».");
+        if (kind != null && !"CLOSED".equals(kind)) {
+            throw ApiErrors.invalid("kind", "La capienza è unica per tutto il locale: per una data si può solo chiudere agli arrivi.");
         }
-        if ("CAPACITY_OVERRIDE".equals(kind) && (override == null || override < 0)) {
-            throw ApiErrors.invalid("capacityOverride", "Indica il limite di presenze per quella data.");
+        if (windowId != null) {
+            store.window(windowId).orElseThrow(() -> ApiErrors.invalid("serviceWindowId", "La fascia scelta non esiste."));
         }
-        DiningStore.WindowRow window = windowId == null ? null
-                : store.window(windowId).orElseThrow(() -> ApiErrors.invalid("serviceWindowId", "La fascia scelta non esiste."));
         if (store.exceptionsOn(date).stream().anyMatch(e -> java.util.Objects.equals(e.serviceWindowId(), windowId))) {
             throw new ApiException(HttpStatus.CONFLICT, "EXCEPTION_EXISTS", "Eccezione già presente",
                     "Per questa data e fascia c'è già un'eccezione: eliminala prima di crearne un'altra.");
@@ -286,114 +321,41 @@ public class DiningService {
         if (cleanReason != null && cleanReason.length() > 140) {
             throw ApiErrors.invalid("reason", "Motivo troppo lungo (massimo 140 caratteri).");
         }
-        UUID id = store.insertException(date, windowId, kind, "CAPACITY_OVERRIDE".equals(kind) ? override : null, cleanReason, actor);
-        if ("CAPACITY_OVERRIDE".equals(kind)) {
-            recomputeDay(date, window == null ? null : window.zoneId());
-        }
-        audit(actor, "BOOKING_EXCEPTION", id, Map.of("kind", kind, "date", date.toString()));
+        UUID id = store.insertClosedException(date, windowId, cleanReason, actor);
+        audit(actor, "BOOKING_EXCEPTION", id, Map.of("kind", "CLOSED", "date", date.toString()));
         return store.exception(id).orElseThrow();
     }
 
     @Transactional
     public void deleteException(UUID actor, UUID id) {
-        DiningStore.ExceptionRow e = store.exception(id).orElseThrow(() -> ApiErrors.notFound("L'eccezione non esiste."));
+        store.exception(id).orElseThrow(() -> ApiErrors.notFound("L'eccezione non esiste."));
         store.deleteException(id);
-        if ("CAPACITY_OVERRIDE".equals(e.kind())) {
-            UUID zone = e.serviceWindowId() == null ? null : store.window(e.serviceWindowId()).map(DiningStore.WindowRow::zoneId).orElse(null);
-            recomputeDay(e.serviceDate(), zone);
-        }
         audit(actor, "BOOKING_EXCEPTION", id, Map.of("deleted", true));
-    }
-
-    // --- capienza per giorno della settimana e fascia (FASE 7, req. 8) ----------------------------------------
-
-    /**
-     * Tabella giorni × fasce. La capienza di una fascia è il limite di presenze delle sue fasce prenotabili
-     * ({@code service_windows.max_covers}, null = capienza del locale): lo stesso valore che il registro dei posti
-     * applica a ogni quanto, quindi nessun contatore in più.
-     */
-    @Transactional(readOnly = true)
-    public CapacityMatrix capacityMatrix() {
-        LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
-        List<DiningStore.WindowRow> windows = currentWindows(today);
-        List<CapacityCell> cells = new java.util.ArrayList<>();
-        for (int day = 1; day <= 7; day++) {
-            for (Band band : Band.values()) {
-                int d = day;
-                List<DiningStore.WindowRow> of = windows.stream().filter(w -> w.isoDay() == d && Band.of(w.name(), w.firstStart()) == band).toList();
-                Integer max = of.stream().map(DiningStore.WindowRow::maxCovers).filter(java.util.Objects::nonNull).min(Integer::compare).orElse(null);
-                cells.add(new CapacityCell(day, band, !of.isEmpty(), max));
-            }
-        }
-        int physical = store.zones().stream().filter(DiningStore.ZoneRow::active).mapToInt(DiningStore.ZoneRow::physicalCapacity).sum();
-        return new CapacityMatrix(physical, cells, store.exceptionsFrom(today), store.openingExceptionsBetween(today, today.plusYears(2)));
-    }
-
-    /**
-     * Salva la tabella (solo titolare). Ogni cella aggiorna le fasce prenotabili di quel giorno e fascia; poi il
-     * registro ricalcola le capienze dei quanti futuri: se in qualche quanto ci sono più persone confermate del nuovo
-     * limite → {@code 409 CAPACITY_BELOW_CONFIRMED} e non cambia nulla.
-     */
-    @Transactional
-    public CapacityMatrix saveCapacityMatrix(UUID actor, List<CapacityCell> cells) {
-        LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
-        List<DiningStore.WindowRow> windows = currentWindows(today);
-        Set<UUID> zones = new HashSet<>();
-        int changed = 0;
-        for (CapacityCell c : cells) {
-            if (c.isoDay() < 1 || c.isoDay() > 7 || c.band() == null) {
-                throw ApiErrors.invalid("cells", "Ogni riga indica giorno della settimana (1–7) e fascia.");
-            }
-            if (c.maxCovers() != null && (c.maxCovers() < 0 || c.maxCovers() > 1000)) {
-                throw ApiErrors.invalid("maxCovers", "Il massimo di persone va da 0 a 1000 (vuoto = capienza del locale).");
-            }
-            for (DiningStore.WindowRow w : windows) {
-                if (w.isoDay() == c.isoDay() && Band.of(w.name(), w.firstStart()) == c.band()
-                        && !java.util.Objects.equals(w.maxCovers(), c.maxCovers())) {
-                    store.updateWindow(new DiningStore.WindowRow(w.id(), w.zoneId(), w.isoDay(), w.name(), w.firstStart(), w.lastStart(),
-                            w.slotMinutes(), w.defaultDurationMinutes(), c.maxCovers(), w.validFrom(), w.validTo(), w.active()));
-                    zones.add(w.zoneId());
-                    changed++;
-                }
-            }
-        }
-        zones.stream().sorted().forEach(z -> ledger.recomputeCapacities(z, Instant.now(clock)));
-        audit(actor, "CAPACITY_MATRIX", null, Map.of("windowsChanged", changed));
-        return capacityMatrix();
-    }
-
-    private List<DiningStore.WindowRow> currentWindows(LocalDate today) {
-        return store.windows().stream().filter(w -> w.active() && (w.validTo() == null || !w.validTo().isBefore(today))).toList();
     }
 
     // --- chiusure e aperture straordinarie del locale (FASE 7, req. 10) ---------------------------------------
 
     /**
-     * Data straordinaria: chiusura (nessuna richiesta dal sito, anche in un giorno di solito aperto) o apertura (in un
-     * giorno di solito chiuso, con orario). Le prenotazioni già presenti in quella data non vengono toccate: il
-     * risultato dice quante sono, da gestire a mano.
+     * Chiusura o apertura straordinaria su un giorno o su un intervallo (FIX-1, req. 6.6): una riga per intervallo,
+     * salvata in una transazione; il vincolo di esclusione della V12 impedisce giorni sovrapposti anche con salvataggi
+     * contemporanei. Le prenotazioni già presenti non vengono mai cancellate: il risultato elenca i giorni coinvolti.
      */
     @Transactional
-    public Map<String, Object> addOpeningException(UUID actor, LocalDate day, boolean closed, LocalTime opensAt, LocalTime closesAt,
-            String note) {
-        LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
-        if (day == null || day.isBefore(today)) {
-            throw ApiErrors.invalid("day", "Scegli una data da oggi in poi.");
-        }
-        if (!closed && (opensAt == null || closesAt == null)) {
-            throw ApiErrors.invalid("opensAt", "Per un'apertura straordinaria indica l'orario di apertura e di chiusura.");
-        }
-        String clean = note == null || note.isBlank() ? null : note.strip();
-        if (clean != null && clean.length() > 140) {
-            throw ApiErrors.invalid("note", "Nota troppo lunga (massimo 140 caratteri).");
-        }
-        if (store.openingException(day).isPresent()) {
-            throw new ApiException(HttpStatus.CONFLICT, "EXCEPTION_EXISTS", "Data già presente",
-                    "Per questa data c'è già una chiusura o un'apertura straordinaria: eliminala prima.");
-        }
-        UUID id = store.insertOpeningException(day, closed, closed ? null : opensAt, closed ? null : closesAt, clean);
-        audit(actor, "OPENING_EXCEPTION", id, Map.of("day", day.toString(), "closed", closed));
-        return Map.of("exception", store.openingException(id).orElseThrow(), "activeReservations", store.activeReservationsOn(day));
+    public OpeningResult addOpeningException(UUID actor, OpeningCommand c) {
+        OpeningCommand clean = validate(c, null);
+        UUID id = store.insertOpeningException(clean.from(), clean.to(), clean.closed(), clean.opensAt(), clean.closesAt(), clean.note());
+        audit(actor, "OPENING_EXCEPTION", id, Map.of("from", clean.from().toString(), "to", clean.to().toString(), "closed", clean.closed()));
+        return result(id, clean);
+    }
+
+    @Transactional
+    public OpeningResult updateOpeningException(UUID actor, UUID id, OpeningCommand c) {
+        store.openingException(id).orElseThrow(() -> ApiErrors.notFound("La data straordinaria non esiste."));
+        OpeningCommand clean = validate(c, id);
+        store.updateOpeningException(id, clean.from(), clean.to(), clean.closed(), clean.opensAt(), clean.closesAt(), clean.note());
+        audit(actor, "OPENING_EXCEPTION", id, Map.of("from", clean.from().toString(), "to", clean.to().toString(),
+                "closed", clean.closed(), "updated", true));
+        return result(id, clean);
     }
 
     @Transactional
@@ -403,15 +365,47 @@ public class DiningService {
         audit(actor, "OPENING_EXCEPTION", id, Map.of("deleted", true));
     }
 
-    private void recomputeDay(LocalDate date, UUID zoneId) {
-        Instant from = BusinessTime.toInstant(date, LocalTime.MIDNIGHT);
-        Instant now = Instant.now(clock);
-        Instant start = from.isAfter(now) ? from : now;
-        for (DiningStore.ZoneRow z : store.zones()) {
-            if (zoneId == null || z.id().equals(zoneId)) {
-                ledger.recomputeCapacities(z.id(), start);
-            }
+    private OpeningCommand validate(OpeningCommand c, UUID self) {
+        LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
+        LocalDate from = c.from();
+        LocalDate to = c.to() == null ? from : c.to();
+        if (from == null) {
+            throw ApiErrors.invalid("from", "Scegli il giorno (o il primo giorno dell'intervallo).");
         }
+        if (from.isBefore(today)) {
+            throw ApiErrors.invalid("from", "Scegli una data da oggi in poi.");
+        }
+        if (to.isBefore(from)) {
+            throw ApiErrors.invalid("to", "L'ultimo giorno non può essere prima del primo.");
+        }
+        if (java.time.temporal.ChronoUnit.DAYS.between(from, to) > MAX_OPENING_RANGE_DAYS) {
+            throw ApiErrors.invalid("to", "Un intervallo può durare al massimo un anno.");
+        }
+        if (!c.closed() && (c.opensAt() == null || c.closesAt() == null || c.opensAt().equals(c.closesAt()))) {
+            throw ApiErrors.invalid("opensAt", "Per un'apertura straordinaria indica l'orario di apertura e di chiusura.");
+        }
+        String note = c.note() == null || c.note().isBlank() ? null : c.note().strip();
+        if (note != null && note.length() > 140) {
+            throw ApiErrors.invalid("note", "Nota troppo lunga (massimo 140 caratteri).");
+        }
+        List<DiningStore.OpeningExceptionRow> overlapping = store.openingExceptionsBetween(from, to).stream()
+                .filter(e -> !e.id().equals(self)).toList();
+        if (!overlapping.isEmpty()) {
+            DiningStore.OpeningExceptionRow first = overlapping.getFirst();
+            throw new ApiException(HttpStatus.CONFLICT, "EXCEPTION_OVERLAPS", "Date sovrapposte",
+                    "Questi giorni si sovrappongono a " + (first.closed() ? "una chiusura" : "un'apertura") + " straordinaria già "
+                            + "inserita (" + first.day() + (first.endDay().equals(first.day()) ? "" : " – " + first.endDay())
+                            + "): modificala o eliminala prima.",
+                    Map.of("overlaps", overlapping.stream().map(e -> Map.of("id", e.id(), "from", e.day(), "to", e.endDay(),
+                            "closed", e.closed())).toList()));
+        }
+        return new OpeningCommand(from, to, c.closed(), c.closed() ? null : c.opensAt(), c.closed() ? null : c.closesAt(), note);
+    }
+
+    private OpeningResult result(UUID id, OpeningCommand c) {
+        List<DiningStore.DayReservations> days = store.activeReservationsBetween(c.from(), c.to());
+        long active = days.stream().mapToLong(d -> d.pending() + d.confirmed()).sum();
+        return new OpeningResult(store.openingException(id).orElseThrow(), active, c.closed() ? days : List.of());
     }
 
     private void recompute(UUID zoneId, UUID previousZoneId) {

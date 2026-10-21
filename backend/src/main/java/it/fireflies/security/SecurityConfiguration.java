@@ -51,7 +51,7 @@ class SecurityConfiguration {
     private static final String[] CONFIG_PATHS = {
             "/api/v1/admin/capacity-zones/**", "/api/v1/admin/areas/**", "/api/v1/admin/tables/**",
             "/api/v1/admin/service-windows/**", "/api/v1/admin/booking-policy", "/api/v1/admin/booking-exceptions/**",
-            "/api/v1/admin/capacity-matrix", "/api/v1/admin/opening-exceptions/**"};
+            "/api/v1/admin/venue-capacity", "/api/v1/admin/opening-exceptions/**"};
 
     @Bean
     SecurityFilterChain apiSecurity(HttpSecurity http, SecurityProblemHandlers problems, LogoutHandler auditingLogout,

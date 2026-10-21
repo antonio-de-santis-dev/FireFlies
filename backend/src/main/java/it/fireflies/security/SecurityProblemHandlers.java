@@ -57,8 +57,11 @@ class SecurityProblemHandlers implements AuthenticationEntryPoint, AccessDeniedH
         }
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof GestoreDetails gestore) {
-            audit.record(gestore.id(), AuditAction.ACCESS_DENIED, "ENDPOINT", request.getRequestURI(),
-                    Map.of("method", request.getMethod(), "role", gestore.role().name()));
+            // FIX-1: object_id è varchar(64); i percorsi con un id (es. /api/v1/admin/service-windows/{uuid}) sono più
+            // lunghi e il salvataggio dell'audit falliva, trasformando il 403 in un 500. Il percorso intero va nei metadati.
+            String uri = request.getRequestURI();
+            audit.record(gestore.id(), AuditAction.ACCESS_DENIED, "ENDPOINT", uri.length() <= 64 ? uri : uri.substring(0, 64),
+                    Map.of("method", request.getMethod(), "role", gestore.role().name(), "path", uri));
         }
         write(response, HttpStatus.FORBIDDEN, "FORBIDDEN", "Permesso negato",
                 "Il tuo ruolo non permette questa operazione.", request);

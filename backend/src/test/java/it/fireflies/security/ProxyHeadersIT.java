@@ -49,12 +49,12 @@ class ProxyHeadersIT extends ReservationTestSupport {
 
     @Test
     void xForwardedForFalsoNonAggiraIlLimitePerIp() {
-        for (int i = 1; i <= 5; i++) {
+        for (int i = 1; i <= 10; i++) { // FIX-1: 10 richieste create all'ora per indirizzo
             assertThat(viaProxy("10.9.9." + i + ", 203.0.113.9").status()).as("richiesta %d", i).isEqualTo(201);
         }
-        ApiClient.Response sixth = viaProxy("10.9.9.99, 203.0.113.9");
-        assertThat(sixth.status()).as("stesso IP vero, prefisso falso diverso").isEqualTo(429);
-        assertThat(sixth.code()).isEqualTo("RATE_LIMITED");
+        ApiClient.Response eleventh = viaProxy("10.9.9.99, 203.0.113.9");
+        assertThat(eleventh.status()).as("stesso IP vero, prefisso falso diverso").isEqualTo(429);
+        assertThat(eleventh.code()).isEqualTo("RATE_LIMITED");
         assertThat(viaProxy("203.0.113.10").status()).as("un altro client ha il suo limite").isEqualTo(201);
     }
 

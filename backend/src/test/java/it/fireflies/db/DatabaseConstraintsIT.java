@@ -58,8 +58,8 @@ class DatabaseConstraintsIT extends PostgresIntegrationTest {
     void confermaAutomaticaImpossibileInV1() {
         assertViolates("ck_policy_manual_only", () -> jdbc.sql("""
                 INSERT INTO booking_policies (effective_from, confirmation_mode, min_lead_minutes, max_advance_days,
-                                              max_party_size_web, pending_expiry_minutes_before_start)
-                VALUES (DATE '2031-01-01', 'AUTO', 60, 60, 12, 60)
+                                              pending_expiry_minutes_before_start)
+                VALUES (DATE '2031-01-01', 'AUTO', 60, 60, 60)
                 """).update());
     }
 
@@ -163,8 +163,21 @@ class DatabaseConstraintsIT extends PostgresIntegrationTest {
         jdbc.sql("INSERT INTO booking_exceptions (service_date, kind) VALUES (DATE '2030-08-15', 'CLOSED')").update();
         assertViolates("ux_exception_day_window",
                 () -> jdbc.sql("INSERT INTO booking_exceptions (service_date, kind) VALUES (DATE '2030-08-15', 'CLOSED')").update());
-        assertViolates("ck_exception_override", () -> jdbc.sql(
+        // FIX-1 (V12): la capienza è unica, niente più limiti per data
+        assertViolates("ck_exception_kind", () -> jdbc.sql(
                 "INSERT INTO booking_exceptions (service_date, kind) VALUES (DATE '2030-08-16', 'CAPACITY_OVERRIDE')").update());
+    }
+
+    @Test
+    void dateStraordinarieSenzaGiorniSovrapposti() {
+        jdbc.sql("INSERT INTO opening_exceptions (day, end_day, closed) VALUES (DATE '2030-08-10', DATE '2030-08-17', true)").update();
+        assertViolates("ex_opening_exception_overlap", () -> jdbc.sql(
+                "INSERT INTO opening_exceptions (day, end_day, closed) VALUES (DATE '2030-08-17', DATE '2030-08-18', true)").update());
+        assertViolates("ex_opening_exception_overlap", () -> jdbc.sql(
+                "INSERT INTO opening_exceptions (day, end_day, closed) VALUES (DATE '2030-08-12', DATE '2030-08-12', true)").update());
+        assertViolates("ck_opening_exception_range", () -> jdbc.sql(
+                "INSERT INTO opening_exceptions (day, end_day, closed) VALUES (DATE '2030-09-10', DATE '2030-09-09', true)").update());
+        jdbc.sql("INSERT INTO opening_exceptions (day, end_day, closed) VALUES (DATE '2030-08-18', DATE '2030-08-18', true)").update();
     }
 
     private UUID table(UUID zone) {

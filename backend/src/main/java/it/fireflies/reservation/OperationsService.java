@@ -108,6 +108,15 @@ public class OperationsService {
 
     @Transactional(readOnly = true)
     public Summary summary(LocalDate from, LocalDate to) {
+        return summary(from, to, null);
+    }
+
+    /**
+     * Riepilogo di un periodo, eventualmente di una sola fascia (FIX-1: la vista settimanale ne mostra una alla volta).
+     * Con una fascia scelta c'è una riga per ogni giorno del periodo, anche senza fascia prenotabile quel giorno.
+     */
+    @Transactional(readOnly = true)
+    public Summary summary(LocalDate from, LocalDate to, Band only) {
         LocalDate today = BusinessTime.serviceDate(Instant.now(clock));
         LocalDate start = from == null ? today : from;
         LocalDate end = to == null ? start.plusDays(13) : to;
@@ -150,6 +159,9 @@ public class OperationsService {
             LocalDate day = d;
             List<DiningStore.WindowRow> windows = calendar.windowsOn(day);
             for (Band band : Band.values()) {
+                if (only != null && band != only) {
+                    continue;
+                }
                 String key = day + "|" + band;
                 int[] l = live.getOrDefault(key, new int[4]);
                 int[] s = stats.get(key);
@@ -164,7 +176,7 @@ public class OperationsService {
                 } else if (s != null && s[3] >= 0) {
                     capacity = s[3];
                 }
-                if (of.isEmpty() && l[0] == 0 && s == null) {
+                if (of.isEmpty() && l[0] == 0 && s == null && only == null) {
                     continue; // fascia che quel giorno non esiste e senza dati
                 }
                 rows.add(new SummaryRow(day, band, band.label(), closed, l[0] + (s == null ? 0 : s[0]), l[1],

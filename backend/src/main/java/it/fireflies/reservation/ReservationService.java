@@ -135,9 +135,11 @@ public class ReservationService {
             }
             return receipt(previous.get()); // stesso invio ripetuto (doppio clic, rete instabile): stessa risposta
         }
-        long wait = limiter.acquire(clientIp);
+        // FIX-1: i reinvii (stessa chiave) sono già usciti sopra; da qui ogni invio conta come tentativo, ma il limite
+        // delle richieste vere scatta solo al salvataggio (sotto), mai per un invio rifiutato
+        long wait = limiter.attempt(clientIp);
         if (wait > 0) {
-            throw rateLimited(wait, "Hai inviato molte richieste in poco tempo: riprova più tardi o chiamaci.");
+            throw rateLimited(wait, "Troppi tentativi di invio in pochi minuti: riprova " + waitText(wait) + " o chiamaci.");
         }
         if (!r.privacyAccepted()) {
             throw ApiErrors.invalid("privacyAccepted", "Per inviare la richiesta devi dichiarare di aver letto l'informativa privacy.");
@@ -148,10 +150,16 @@ public class ReservationService {
         DiningStore.PolicyRow policy = calendar.policy(today).filter(DiningStore.PolicyRow::webBookingEnabled)
                 .orElseThrow(() -> new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "WEB_BOOKING_DISABLED",
                         "Richieste online chiuse", "Al momento il locale non accetta richieste dal sito: chiamaci."));
-        if (r.guests() < 1 || r.guests() > policy.maxPartySizeWeb()) {
+        // FIX-1: il massimo segue la capienza del locale (nessun secondo limite configurabile); i posti veri li controlla
+        // comunque il registro, qui sotto in anteprima e in modo vincolante alla conferma
+        int maxParty = calendar.webPartyLimit();
+        if (r.guests() < 1) {
+            throw ApiErrors.invalid("guests", "Indica per quante persone vuoi il tavolo (almeno 1).");
+        }
+        if (r.guests() > maxParty) {
             throw new ApiException(HttpStatus.UNPROCESSABLE_CONTENT, "PARTY_TOO_LARGE", "Gruppo numeroso",
-                    "Dal sito si può chiedere un tavolo fino a " + policy.maxPartySizeWeb()
-                            + " persone: per gruppi più grandi chiamaci.", Map.of("maxPartySize", policy.maxPartySizeWeb()));
+                    "Dal sito si può chiedere un tavolo fino a " + maxParty + " persone: per un gruppo più numeroso chiamaci.",
+                    Map.of("maxPartySize", maxParty));
         }
         EventBooking.BookableEvent event = r.eventId() == null ? null : bookableEvent(r.eventId(), r.guests(), now, policy);
         Slot slot = event == null ? webSlot(r.date(), r.time(), policy, now) : null;
@@ -175,6 +183,11 @@ public class ReservationService {
             }
         }
 
+        long createWait = limiter.create(clientIp);
+        if (createWait > 0) {
+            throw rateLimited(createWait, "Da questa connessione sono già arrivate molte richieste nell'ultima ora: riprova "
+                    + waitText(createWait) + " o chiamaci.");
+        }
         UUID id = store.insert(new ReservationStore.NewRow(newReference(), "PENDING", "WEB", BusinessTime.serviceDate(start), start,
                 end, r.guests(), slot == null ? null : slot.window().id(), zoneId, name, phone, email, notes, null,
                 PRIVACY_VERSION, now, idempotencyKey, fingerprint, null, event == null ? null : event.id()));
@@ -861,6 +874,18 @@ public class ReservationService {
 
     private static String leadText(int minutes) {
         return minutes % 60 == 0 ? (minutes / 60 == 1 ? "un'ora" : minutes / 60 + " ore") : minutes + " minuti";
+    }
+
+    /** Attesa leggibile per i messaggi di {@code 429}: «tra un minuto», «tra 12 minuti», «tra circa 2 ore». */
+    static String waitText(long seconds) {
+        long minutes = Math.max(1, (seconds + 59) / 60);
+        if (minutes == 1) {
+            return "tra un minuto";
+        }
+        if (minutes < 90) {
+            return "tra " + minutes + " minuti";
+        }
+        return "tra circa " + Math.round(minutes / 60.0) + " ore";
     }
 
     private static ApiException rateLimited(long seconds, String message) {

@@ -38,53 +38,45 @@ class OperationsIT extends ReservationTestSupport {
         isoDay = DAY.getDayOfWeek().getValue();
     }
 
-    private ApiClient.Response saveCell(ApiClient client, String band, Integer max) {
-        java.util.HashMap<String, Object> cell = new java.util.HashMap<>();
-        cell.put("isoDay", isoDay);
-        cell.put("band", band);
-        cell.put("maxCovers", max);
-        return client.put("/api/v1/admin/capacity-matrix", Map.of("cells", List.of(cell)));
+    private ApiClient.Response venueCapacity(ApiClient client, int capacity) {
+        return client.put("/api/v1/admin/venue-capacity", Map.of("capacity", capacity));
     }
 
-    private JsonNode cell(JsonNode matrix, String band) {
-        for (JsonNode c : matrix.path("cells")) {
-            if (c.path("isoDay").asInt() == isoDay && c.path("band").asString().equals(band)) {
-                return c;
-            }
-        }
-        throw new AssertionError("cella mancante");
-    }
-
+    /** FIX-1: una sola capienza per tutto il locale, la stessa in ogni giorno e fascia, applicata dal registro dei posti. */
     @Test
-    void capienzaPerGiornoEFasciaSulRegistro() {
-        JsonNode matrix = staff.get("/api/v1/admin/capacity-matrix").body();
-        assertThat(cell(matrix, "APERITIVO").path("offered").asBoolean()).isTrue();
-        assertThat(cell(matrix, "APERITIVO").path("maxCovers").isNull()).as("senza limite = capienza del locale").isTrue();
-        assertThat(cell(matrix, "COLAZIONE").path("offered").asBoolean()).isFalse();
-        assertThat(saveCell(staff, "APERITIVO", 6).status()).as("solo il titolare").isEqualTo(403);
-        assertThat(owner.postWithCsrf("/api/v1/admin/opening-exceptions", Map.of("day", DAY.toString(), "closed", true), "inventato")
-                .status()).as("CSRF").isEqualTo(403);
-        assertThat(saveCell(owner, "APERITIVO", -1).code()).isEqualTo("VALIDATION_FAILED");
-        assertThat(saveCell(owner, "MERENDA", 5).code()).isEqualTo("VALIDATION_FAILED");
-        ApiClient.Response saved = saveCell(owner, "APERITIVO", 6);
+    void capienzaUnicaDelLocaleSulRegistro() {
+        assertThat(venueCapacity(staff, 6).status()).as("solo il titolare").isEqualTo(403);
+        assertThat(owner.putWithCsrf("/api/v1/admin/venue-capacity", Map.of("capacity", 6), "inventato").status()).as("CSRF")
+                .isEqualTo(403);
+        assertThat(venueCapacity(owner, 0).code()).isEqualTo("VALIDATION_FAILED");
+        assertThat(venueCapacity(owner, 1001).code()).isEqualTo("VALIDATION_FAILED");
+        assertThat(staff.get("/api/v1/admin/capacity-matrix").status()).as("la tabella per giorno e fascia non esiste più")
+                .isIn(404, 405);
+        ApiClient.Response saved = venueCapacity(owner, 6);
         assertThat(saved.status()).as(saved.raw()).isEqualTo(200);
-        assertThat(cell(saved.body(), "APERITIVO").path("maxCovers").asInt()).isEqualTo(6);
+        assertThat(saved.body().path("physicalCapacity").asInt()).isEqualTo(6);
+        assertThat(staff.get("/api/v1/admin/booking-config").body().path("venueCapacity").asInt()).isEqualTo(6);
+
+        // stessa capienza in un'altra fascia dello stesso giorno: nessun valore per fascia da configurare
+        Map<String, Object> breakfast = new java.util.HashMap<>(Map.of("zoneId", zone, "isoDay", isoDay, "name", "Colazione",
+                "firstStart", "08:00", "lastStart", "10:00", "slotMinutes", 30, "defaultDurationMinutes", 60));
+        assertThat(owner.post("/api/v1/admin/service-windows", breakfast).status()).isEqualTo(201);
 
         UUID first = pending("19:00", 4);
         UUID second = pending("19:00", 4);
         assertThat(confirm(staff, first).status()).isEqualTo(200);
-        assertThat(confirm(staff, second).code()).as("oltre le 6 persone della fascia").isEqualTo("CAPACITY_EXCEEDED");
+        assertThat(confirm(staff, second).code()).as("oltre le 6 persone del locale").isEqualTo("CAPACITY_EXCEEDED");
         JsonNode options = browser().get("/api/v1/public/booking-options?date=" + DAY + "&guests=3").body();
         assertThat(options.toString()).contains("FULL");
 
-        ApiClient.Response below = saveCell(owner, "APERITIVO", 3);
+        ApiClient.Response below = venueCapacity(owner, 3);
         assertThat(below.status()).isEqualTo(409);
         assertThat(below.code()).isEqualTo("CAPACITY_BELOW_CONFIRMED");
-        assertThat(cell(staff.get("/api/v1/admin/capacity-matrix").body(), "APERITIVO").path("maxCovers").asInt())
-                .as("non cambia nulla").isEqualTo(6);
+        assertThat(below.body().path("context").path("conflicts").get(0).path("occupiedCovers").asInt()).isEqualTo(4);
+        assertThat(staff.get("/api/v1/admin/booking-config").body().path("venueCapacity").asInt()).as("non cambia nulla").isEqualTo(6);
         assertThat(audit("BOOKING_CONFIG_UPDATED")).isPositive();
 
-        JsonNode rows = staff.get("/api/v1/admin/capacity-summary?from=" + DAY + "&to=" + DAY).body().path("rows");
+        JsonNode rows = staff.get("/api/v1/admin/capacity-summary?from=" + DAY + "&to=" + DAY + "&band=APERITIVO").body().path("rows");
         assertThat(rows).hasSize(1);
         JsonNode row = rows.get(0);
         assertThat(row.path("band").asString()).isEqualTo("APERITIVO");
@@ -94,19 +86,53 @@ class OperationsIT extends ReservationTestSupport {
         assertThat(row.path("guests").asInt()).isEqualTo(4);
         assertThat(row.path("capacity").asInt()).isEqualTo(6);
         assertThat(row.path("available").asInt()).as("il gruppo più grande ancora accoglibile").isEqualTo(6);
+        JsonNode morning = staff.get("/api/v1/admin/capacity-summary?from=" + DAY + "&to=" + DAY + "&band=COLAZIONE").body().path("rows");
+        assertThat(morning.get(0).path("capacity").asInt()).as("stessa capienza a colazione").isEqualTo(6);
         assertThat(staff.get("/api/v1/admin/capacity-summary?from=" + DAY + "&to=" + DAY.plusDays(80)).code())
                 .isEqualTo("VALIDATION_FAILED");
         assertThat(browser().get("/api/v1/admin/capacity-summary").status()).isEqualTo(401);
     }
 
+    /** FIX-1, req. 6.4: una settimana alla volta, una fascia: una riga per ogni giorno, anche senza fascia quel giorno. */
+    @Test
+    void riepilogoSettimanaleDiUnaFascia() {
+        LocalDate monday = DAY.with(java.time.DayOfWeek.MONDAY);
+        JsonNode week = staff.get("/api/v1/admin/capacity-summary?from=" + monday + "&to=" + monday.plusDays(6) + "&band=APERITIVO")
+                .body().path("rows");
+        assertThat(week).hasSize(7);
+        for (JsonNode r : week) {
+            assertThat(r.path("band").asString()).isEqualTo("APERITIVO");
+        }
+        JsonNode day = java.util.stream.StreamSupport.stream(week.spliterator(), false)
+                .filter(r -> r.path("date").asString().equals(DAY.toString())).findFirst().orElseThrow();
+        assertThat(day.path("capacity").asInt()).isEqualTo(20);
+        assertThat(staff.get("/api/v1/admin/capacity-summary?from=" + monday + "&to=" + monday.plusDays(6) + "&band=MERENDA").code())
+                .isEqualTo("VALIDATION_FAILED");
+    }
+
     @Test
     void capienzaConcorrenteMaiOltreIlLimite() {
-        assertThat(saveCell(owner, "APERITIVO", 6).status()).isEqualTo(200);
+        assertThat(venueCapacity(owner, 6).status()).isEqualTo(200);
         List<UUID> requests = List.of(pending("19:00", 4), pending("19:00", 4), pending("19:30", 4), pending("19:00", 3));
         List<Callable<Integer>> tasks = requests.stream().<Callable<Integer>>map(id -> () -> confirm(staff, id).status()).toList();
         long ok = Concurrency.run(tasks).stream().filter(r -> r.ok() && r.value() == 200).count();
         assertThat(ok).as("4+4 o 4+3 superano 6: ne passa una sola").isEqualTo(1);
         assertThat(jdbc.sql("SELECT max(occupied_covers) FROM capacity_slots").query(Integer.class).single()).isLessThanOrEqualTo(6);
+    }
+
+    /** Riduzione della capienza e conferme nello stesso momento: mai più persone confermate della capienza salvata. */
+    @Test
+    void riduzioneDellaCapienzaConConfermeContemporanee() {
+        List<UUID> requests = List.of(pending("19:00", 5), pending("19:00", 5), pending("19:00", 5));
+        List<Callable<Integer>> tasks = new java.util.ArrayList<>(
+                requests.stream().<Callable<Integer>>map(id -> () -> confirm(staff, id).status()).toList());
+        tasks.add(() -> venueCapacity(owner, 8).status());
+        Concurrency.run(tasks);
+        int capacity = jdbc.sql("SELECT physical_capacity FROM capacity_zones WHERE id = ?").param(zone).query(Integer.class).single();
+        int occupied = jdbc.sql("SELECT coalesce(max(occupied_covers), 0) FROM capacity_slots").query(Integer.class).single();
+        assertThat(occupied).as("confermati entro la capienza finale (%d)", capacity).isLessThanOrEqualTo(capacity);
+        assertThat(jdbc.sql("SELECT count(*) FROM capacity_slots WHERE capacity_covers <> ?").param(capacity)
+                .query(Integer.class).single()).as("tutti i quanti con la capienza unica").isZero();
     }
 
     @Test
@@ -167,11 +193,82 @@ class OperationsIT extends ReservationTestSupport {
         assertThat(closed.body().path("activeReservations").asInt()).isZero();
         assertThat(web(browser(), webBody(nextWeek, "19:00", 2, nextPhone())).code()).as("chiusura straordinaria").isEqualTo("DAY_CLOSED");
         assertThat(owner.post("/api/v1/admin/opening-exceptions", Map.of("day", nextWeek.toString(), "closed", true)).code())
-                .isEqualTo("EXCEPTION_EXISTS");
+                .isEqualTo("EXCEPTION_OVERLAPS");
         assertThat(owner.delete("/api/v1/admin/opening-exceptions/" + closed.body().path("exception").path("id").asString()).status())
                 .isEqualTo(204);
         assertThat(web(browser(), webBody(nextWeek, "19:00", 2, nextPhone())).status()).isEqualTo(201);
         assertThat(owner.post("/api/v1/admin/opening-exceptions", Map.of("day", DAY.minusDays(30).toString(), "closed", true)).code())
                 .isEqualTo("VALIDATION_FAILED");
+    }
+
+    private ApiClient.Response opening(LocalDate from, LocalDate to, boolean closed) {
+        Map<String, Object> body = new java.util.HashMap<>(Map.of("from", from.toString(), "to", to.toString(), "closed", closed));
+        if (!closed) {
+            body.put("opensAt", "17:00");
+            body.put("closesAt", "23:00");
+        }
+        return owner.post("/api/v1/admin/opening-exceptions", body);
+    }
+
+    /** FIX-1, req. 6.6: chiusure e aperture su un intervallo di giorni, estremi compresi, senza sovrapposizioni. */
+    @Test
+    void chiusureEApertureSuUnIntervallo() {
+        LocalDate first = DAY.plusDays(7);
+        LocalDate last = DAY.plusDays(14); // stesso giorno della settimana della fascia di prova
+        ApiClient.Response range = opening(first, last, true);
+        assertThat(range.status()).as(range.raw()).isEqualTo(201);
+        assertThat(range.body().path("exception").path("endDay").asString()).isEqualTo(last.toString());
+        String closedDates = browser().get("/api/v1/public/booking-options").body().path("closedDates").toString();
+        for (LocalDate d = first; !d.isAfter(last); d = d.plusDays(1)) {
+            assertThat(closedDates).as("chiuso il %s", d).contains(d.toString());
+        }
+        assertThat(web(browser(), webBody(first, "19:00", 2, nextPhone())).code()).isEqualTo("DAY_CLOSED");
+        assertThat(web(browser(), webBody(last, "19:00", 2, nextPhone())).code()).as("ultimo giorno compreso").isEqualTo("DAY_CLOSED");
+
+        assertThat(opening(DAY.plusDays(10), DAY.plusDays(20), false).code()).as("giorni già in un'altra eccezione")
+                .isEqualTo("EXCEPTION_OVERLAPS");
+        assertThat(opening(DAY.plusDays(30), DAY.plusDays(29), true).code()).as("fine prima dell'inizio").isEqualTo("VALIDATION_FAILED");
+        assertThat(opening(DAY.plusDays(30), DAY.plusDays(30 + 400), true).code()).as("al massimo un anno").isEqualTo("VALIDATION_FAILED");
+        assertThat(owner.post("/api/v1/admin/opening-exceptions", Map.of("from", DAY.plusDays(30).toString(), "closed", false)).code())
+                .as("apertura senza orari").isEqualTo("VALIDATION_FAILED");
+
+        // modifica: l'intervallo si accorcia e l'ultimo giorno torna prenotabile
+        String id = range.body().path("exception").path("id").asString();
+        ApiClient.Response shorter = owner.put("/api/v1/admin/opening-exceptions/" + id,
+                Map.of("from", first.toString(), "to", first.plusDays(1).toString(), "closed", true, "note", "Ferie"));
+        assertThat(shorter.status()).as(shorter.raw()).isEqualTo(200);
+        assertThat(web(browser(), webBody(last, "19:00", 2, nextPhone())).status()).isEqualTo(201);
+        assertThat(staff.put("/api/v1/admin/opening-exceptions/" + id, Map.of("from", first.toString(), "closed", true)).status())
+                .as("solo il titolare").isEqualTo(403);
+        assertThat(owner.get("/api/v1/admin/opening-exceptions").body().toString()).contains("Ferie");
+    }
+
+    /** Una chiusura su giorni con prenotazioni: segnalate con i conteggi, mai cancellate da sole. */
+    @Test
+    void chiusuraConPrenotazioniEsistentiLeSegnalaSenzaCancellarle() {
+        LocalDate day = DAY.plusDays(21);
+        UUID confirmed = fixtures.confirm(zone, window, BusinessTime.toInstant(day, LocalTime.of(19, 0)), Duration.ofHours(2), 3);
+        ApiClient.Response closed = opening(day, day.plusDays(1), true);
+        assertThat(closed.status()).as(closed.raw()).isEqualTo(201);
+        assertThat(closed.body().path("activeReservations").asInt()).isEqualTo(1);
+        JsonNode conflict = closed.body().path("conflicts").get(0);
+        assertThat(conflict.path("date").asString()).isEqualTo(day.toString());
+        assertThat(conflict.path("confirmed").asInt()).isEqualTo(1);
+        assertThat(conflict.path("confirmedGuests").asInt()).isEqualTo(3);
+        assertThat(closed.body().toString()).as("nessun dato personale").doesNotContain("Cliente demo").doesNotContain("+39");
+        assertThat(jdbc.sql("SELECT status FROM reservations WHERE id = ?").param(confirmed).query(String.class).single())
+                .isEqualTo("CONFIRMED");
+    }
+
+    /** Due titolari salvano intervalli sovrapposti nello stesso momento: ne resta uno solo (vincolo di esclusione). */
+    @Test
+    void intervalliContemporaneiNonSiSovrappongono() {
+        List<Callable<Integer>> tasks = List.of(
+                () -> opening(DAY.plusDays(40), DAY.plusDays(45), true).status(),
+                () -> opening(DAY.plusDays(43), DAY.plusDays(50), true).status(),
+                () -> opening(DAY.plusDays(44), DAY.plusDays(44), false).status());
+        long created = Concurrency.run(tasks).stream().filter(r -> r.ok() && r.value() == 201).count();
+        assertThat(created).isEqualTo(1);
+        assertThat(jdbc.sql("SELECT count(*) FROM opening_exceptions").query(Integer.class).single()).isEqualTo(1);
     }
 }

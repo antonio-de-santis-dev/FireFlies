@@ -122,6 +122,11 @@ public final class ApiClient {
         return send(withBody("POST", path, body).header("X-XSRF-TOKEN", token), false);
     }
 
+    /** PUT con un token CSRF inventato. */
+    public Response putWithCsrf(String path, Object body, String token) {
+        return send(withBody("PUT", path, body).header("X-XSRF-TOKEN", token), false);
+    }
+
     public Response login(String email, String password) {
         return post("/api/v1/auth/login", Map.of("email", email, "password", password));
     }

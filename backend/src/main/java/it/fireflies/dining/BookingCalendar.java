@@ -70,7 +70,12 @@ public class BookingCalendar {
         List<UUID> active = activeZones().stream().map(DiningStore.ZoneRow::id).toList();
         List<DiningStore.WindowRow> windows = store.windows().stream().filter(w -> active.contains(w.zoneId())).toList();
         java.util.Map<LocalDate, Boolean> special = new java.util.HashMap<>();
-        store.openingExceptionsBetween(from, to).forEach(e -> special.put(e.day(), !e.closed()));
+        // FIX-1: una data straordinaria può coprire un intervallo di giorni
+        for (DiningStore.OpeningExceptionRow e : store.openingExceptionsBetween(from, to)) {
+            for (LocalDate d = e.day().isBefore(from) ? from : e.day(); !d.isAfter(e.endDay()) && !d.isAfter(to); d = d.plusDays(1)) {
+                special.put(d, !e.closed());
+            }
+        }
         boolean[] weeklyClosed = new boolean[8];
         for (int d = 1; d <= 7; d++) {
             weeklyClosed[d] = store.weeklyClosed(d);
@@ -91,6 +96,23 @@ public class BookingCalendar {
         }
         return closed;
     }
+
+    /** Capienza massima del locale (FIX-1): persone presenti al massimo, la stessa in ogni giorno e fascia. */
+    public int venueCapacity() {
+        return activeZones().stream().mapToInt(DiningStore.ZoneRow::physicalCapacity).sum();
+    }
+
+    /**
+     * Persone al massimo per una richiesta dal sito (FIX-1): la capienza del locale, ma mai oltre {@link #WEB_PARTY_CEILING}.
+     * Non è un'impostazione: è un limite di sicurezza fisso (una sola richiesta automatica non può bloccare mezzo locale)
+     * e non rivela al pubblico la capienza vera. I gruppi più grandi passano da «Organizza un evento o un compleanno».
+     */
+    public int webPartyLimit() {
+        return Math.min(venueCapacity(), WEB_PARTY_CEILING);
+    }
+
+    /** Tetto fisso delle persone per una richiesta dal sito (BOOKING_RULES §5, FIX-1). */
+    public static final int WEB_PARTY_CEILING = 30;
 
     public List<DiningStore.ZoneRow> activeZones() {
         return store.zones().stream().filter(DiningStore.ZoneRow::active).toList();

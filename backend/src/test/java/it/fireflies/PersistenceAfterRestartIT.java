@@ -92,7 +92,7 @@ class PersistenceAfterRestartIT {
                     "isoDay", java.time.LocalDate.parse(day).getDayOfWeek().getValue(), "name", "Aperitivo", "firstStart", "19:00",
                     "lastStart", "19:00", "slotMinutes", 30, "defaultDurationMinutes", 120)).status()).isEqualTo(201);
             assertThat(owner.put("/api/v1/admin/booking-policy", Map.of("webBookingEnabled", true, "minLeadMinutes", 60,
-                    "maxAdvanceDays", 60, "maxPartySizeWeb", 12, "pendingExpiryMinutesBeforeStart", 60)).status()).isEqualTo(200);
+                    "maxAdvanceDays", 60, "pendingExpiryMinutesBeforeStart", 60)).status()).isEqualTo(200);
             ApiClient.Response request = client(first).post("/api/v1/public/reservations", Map.of("date", day, "time", "19:00",
                     "guests", 6, "name", "Cliente di prova", "phone", "300 000 0099", "privacyAccepted", true),
                     Map.of("Idempotency-Key", java.util.UUID.randomUUID().toString()));

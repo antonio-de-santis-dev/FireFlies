@@ -100,9 +100,14 @@ class ApiSecurityMatrixIT extends ReservationTestSupport {
                 new Endpoint("GET", "/api/v1/admin/users"), new Endpoint("POST", "/api/v1/admin/users"),
                 new Endpoint("GET", "/api/v1/admin/site-settings"), new Endpoint("PUT", "/api/v1/admin/site-settings"),
                 new Endpoint("GET", "/api/v1/admin/site-content"), new Endpoint("PUT", "/api/v1/admin/site-content"),
-                new Endpoint("PUT", "/api/v1/admin/capacity-matrix"), new Endpoint("POST", "/api/v1/admin/opening-exceptions"),
+                new Endpoint("PUT", "/api/v1/admin/venue-capacity"), new Endpoint("POST", "/api/v1/admin/opening-exceptions"),
                 new Endpoint("PUT", "/api/v1/admin/booking-policy"), new Endpoint("POST", "/api/v1/admin/booking-exceptions"),
-                new Endpoint("POST", "/api/v1/admin/service-windows"), new Endpoint("POST", "/api/v1/admin/capacity-zones")));
+                new Endpoint("POST", "/api/v1/admin/service-windows"), new Endpoint("POST", "/api/v1/admin/capacity-zones"),
+                // FIX-1: percorsi con un id oltre i 64 caratteri davano 500 invece di 403 (audit troppo lungo)
+                new Endpoint("PUT", "/api/v1/admin/service-windows/00000000-0000-0000-0000-000000000000"),
+                new Endpoint("PUT", "/api/v1/admin/opening-exceptions/00000000-0000-0000-0000-000000000000"),
+                new Endpoint("DELETE", "/api/v1/admin/opening-exceptions/00000000-0000-0000-0000-000000000000"),
+                new Endpoint("DELETE", "/api/v1/admin/booking-exceptions/00000000-0000-0000-0000-000000000000")));
         List<String> wrong = new ArrayList<>();
         for (Endpoint e : ownerOnly) {
             int status = call(staff, e, true).status();

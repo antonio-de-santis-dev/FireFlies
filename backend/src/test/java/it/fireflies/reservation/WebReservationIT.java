@@ -95,9 +95,10 @@ class WebReservationIT extends ReservationTestSupport {
         assertThat(web(client, webBody(DAY, "12:00", 2, nextPhone())).code()).isEqualTo("SLOT_NOT_AVAILABLE");
         assertThat(web(client, webBody(DAY.plusDays(1), "19:00", 2, nextPhone())).code()).as("nessuna fascia quel giorno")
                 .isEqualTo("SLOT_NOT_AVAILABLE");
-        assertThat(web(client, webBody(DAY, "19:00", 13, nextPhone())).code()).isEqualTo("PARTY_TOO_LARGE");
+        assertThat(web(client, webBody(DAY, "19:00", 21, nextPhone())).code()).as("oltre la capienza del locale (20)")
+                .isEqualTo("PARTY_TOO_LARGE");
         assertThat(web(client, webBody(DAY.plusDays(70), "19:00", 2, nextPhone())).code()).isEqualTo("TOO_FAR");
-        webLimiter.clear(); // ogni tentativo conta nel limite per indirizzo: qui si provano solo le regole
+        webLimiter.clear(); // i tentativi rifiutati contano solo nel limite largo dei tentativi (FIX-1): qui si provano le regole
 
         clock.advance(Duration.between(Instant.now(), BusinessTime.toInstant(DAY, LocalTime.of(18, 30))));
         assertThat(web(client, webBody(DAY, "19:00", 2, nextPhone())).code()).as("anticipo minimo di un'ora").isEqualTo("TOO_EARLY");
@@ -110,7 +111,7 @@ class WebReservationIT extends ReservationTestSupport {
         assertThat(web(client, webBody(DAY, "19:00", 2, nextPhone())).code()).isEqualTo("DAY_CLOSED");
         assertThat(owner.delete("/api/v1/admin/booking-exceptions/" + closed.body().path("id").asString()).status()).isEqualTo(204);
 
-        policy(owner, false, 60, 60, 12);
+        policy(owner, false, 60, 60);
         webLimiter.clear();
         assertThat(web(client, webBody(DAY, "19:00", 2, nextPhone())).code()).isEqualTo("WEB_BOOKING_DISABLED");
         assertThat(count()).isZero();
@@ -142,12 +143,12 @@ class WebReservationIT extends ReservationTestSupport {
     void orariPrenotabiliDelGiorno() {
         JsonNode options = browser().get("/api/v1/public/booking-options?date=" + DAY).body();
         assertThat(options.path("webBookingEnabled").asBoolean()).isTrue();
-        assertThat(options.path("maxPartySize").asInt()).isEqualTo(12);
+        assertThat(options.path("maxPartySize").asInt()).as("capienza del locale (20), mai oltre 30").isEqualTo(20);
         assertThat(options.path("groups").get(0).path("name").asString()).isEqualTo("Aperitivo");
         assertThat(options.path("groups").get(0).path("slots").size()).isEqualTo(7);
         assertThat(browser().get("/api/v1/public/booking-options?date=" + DAY.plusDays(1)).body().path("groups").size()).isZero();
 
-        policy(owner, false, 60, 60, 12);
+        policy(owner, false, 60, 60);
         assertThat(browser().get("/api/v1/public/booking-options?date=" + DAY).body().path("webBookingEnabled").asBoolean()).isFalse();
     }
 
@@ -200,10 +201,9 @@ class WebReservationIT extends ReservationTestSupport {
         assertThat(perPhone.status()).as("al massimo 3 richieste al giorno dallo stesso telefono").isEqualTo(429);
         assertThat(perPhone.body().path("context").path("retryAfterSeconds").asInt()).isPositive();
 
-        assertThat(web(client, webBody(DAY, "20:00", 2, nextPhone())).status()).isEqualTo(201);
-        assertThat(web(client, webBody(DAY, "20:30", 2, nextPhone())).status()).as("sesta richiesta dell'ora dallo stesso indirizzo")
-                .isEqualTo(429);
-        assertThat(count()).isEqualTo(4);
+        assertThat(web(client, webBody(DAY, "20:00", 2, nextPhone())).status()).as("un altro telefono dallo stesso indirizzo")
+                .isEqualTo(201);
+        assertThat(count()).isEqualTo(4); // limiti per indirizzo: WebRateLimitIT (FIX-1)
     }
 
     @Test

@@ -28,7 +28,7 @@ class ReservationRulesTest {
     @Test
     void arriviDellaFascia() {
         DiningStore.WindowRow w = new DiningStore.WindowRow(UUID.randomUUID(), UUID.randomUUID(), 5, "Aperitivo",
-                LocalTime.of(18, 0), LocalTime.of(20, 30), 30, 120, null, LocalDate.of(2026, 1, 1), null, true);
+                LocalTime.of(18, 0), LocalTime.of(20, 30), 30, 120, LocalDate.of(2026, 1, 1), null, true);
         assertThat(ReservationService.arrivalOf(w, LocalTime.of(18, 0))).isTrue();
         assertThat(ReservationService.arrivalOf(w, LocalTime.of(20, 30))).isTrue();
         assertThat(ReservationService.arrivalOf(w, LocalTime.of(19, 15))).isFalse();

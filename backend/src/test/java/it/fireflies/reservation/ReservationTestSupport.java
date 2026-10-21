@@ -63,12 +63,12 @@ public abstract class ReservationTestSupport extends SecurityIntegrationTest {
         ApiClient.Response created = owner.post("/api/v1/admin/service-windows", w);
         assertThat(created.status()).as(created.raw()).isEqualTo(201);
         window = UUID.fromString(created.body().path("id").asString());
-        policy(owner, true, 60, 60, 12);
+        policy(owner, true, 60, 60);
     }
 
-    protected void policy(ApiClient owner, boolean web, int lead, int advance, int party) {
+    protected void policy(ApiClient owner, boolean web, int lead, int advance) {
         ApiClient.Response r = owner.put("/api/v1/admin/booking-policy", Map.of("webBookingEnabled", web, "minLeadMinutes", lead,
-                "maxAdvanceDays", advance, "maxPartySizeWeb", party, "pendingExpiryMinutesBeforeStart", 60));
+                "maxAdvanceDays", advance, "pendingExpiryMinutesBeforeStart", 60));
         assertThat(r.status()).as(r.raw()).isEqualTo(200);
     }
 

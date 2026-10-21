@@ -40,6 +40,8 @@ public final class ConstraintViolationTranslator {
                     "Posti esauriti", "Non ci sono abbastanza posti liberi in quell'orario.")),
             Map.entry("ck_event_quota", new Translation(HttpStatus.CONFLICT, "EVENT_QUOTA_EXCEEDED",
                     "Posti dell'evento esauriti", "La quota di posti dell'evento è esaurita.")),
+            Map.entry("ex_opening_exception_overlap", new Translation(HttpStatus.CONFLICT, "EXCEPTION_OVERLAPS",
+                    "Date sovrapposte", "Questi giorni si sovrappongono a un'altra chiusura o apertura straordinaria.")),
             Map.entry("ck_override_complete", new Translation(HttpStatus.UNPROCESSABLE_CONTENT, "OVERRIDE_REASON_REQUIRED",
                     "Motivo obbligatorio", "L'eccezione sui posti del tavolo richiede autore e motivo.")));
 

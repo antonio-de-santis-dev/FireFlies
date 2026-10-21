@@ -25,7 +25,7 @@ public class DiningStore {
     }
 
     public record WindowRow(UUID id, UUID zoneId, int isoDay, String name, LocalTime firstStart, LocalTime lastStart,
-            int slotMinutes, int defaultDurationMinutes, Integer maxCovers, LocalDate validFrom, LocalDate validTo,
+            int slotMinutes, int defaultDurationMinutes, LocalDate validFrom, LocalDate validTo,
             boolean active) {
 
         /** Minuti dall'inizio della giornata in cui finisce l'ultima permanenza standard (max 24:00). */
@@ -46,15 +46,27 @@ public class DiningStore {
     }
 
     public record PolicyRow(UUID id, LocalDate effectiveFrom, boolean webBookingEnabled, int minLeadMinutes, int maxAdvanceDays,
-            int maxPartySizeWeb, int pendingExpiryMinutesBeforeStart) {
+            int pendingExpiryMinutesBeforeStart) {
     }
 
-    public record ExceptionRow(UUID id, LocalDate serviceDate, UUID serviceWindowId, String kind, Integer capacityOverride,
-            String reason) {
+    /** Fascia chiusa agli arrivi in una data (FIX-1: l'unico tipo rimasto, la capienza per data non esiste più). */
+    public record ExceptionRow(UUID id, LocalDate serviceDate, UUID serviceWindowId, String kind, String reason) {
     }
 
-    /** Chiusura o apertura straordinaria del locale in una data (tabella {@code opening_exceptions} della V2). */
-    public record OpeningExceptionRow(UUID id, LocalDate day, boolean closed, LocalTime opensAt, LocalTime closesAt, String note) {
+    /**
+     * Chiusura o apertura straordinaria del locale dal giorno {@code day} al giorno {@code endDay} compresi (un giorno
+     * solo: {@code endDay = day}). Tabella {@code opening_exceptions} della V2, intervallo dalla V12 (FIX-1).
+     */
+    public record OpeningExceptionRow(UUID id, LocalDate day, LocalDate endDay, boolean closed, LocalTime opensAt,
+            LocalTime closesAt, String note) {
+
+        public boolean includes(LocalDate date) {
+            return !date.isBefore(day) && !date.isAfter(endDay);
+        }
+    }
+
+    /** Prenotazioni attive di un giorno: solo conteggi, nessun dato personale. */
+    public record DayReservations(LocalDate date, int pending, int confirmed, int confirmedGuests) {
     }
 
     private final JdbcClient jdbc;
@@ -159,7 +171,7 @@ public class DiningStore {
     List<WindowRow> windows() {
         return jdbc.sql("""
                 SELECT id, zone_id, iso_day, name, first_start, last_start, slot_minutes, default_duration_minutes,
-                       max_covers, valid_from, valid_to, active
+                       valid_from, valid_to, active
                   FROM service_windows ORDER BY iso_day, first_start, name
                 """).query(DiningStore::window).list();
     }
@@ -175,11 +187,11 @@ public class DiningStore {
     UUID insertWindow(WindowRow w) {
         return jdbc.sql("""
                 INSERT INTO service_windows (zone_id, iso_day, name, first_start, last_start, slot_minutes,
-                                             default_duration_minutes, max_covers, valid_from, valid_to, active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+                                             default_duration_minutes, valid_from, valid_to, active)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
                 """)
                 .params(w.zoneId(), w.isoDay(), w.name(), w.firstStart(), w.lastStart(), w.slotMinutes(),
-                        w.defaultDurationMinutes(), w.maxCovers(), w.validFrom(), w.validTo(), w.active())
+                        w.defaultDurationMinutes(), w.validFrom(), w.validTo(), w.active())
                 .query(UUID.class).single();
     }
 
@@ -187,11 +199,11 @@ public class DiningStore {
         jdbc.sql("""
                 UPDATE service_windows
                    SET zone_id = ?, iso_day = ?, name = ?, first_start = ?, last_start = ?, slot_minutes = ?,
-                       default_duration_minutes = ?, max_covers = ?, valid_from = ?, valid_to = ?, active = ?
+                       default_duration_minutes = ?, valid_from = ?, valid_to = ?, active = ?
                  WHERE id = ?
                 """)
                 .params(w.zoneId(), w.isoDay(), w.name(), w.firstStart(), w.lastStart(), w.slotMinutes(),
-                        w.defaultDurationMinutes(), w.maxCovers(), w.validFrom(), w.validTo(), w.active(), w.id())
+                        w.defaultDurationMinutes(), w.validFrom(), w.validTo(), w.active(), w.id())
                 .update();
     }
 
@@ -207,52 +219,52 @@ public class DiningStore {
 
     Optional<PolicyRow> policyOn(LocalDate date) {
         return jdbc.sql("""
-                SELECT id, effective_from, web_booking_enabled, min_lead_minutes, max_advance_days, max_party_size_web,
+                SELECT id, effective_from, web_booking_enabled, min_lead_minutes, max_advance_days,
                        pending_expiry_minutes_before_start
                   FROM booking_policies WHERE effective_from <= ? ORDER BY effective_from DESC LIMIT 1
                 """).param(date).query(DiningStore::policy).optional();
     }
 
-    void upsertPolicy(LocalDate effectiveFrom, boolean web, int lead, int advance, int party, int expiry, UUID actor) {
+    void upsertPolicy(LocalDate effectiveFrom, boolean web, int lead, int advance, int expiry, UUID actor) {
         jdbc.sql("""
                 INSERT INTO booking_policies (effective_from, web_booking_enabled, min_lead_minutes, max_advance_days,
-                                              max_party_size_web, pending_expiry_minutes_before_start, created_by)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                                              pending_expiry_minutes_before_start, created_by)
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT (effective_from) DO UPDATE
                    SET web_booking_enabled = EXCLUDED.web_booking_enabled, min_lead_minutes = EXCLUDED.min_lead_minutes,
-                       max_advance_days = EXCLUDED.max_advance_days, max_party_size_web = EXCLUDED.max_party_size_web,
+                       max_advance_days = EXCLUDED.max_advance_days,
                        pending_expiry_minutes_before_start = EXCLUDED.pending_expiry_minutes_before_start,
                        created_by = EXCLUDED.created_by, created_at = now()
                 """)
-                .params(effectiveFrom, web, lead, advance, party, expiry, actor).update();
+                .params(effectiveFrom, web, lead, advance, expiry, actor).update();
     }
 
     // --- eccezioni ----------------------------------------------------------------------------------------------
 
     List<ExceptionRow> exceptionsFrom(LocalDate from) {
         return jdbc.sql("""
-                SELECT id, service_date, service_window_id, kind, capacity_override, reason
+                SELECT id, service_date, service_window_id, kind, reason
                   FROM booking_exceptions WHERE service_date >= ? ORDER BY service_date, service_window_id NULLS FIRST
                 """).param(from).query(DiningStore::exception).list();
     }
 
     List<ExceptionRow> exceptionsOn(LocalDate date) {
         return jdbc.sql("""
-                SELECT id, service_date, service_window_id, kind, capacity_override, reason
+                SELECT id, service_date, service_window_id, kind, reason
                   FROM booking_exceptions WHERE service_date = ?
                 """).param(date).query(DiningStore::exception).list();
     }
 
     Optional<ExceptionRow> exception(UUID id) {
-        return jdbc.sql("SELECT id, service_date, service_window_id, kind, capacity_override, reason FROM booking_exceptions WHERE id = ?")
+        return jdbc.sql("SELECT id, service_date, service_window_id, kind, reason FROM booking_exceptions WHERE id = ?")
                 .param(id).query(DiningStore::exception).optional();
     }
 
-    UUID insertException(LocalDate date, UUID windowId, String kind, Integer override, String reason, UUID actor) {
+    UUID insertClosedException(LocalDate date, UUID windowId, String reason, UUID actor) {
         return jdbc.sql("""
-                INSERT INTO booking_exceptions (service_date, service_window_id, kind, capacity_override, reason, created_by)
-                VALUES (?, ?, ?, ?, ?, ?) RETURNING id
-                """).params(date, windowId, kind, override, reason, actor).query(UUID.class).single();
+                INSERT INTO booking_exceptions (service_date, service_window_id, kind, reason, created_by)
+                VALUES (?, ?, 'CLOSED', ?, ?) RETURNING id
+                """).params(date, windowId, reason, actor).query(UUID.class).single();
     }
 
     void deleteException(UUID id) {
@@ -267,29 +279,51 @@ public class DiningStore {
                 .query(Boolean.class).single();
     }
 
+    private static final String OPENING_COLUMNS = "id, day, end_day, closed, opens_at, closes_at, note";
+
+    /** Date straordinarie che toccano l'intervallo, anche solo in parte. */
     List<OpeningExceptionRow> openingExceptionsBetween(LocalDate from, LocalDate to) {
-        return jdbc.sql("SELECT id, day, closed, opens_at, closes_at, note FROM opening_exceptions WHERE day BETWEEN ? AND ? ORDER BY day")
-                .params(from, to).query(DiningStore::openingException).list();
+        return jdbc.sql("SELECT " + OPENING_COLUMNS + " FROM opening_exceptions WHERE day <= ? AND end_day >= ? ORDER BY day")
+                .params(to, from).query(DiningStore::openingException).list();
     }
 
     Optional<OpeningExceptionRow> openingException(LocalDate day) {
-        return jdbc.sql("SELECT id, day, closed, opens_at, closes_at, note FROM opening_exceptions WHERE day = ?")
+        return jdbc.sql("SELECT " + OPENING_COLUMNS + " FROM opening_exceptions WHERE ? BETWEEN day AND end_day")
                 .param(day).query(DiningStore::openingException).optional();
     }
 
     Optional<OpeningExceptionRow> openingException(UUID id) {
-        return jdbc.sql("SELECT id, day, closed, opens_at, closes_at, note FROM opening_exceptions WHERE id = ?")
+        return jdbc.sql("SELECT " + OPENING_COLUMNS + " FROM opening_exceptions WHERE id = ?")
                 .param(id).query(DiningStore::openingException).optional();
     }
 
-    UUID insertOpeningException(LocalDate day, boolean closed, LocalTime opensAt, LocalTime closesAt, String note) {
-        return jdbc.sql("INSERT INTO opening_exceptions (day, closed, opens_at, closes_at, note) VALUES (?, ?, ?, ?, ?) RETURNING id")
-                .params(day, closed, opensAt, closesAt, note).query(UUID.class).single();
+    UUID insertOpeningException(LocalDate day, LocalDate endDay, boolean closed, LocalTime opensAt, LocalTime closesAt, String note) {
+        return jdbc.sql("""
+                INSERT INTO opening_exceptions (day, end_day, closed, opens_at, closes_at, note)
+                VALUES (?, ?, ?, ?, ?, ?) RETURNING id
+                """).params(day, endDay, closed, opensAt, closesAt, note).query(UUID.class).single();
     }
 
-    long activeReservationsOn(LocalDate day) {
-        return jdbc.sql("SELECT count(*) FROM reservations WHERE reservation_date = ? AND status IN ('PENDING', 'CONFIRMED')")
-                .param(day).query(Long.class).single();
+    void updateOpeningException(UUID id, LocalDate day, LocalDate endDay, boolean closed, LocalTime opensAt, LocalTime closesAt,
+            String note) {
+        jdbc.sql("""
+                UPDATE opening_exceptions SET day = ?, end_day = ?, closed = ?, opens_at = ?, closes_at = ?, note = ?
+                 WHERE id = ?
+                """).params(day, endDay, closed, opensAt, closesAt, note, id).update();
+    }
+
+    /** Prenotazioni in attesa o confermate per giorno nell'intervallo (solo conteggi). */
+    List<DayReservations> activeReservationsBetween(LocalDate from, LocalDate to) {
+        return jdbc.sql("""
+                SELECT reservation_date,
+                       count(*) FILTER (WHERE status = 'PENDING'),
+                       count(*) FILTER (WHERE status = 'CONFIRMED'),
+                       coalesce(sum(guest_count) FILTER (WHERE status = 'CONFIRMED'), 0)
+                  FROM reservations
+                 WHERE reservation_date BETWEEN ? AND ? AND status IN ('PENDING', 'CONFIRMED')
+                 GROUP BY reservation_date ORDER BY reservation_date
+                """).params(from, to).query((rs, n) -> new DayReservations(rs.getObject(1, LocalDate.class), rs.getInt(2),
+                        rs.getInt(3), rs.getInt(4))).list();
     }
 
     void deleteOpeningException(UUID id) {
@@ -297,8 +331,9 @@ public class DiningStore {
     }
 
     private static OpeningExceptionRow openingException(ResultSet rs, int n) throws SQLException {
-        return new OpeningExceptionRow(rs.getObject(1, UUID.class), rs.getObject(2, LocalDate.class), rs.getBoolean(3),
-                rs.getObject(4, LocalTime.class), rs.getObject(5, LocalTime.class), rs.getString(6));
+        return new OpeningExceptionRow(rs.getObject(1, UUID.class), rs.getObject(2, LocalDate.class),
+                rs.getObject(3, LocalDate.class), rs.getBoolean(4), rs.getObject(5, LocalTime.class),
+                rs.getObject(6, LocalTime.class), rs.getString(7));
     }
 
     private static ZoneRow zone(ResultSet rs, int n) throws SQLException {
@@ -314,17 +349,16 @@ public class DiningStore {
     private static WindowRow window(ResultSet rs, int n) throws SQLException {
         return new WindowRow(rs.getObject("id", UUID.class), rs.getObject("zone_id", UUID.class), rs.getInt("iso_day"),
                 rs.getString("name"), rs.getObject("first_start", LocalTime.class), rs.getObject("last_start", LocalTime.class),
-                rs.getInt("slot_minutes"), rs.getInt("default_duration_minutes"), (Integer) rs.getObject("max_covers"),
-                rs.getObject("valid_from", LocalDate.class), rs.getObject("valid_to", LocalDate.class), rs.getBoolean("active"));
+                rs.getInt("slot_minutes"), rs.getInt("default_duration_minutes"), rs.getObject("valid_from", LocalDate.class), rs.getObject("valid_to", LocalDate.class), rs.getBoolean("active"));
     }
 
     private static PolicyRow policy(ResultSet rs, int n) throws SQLException {
         return new PolicyRow(rs.getObject(1, UUID.class), rs.getObject(2, LocalDate.class), rs.getBoolean(3), rs.getInt(4),
-                rs.getInt(5), rs.getInt(6), rs.getInt(7));
+                rs.getInt(5), rs.getInt(6));
     }
 
     private static ExceptionRow exception(ResultSet rs, int n) throws SQLException {
         return new ExceptionRow(rs.getObject(1, UUID.class), rs.getObject(2, LocalDate.class), rs.getObject(3, UUID.class),
-                rs.getString(4), (Integer) rs.getObject(5), rs.getString(6));
+                rs.getString(4), rs.getString(5));
     }
 }

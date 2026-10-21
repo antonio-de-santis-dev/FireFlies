@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.NotNull;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -29,6 +30,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import it.fireflies.common.ApiErrors;
+import it.fireflies.common.ApiException;
+import it.fireflies.common.ConstraintViolationTranslator;
 import it.fireflies.security.GestoreDetails;
 import it.fireflies.security.Role;
 
@@ -67,11 +70,14 @@ class ReservationController {
     private final ReservationService reservations;
     private final ReservationQueries queries;
     private final BookingOptionsService options;
+    private final WebRequestLimiter limiter;
 
-    ReservationController(ReservationService reservations, ReservationQueries queries, BookingOptionsService options) {
+    ReservationController(ReservationService reservations, ReservationQueries queries, BookingOptionsService options,
+            WebRequestLimiter limiter) {
         this.reservations = reservations;
         this.queries = queries;
         this.options = options;
+        this.limiter = limiter;
     }
 
     // --- pubblico ------------------------------------------------------------------------------------------------
@@ -79,16 +85,35 @@ class ReservationController {
     @GetMapping("/api/v1/public/booking-options")
     ResponseEntity<BookingOptionsService.Options> bookingOptions(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam(required = false) Integer guests) {
+            @RequestParam(required = false) Integer guests, HttpServletRequest request) {
+        // FIX-1: limite proprio delle letture, separato da quello degli invii (consultare non consuma richieste)
+        long wait = limiter.read(request.getRemoteAddr());
+        if (wait > 0) {
+            throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "RATE_LIMITED", "Troppe richieste",
+                    "Stai aggiornando gli orari molto spesso: riprova " + ReservationService.waitText(wait) + ".",
+                    Map.of("retryAfterSeconds", wait));
+        }
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(options.options(date, guests));
     }
 
     @PostMapping("/api/v1/public/reservations")
     ResponseEntity<ReservationService.Receipt> createWeb(@RequestHeader(name = "Idempotency-Key", required = false) String key,
             @RequestBody WebBody body, HttpServletRequest request) {
-        ReservationService.Receipt receipt = reservations.createWeb(new ReservationService.WebRequest(body.date(), body.time(),
+        ReservationService.WebRequest web = new ReservationService.WebRequest(body.date(), body.time(),
                 body.guests() == null ? 0 : body.guests(), body.name(), body.phone(), body.email(), body.notes(),
-                Boolean.TRUE.equals(body.privacyAccepted()), body.website(), body.eventId()), uuid(key), request.getRemoteAddr());
+                Boolean.TRUE.equals(body.privacyAccepted()), body.website(), body.eventId());
+        UUID idempotencyKey = uuid(key);
+        ReservationService.Receipt receipt;
+        try {
+            receipt = reservations.createWeb(web, idempotencyKey, request.getRemoteAddr());
+        } catch (DataIntegrityViolationException e) {
+            // FIX-1: due invii identici quasi contemporanei (doppio tocco, rete che ripete): il secondo perde sul vincolo
+            // della chiave; si rilegge in una nuova transazione e si risponde con la stessa ricevuta del primo
+            if (!ConstraintViolationTranslator.constraintName(e).filter("ux_res_idempotency_key"::equals).isPresent()) {
+                throw e;
+            }
+            receipt = reservations.createWeb(web, idempotencyKey, request.getRemoteAddr());
+        }
         return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore()).body(receipt);
     }
 
