@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight, CalendarDays, Check, CircleAlert, Clock3, Copy, Info, Instagram, LoaderCircle, Minus, PartyPopper, Pencil, Phone, Plus, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../api/client';
-import { bookingOptions, hhmm, newIdempotencyKey, sendRequest, type BookingOptions, type Receipt } from '../api/reservations';
+import { bookingOptions, hhmm, newIdempotencyKey, sendRequest, type BookingOptions, type DayClosure, type Receipt } from '../api/reservations';
 import { capitalize, formatEventDate } from '../data/events';
 import { useStore } from '../store';
 import { Dialog } from './Dialog';
@@ -68,11 +68,15 @@ export function BookingDialog() {
   const submittingRef = useRef(false);
   const bodyRef = useRef<HTMLDivElement>(null);
 
-  // regole generali (richieste aperte, persone massime, giorni prenotabili)
+  // regole generali (richieste aperte, persone massime, giorni prenotabili): a ogni apertura del dialog e, FIX 2, di
+  // nuovo quando si torna sulla scheda (un dialog lasciato aperto mentre il gestore cambia gli orari si aggiorna)
   useEffect(() => {
     let current = true;
-    bookingOptions().then((o) => current && setGeneral(o)).catch(() => current && setGeneral(null));
-    return () => { current = false; };
+    const load = () => bookingOptions().then((o) => current && setGeneral(o)).catch(() => current && setGeneral(null));
+    void load();
+    const onVisible = () => { if (document.visibilityState === 'visible') void load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { current = false; document.removeEventListener('visibilitychange', onVisible); };
   }, []);
 
   // orari del giorno scelto, con la disponibilità per il numero di persone indicato
@@ -90,8 +94,14 @@ export function BookingDialog() {
 
   // giorni chiusi: li dice il backend (orari settimanali, chiusure e aperture straordinarie); il server li rifiuta comunque
   const closedDates = useMemo(() => new Set(general?.closedDates ?? []), [general]);
+  // FIX 2: il motivo distingue «locale chiuso» da «aperto ma senza orari prenotabili» (fasce non configurate o chiuse)
+  const reasons = useMemo(() => new Map<string, DayClosure>((general?.unavailableDays ?? []).map((d) => [d.date, d.reason])), [general]);
   const isClosed = (iso: string) => (general?.closedDates ? closedDates.has(iso)
     : !settings.hours[(new Date(`${iso}T12:00:00`).getDay() + 6) % 7]?.open);
+  const venueClosed = (iso: string) => (reasons.get(iso) ?? 'VENUE_CLOSED') === 'VENUE_CLOSED';
+  const closedText = (iso: string) => (venueClosed(iso)
+    ? 'Quel giorno il locale è chiuso: scegli un altro giorno.'
+    : 'Quel giorno non ci sono orari prenotabili dal sito: scegli un altro giorno o chiamaci.');
 
   const days = useMemo(() => Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
@@ -110,7 +120,7 @@ export function BookingDialog() {
       if (!v.date) e.date = 'Scegli il giorno in cui vorresti venire.';
       else if (v.date < todayIso()) e.date = 'La data è già passata: scegline una da oggi in poi.';
       else if (general?.lastDate && v.date > general.lastDate) e.date = `Si può chiedere un tavolo al massimo ${general.maxAdvanceDays} giorni prima.`;
-      else if (!eventMode && isClosed(v.date)) e.date = 'Quel giorno il locale è chiuso: scegli un altro giorno.';
+      else if (!eventMode && isClosed(v.date)) e.date = closedText(v.date);
     }
     if (s === 1 && !v.time) e.time = 'Scegli uno degli orari disponibili.';
     if (s === 2 && (v.guests < 1 || v.guests > maxParty)) e.guests = `Indica da 1 a ${maxParty} persone. Per gruppi più grandi chiamaci.`;
@@ -286,10 +296,10 @@ export function BookingDialog() {
                       return (
                         <button key={d.iso} type="button" role="radio" aria-checked={values.date === d.iso} disabled={closed}
                           className={`day-chip${closed ? ' is-closed' : ''}`} onClick={() => set('date', d.iso)}
-                          aria-label={`${capitalize(new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).format(d.d))}${closed ? ', chiuso' : ''}`}>
+                          aria-label={`${capitalize(new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).format(d.d))}${closed ? (venueClosed(d.iso) ? ', chiuso' : ', nessun orario prenotabile') : ''}`}>
                           <span className="day-chip__dow">{d.today ? 'Oggi' : capitalize(dayFmt.format(d.d))}</span>
                           <span className="day-chip__num">{numFmt.format(d.d)}</span>
-                          <span className="day-chip__mon">{closed ? 'chiuso' : monFmt.format(d.d)}</span>
+                          <span className="day-chip__mon">{closed ? (venueClosed(d.iso) ? 'chiuso' : 'no orari') : monFmt.format(d.d)}</span>
                         </button>
                       );
                     })}
@@ -298,7 +308,7 @@ export function BookingDialog() {
                   <input id="bk-date" className="input input--date" type="date" min={todayIso()} max={general?.lastDate ?? undefined} value={values.date}
                     onChange={(e) => set('date', e.target.value)} {...aria('date')} />
                   {values.date && isClosed(values.date) && !errors.date && (
-                    <p className="hint warn"><Info size={16} aria-hidden="true" /> Quel giorno il locale è chiuso: scegli un altro giorno.</p>
+                    <p className="hint warn"><Info size={16} aria-hidden="true" /> {closedText(values.date)}</p>
                   )}
                 </fieldset>
               )}

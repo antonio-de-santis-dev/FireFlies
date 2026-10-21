@@ -47,7 +47,13 @@ export type BookingOptions = {
   groups: { name: string; slots: { time: string; available: boolean; reason: SlotReason }[] }[];
   /** Giorni senza arrivi possibili dal sito (chiusura settimanale o straordinaria, nessuna fascia): il calendario li disabilita. */
   closedDates?: string[];
+  /**
+   * FIX 2: gli stessi giorni con il motivo — `VENUE_CLOSED` locale chiuso (orari settimanali o chiusura straordinaria),
+   * `NO_SERVICE_WINDOWS` aperto ma senza fasce prenotabili, `ARRIVALS_CLOSED` fasce chiuse agli arrivi in quella data.
+   */
+  unavailableDays?: { date: string; reason: DayClosure }[];
 };
+export type DayClosure = 'VENUE_CLOSED' | 'NO_SERVICE_WINDOWS' | 'ARRIVALS_CLOSED';
 export type Receipt = { reference: string; status: ReservationStatus; date: string; time: string; guests: number; message: string };
 export type WebRequest = {
   date: string; time: string; guests: number; name: string; phone: string; email: string; notes: string;

@@ -28,9 +28,15 @@ public class BookingOptionsService {
      * {@code closedDates}: giorni tra {@code firstDate} e {@code lastDate} in cui dal sito non si può chiedere nulla
      * (locale chiuso per orario settimanale o data straordinaria, chiusura di tutto il giorno, nessuna fascia): il
      * calendario del sito li disabilita, il backend li rifiuta comunque ({@code DAY_CLOSED}).
+     * {@code unavailableDays} (FIX 2): gli stessi giorni con il motivo — {@code VENUE_CLOSED} (locale chiuso),
+     * {@code NO_SERVICE_WINDOWS} (aperto ma senza fasce prenotabili), {@code ARRIVALS_CLOSED} (fasce chiuse agli arrivi).
      */
     public record Options(boolean webBookingEnabled, int maxPartySize, int maxAdvanceDays, int minLeadMinutes,
-            LocalDate firstDate, LocalDate lastDate, LocalDate date, List<Group> groups, List<LocalDate> closedDates) {
+            LocalDate firstDate, LocalDate lastDate, LocalDate date, List<Group> groups, List<LocalDate> closedDates,
+            List<UnavailableDay> unavailableDays) {
+    }
+
+    public record UnavailableDay(LocalDate date, BookingCalendar.DayClosure reason) {
     }
 
     public record Group(String name, List<Slot> slots) {
@@ -58,13 +64,15 @@ public class BookingOptionsService {
         LocalDate today = BusinessTime.serviceDate(now);
         DiningStore.PolicyRow policy = calendar.policy(today).orElse(null);
         if (policy == null || !policy.webBookingEnabled()) {
-            return new Options(false, 0, 0, 0, null, null, date, List.of(), List.of());
+            return new Options(false, 0, 0, 0, null, null, date, List.of(), List.of(), List.of());
         }
         LocalDate last = today.plusDays(policy.maxAdvanceDays());
-        List<LocalDate> closedDates = calendar.closedDays(today, last);
+        java.util.SortedMap<LocalDate, BookingCalendar.DayClosure> unavailable = calendar.unavailableDays(today, last);
+        List<LocalDate> closedDates = List.copyOf(unavailable.keySet());
+        List<UnavailableDay> reasons = unavailable.entrySet().stream().map(e -> new UnavailableDay(e.getKey(), e.getValue())).toList();
         if (date == null || date.isBefore(today) || date.isAfter(last)) {
             return new Options(true, calendar.webPartyLimit(), policy.maxAdvanceDays(), policy.minLeadMinutes(), today, last,
-                    date, List.of(), closedDates);
+                    date, List.of(), closedDates, reasons);
         }
         int party = guests == null ? 1 : Math.max(1, guests);
         Instant earliest = now.plus(Duration.ofMinutes(policy.minLeadMinutes()));
@@ -102,6 +110,6 @@ public class BookingOptionsService {
             groups.add(new Group(w.name(), slots));
         }
         return new Options(true, calendar.webPartyLimit(), policy.maxAdvanceDays(), policy.minLeadMinutes(), today, last, date,
-                groups, closedDates);
+                groups, closedDates, reasons);
     }
 }

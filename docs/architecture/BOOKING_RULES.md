@@ -278,5 +278,13 @@ salva solo con la conferma esplicita del gestore (`confirmClosures` / `confirmRe
 mai annullate né rifiutate in automatico. Chiuso → Aperto vale subito per il calendario del sito; il backend rivalida
 giorno e fascia a ogni invio (`DAY_CLOSED`); le date straordinarie prevalgono sull'orario settimanale.
 
+**Audit del calendario (FIX 2):** un giorno è selezionabile dal sito solo se (1) il locale è aperto quel giorno — data
+straordinaria se c'è, altrimenti orario settimanale — **e** (2) ha almeno una fascia prenotabile attiva per quel giorno
+della settimana **e** (3) non tutte le fasce sono chiuse agli arrivi in quella data. Sono motivi distinti
+(`VENUE_CLOSED`, `NO_SERVICE_WINDOWS`, `ARRIVALS_CLOSED`): il sito scrive «chiuso» solo per il primo e «nessun orario
+prenotabile» per gli altri; il riepilogo settimanale segna «Chiuso» solo un locale o una fascia chiusi («Fascia non
+prevista» se mancano le fasce); Impostazioni › Capienza e calendario avvisa quando un giorno aperto non ha fasce.
+Riaprire un giorno negli Orari **non crea fasce**: vanno aggiunte in «Orari di arrivo delle fasce».
+
 ## 12. Cosa NON fa la V1
 Auto-conferma; scelta, combinazione o suggerimento automatico di tavoli; organizzazione di feste private dal sito (solo contatto telefonico, FASE 7); suggerimento di orari alternativi; lista d'attesa; overbooking controllato; durata variabile automatica; tracciamento clienti senza prenotazione; lettura automatica di email/telefonate; area clienti; pagamenti/caparre; SMS reali senza autorizzazione.

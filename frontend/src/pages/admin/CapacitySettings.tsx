@@ -2,7 +2,7 @@
 // una settimana per una fascia, chiusure e aperture straordinarie su un giorno o su un intervallo. Il backend resta
 // l'autorità: controlla capienza, conflitti e sovrapposizioni anche con più salvataggi nello stesso momento.
 import { CalendarRange, ChevronLeft, ChevronRight, CircleAlert, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
-import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
 import {
   addOpeningException, BANDS, bookingConfig, capacitySummary, createWindow, deleteException, deleteOpeningException,
@@ -77,10 +77,11 @@ type Act = <T>(op: () => Promise<T>, done: string | ((result: T) => string)) => 
 
 /** Sezione «Capienza» delle Impostazioni (solo titolare: la pagina è già riservata, il backend lo verifica comunque). */
 export function CapacitySettings() {
-  const { notify } = useStore();
+  const { notify, settings } = useStore();
   const [config, setConfig] = useState<BookingConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const [hoursTick, setHoursTick] = useState(0);
 
   const load = useCallback(() => {
     bookingConfig()
@@ -88,6 +89,17 @@ export function CapacitySettings() {
       .catch((e) => setError(message(e)));
   }, []);
   useEffect(load, [load]);
+
+  // FIX 2 (audit del calendario): dopo «Salva» degli orari settimanali (stessa pagina, modulo sopra) il riepilogo e
+  // l'avviso sulle fasce si aggiornano subito, senza ricaricare la pagina e senza toccare i campi in modifica qui sotto
+  const hoursKey = JSON.stringify(settings.hours.map((h) => !!h.open));
+  const firstHours = useRef(true);
+  useEffect(() => {
+    if (firstHours.current) { firstHours.current = false; return; }
+    bookingConfig().then((c) => { setConfig(c); setHoursTick((t) => t + 1); }).catch(() => undefined);
+  }, [hoursKey]);
+  const openWithoutWindows = config ? DAYS.filter((_, i) => !!settings.hours[i]?.open && !config.windows.some((w) => w.isoDay === i + 1
+    && w.active && config.zones.some((z) => z.active && z.id === w.zoneId))) : [];
 
   const act: Act = async (op, done) => {
     try {
@@ -115,7 +127,15 @@ export function CapacitySettings() {
         <div className="cap-grid">
           <VenueCapacityPanel key={`v${version}`} capacity={config.venueCapacity} act={act} />
           <PolicyPanel key={`p${version}`} policy={config.policy} act={act} />
-          <WeekSummaryPanel refreshKey={version} />
+          {openWithoutWindows.length > 0 && (
+            <p className="notice notice--warn cap-grid__notice" role="status">
+              <CircleAlert size={16} aria-hidden="true" />
+              <span><strong>{openWithoutWindows.join(', ')}: aperto ma senza fasce prenotabili.</strong> Negli orari il locale risulta
+                aperto, ma senza fasce il sito non può proporre orari e quel giorno resta non prenotabile. Aggiungi le fasce qui sotto in
+                «Orari di arrivo delle fasce».</span>
+            </p>
+          )}
+          <WeekSummaryPanel refreshKey={`${version}-${hoursTick}`} />
           <OpeningDatesPanel items={config.openingExceptions} act={act} />
           {config.exceptions.length > 0 && <ClosedBandsPanel config={config} act={act} />}
           <WindowsPanel config={config} act={act} />
@@ -181,7 +201,7 @@ function PolicyPanel({ policy, act }: { policy: Policy | null; act: Act }) {
 }
 
 /** Riepilogo di una settimana per una fascia: un giorno per riga, solo i numeri utili. */
-export function WeekSummaryPanel({ refreshKey = 0 }: { refreshKey?: number }) {
+export function WeekSummaryPanel({ refreshKey = 0 }: { refreshKey?: number | string }) {
   const thisMonday = mondayOf(todayIso());
   const [monday, setMonday] = useState(thisMonday);
   const [band, setBand] = useState<Band>(currentBand);

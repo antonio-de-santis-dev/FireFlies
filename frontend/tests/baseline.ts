@@ -85,7 +85,8 @@ async function restore(snap: Snapshot) {
     }
     const settings = await api.call('GET', '/admin/site-settings');
     if (!same(settingsBody(snap.settings), settingsBody(settings))) {
-      await api.call('PUT', '/admin/site-settings', { ...settingsBody(snap.settings), version: settings.version });
+      // FIX 2: ripristino degli orari di partenza anche se un test ha lasciato richieste nel giorno da richiudere
+      await api.call('PUT', '/admin/site-settings', { ...settingsBody(snap.settings), version: settings.version, confirmClosures: true });
     }
     // 3. avvisi
     const announcements = (await api.call('GET', '/admin/announcements')) as unknown as Json[];

@@ -896,3 +896,6 @@
 .notice svg { flex: none; margin-top: 2px; }
 .notice .icon-btn { margin-left: auto; }
 .notice--warn { background: rgb(255 181 71 / 0.1); color: var(--ff-ivory); box-shadow: inset 3px 0 0 var(--ff-warning); }
+/* FIX 2: avviso «aperto ma senza fasce prenotabili» nella sezione Capienza e calendario */
+.cap-grid__notice { display: flex; gap: 8px; align-items: flex-start; margin: 0; }
+.cap-grid__notice svg { flex: none; margin-top: 2px; }

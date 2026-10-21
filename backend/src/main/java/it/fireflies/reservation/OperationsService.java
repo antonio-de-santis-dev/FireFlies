@@ -162,7 +162,9 @@ public class OperationsService {
                             new int[] {rs.getInt(3), rs.getInt(4), rs.getInt(5), cap == null ? -1 : cap});
                     return null;
                 }).list();
-        List<LocalDate> closedDays = calendar.closedDays(start, end);
+        // FIX 2 (audit del calendario): «Chiuso» solo se il locale o le fasce sono chiusi; un giorno aperto senza fasce
+        // prenotabili resta «Fascia non prevista», non chiuso
+        java.util.Map<LocalDate, BookingCalendar.DayClosure> unavailable = calendar.unavailableDays(start, end);
         Map<BandBudget.Slot, Integer> usage = budget.usage(start, end);
         int venueCapacity = budget.capacity();
         List<SummaryRow> rows = new ArrayList<>();
@@ -185,7 +187,9 @@ public class OperationsService {
                 int bandConfirmed = usage.getOrDefault(new BandBudget.Slot(day, band), 0);
                 int eventArrivals = 0;
                 int arrivals = 0;
-                boolean closed = closedDays.contains(day) || (!of.isEmpty() && of.stream().allMatch(w -> calendar.closed(day, w.id())));
+                BookingCalendar.DayClosure why = unavailable.get(day);
+                boolean closed = why == BookingCalendar.DayClosure.VENUE_CLOSED || why == BookingCalendar.DayClosure.ARRIVALS_CLOSED
+                        || (!of.isEmpty() && of.stream().allMatch(w -> calendar.closed(day, w.id())));
                 if (!of.isEmpty()) {
                     int[] ca = capacityAndAvailable(day, of);
                     capacity = ca[0];

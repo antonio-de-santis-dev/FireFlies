@@ -74,9 +74,15 @@ disponibile), `srcset` elenca tutte le varianti (`… 480w, … 960w, … 1600w`
     { "name": "Aperitivo",
       "slots": [ { "time": "18:00:00", "available": true,  "reason": null },
                  { "time": "19:00:00", "available": false, "reason": "FULL" } ] }
-  ]
+  ],
+  "closedDates": ["2026-10-28"],
+  "unavailableDays": [ { "date": "2026-10-28", "reason": "VENUE_CLOSED" } ]
 }
 ```
+- **FIX 2 (audit del calendario)**: `closedDates` (invariato) sono i giorni non selezionabili; `unavailableDays` dà il
+  motivo di ciascuno: `VENUE_CLOSED` locale chiuso (orario settimanale o chiusura straordinaria, che prevale),
+  `NO_SERVICE_WINDOWS` locale aperto ma nessuna fascia prenotabile per quel giorno della settimana, `ARRIVALS_CLOSED`
+  fasce chiuse agli arrivi in quella data. Calcolati a ogni richiesta (`no-store`): una modifica degli orari vale subito.
 - Senza `date` (o fuori dai giorni prenotabili) restituisce solo le regole con `groups: []`; con le richieste chiuse
   `webBookingEnabled: false` e nient'altro.
 - `reason`: `FULL` (in almeno un quanto della permanenza standard i posti **confermati** liberi sono meno di `guests`,

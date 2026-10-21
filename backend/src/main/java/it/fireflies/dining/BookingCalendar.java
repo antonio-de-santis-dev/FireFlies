@@ -63,10 +63,28 @@ public class BookingCalendar {
     }
 
     /**
+     * Perché un giorno non accetta arrivi dal sito (FIX 2, audit del calendario): sono tre casi diversi e il gestore
+     * deve poterli distinguere — riaprire un giorno negli orari settimanali non basta se quel giorno non ha fasce.
+     */
+    public enum DayClosure {
+        /** Locale chiuso: orario settimanale o chiusura straordinaria. */
+        VENUE_CLOSED,
+        /** Locale aperto, ma nessuna fascia prenotabile configurata per quel giorno della settimana. */
+        NO_SERVICE_WINDOWS,
+        /** Ci sono fasce, ma sono tutte chiuse agli arrivi in quella data (chiusura di fascia o del giorno). */
+        ARRIVALS_CLOSED
+    }
+
+    /**
      * Giorni dell'intervallo senza arrivi possibili dal sito: locale chiuso, chiusura di tutto il giorno o di ogni
      * fascia, nessuna fascia. Poche query in tutto (anche su 365 giorni), stessa logica di {@link #closed}.
      */
     public List<LocalDate> closedDays(LocalDate from, LocalDate to) {
+        return List.copyOf(unavailableDays(from, to).keySet());
+    }
+
+    /** Come {@link #closedDays}, con il motivo di ogni giorno (in ordine di data). */
+    public java.util.SortedMap<LocalDate, DayClosure> unavailableDays(LocalDate from, LocalDate to) {
         List<UUID> active = activeZones().stream().map(DiningStore.ZoneRow::id).toList();
         List<DiningStore.WindowRow> windows = store.windows().stream().filter(w -> active.contains(w.zoneId())).toList();
         java.util.Map<LocalDate, Boolean> special = new java.util.HashMap<>();
@@ -83,15 +101,20 @@ public class BookingCalendar {
         java.util.Map<LocalDate, List<DiningStore.ExceptionRow>> exceptions = store.exceptionsFrom(from).stream()
                 .filter(e -> "CLOSED".equals(e.kind()))
                 .collect(java.util.stream.Collectors.groupingBy(DiningStore.ExceptionRow::serviceDate));
-        List<LocalDate> closed = new java.util.ArrayList<>();
+        java.util.SortedMap<LocalDate, DayClosure> closed = new java.util.TreeMap<>();
         for (LocalDate d = from; !d.isAfter(to); d = d.plusDays(1)) {
             LocalDate day = d;
             boolean open = special.getOrDefault(day, !weeklyClosed[day.getDayOfWeek().getValue()]);
             List<DiningStore.ExceptionRow> closures = exceptions.getOrDefault(day, List.of());
-            boolean anyArrival = windows.stream().filter(w -> w.validOn(day)).anyMatch(w -> closures.stream()
+            List<DiningStore.WindowRow> ofDay = windows.stream().filter(w -> w.validOn(day)).toList();
+            boolean anyArrival = ofDay.stream().anyMatch(w -> closures.stream()
                     .noneMatch(e -> e.serviceWindowId() == null || e.serviceWindowId().equals(w.id())));
-            if (!open || !anyArrival) {
-                closed.add(day);
+            if (!open) {
+                closed.put(day, DayClosure.VENUE_CLOSED);
+            } else if (ofDay.isEmpty()) {
+                closed.put(day, DayClosure.NO_SERVICE_WINDOWS);
+            } else if (!anyArrival) {
+                closed.put(day, DayClosure.ARRIVALS_CLOSED);
             }
         }
         return closed;
