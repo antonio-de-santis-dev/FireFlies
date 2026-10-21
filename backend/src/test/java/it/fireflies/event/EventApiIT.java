@@ -108,8 +108,9 @@ class EventApiIT extends ReservationTestSupport {
     void bozzaValidazioniEPubblicazione() {
         Map<String, Object> noTitle = event("", "19:00", "22:00", true, "NONE", null);
         assertThat(staff.post("/api/v1/admin/events", noTitle).code()).isEqualTo("VALIDATION_FAILED");
-        assertThat(staff.post("/api/v1/admin/events", event("Storta", "19:10", "22:00", true, "NONE", null)).code())
-                .isEqualTo("NOT_ALIGNED_15_MIN");
+        // FIX 2: qualunque minuto, ma senza secondi
+        assertThat(staff.post("/api/v1/admin/events", event("Con secondi", "19:10:30", "22:00", true, "NONE", null)).code())
+                .isEqualTo("INVALID_TIME");
         assertThat(create(staff, event("Senza quota", "19:00", "22:00", true, "REQUEST", null)).path("capacityCovers").asInt())
                 .as("FASE 8: senza quota vale la capienza del locale").isEqualTo(20);
         assertThat(staff.post("/api/v1/admin/events", event("Troppi", "19:00", "22:00", true, "REQUEST", 21)).code())
@@ -387,7 +388,8 @@ class EventApiIT extends ReservationTestSupport {
         assertThat(confirm(staff, a).status()).isEqualTo(200);
         assertThat(occupied("19:00")).isEqualTo(18);
         ApiClient.Response full = confirm(staff, b);
-        assertThat(full.code()).as("quota ok (12 ≤ 15) ma il locale ha 20 posti: 18 + 4 > 20").isEqualTo("CAPACITY_EXCEEDED");
+        assertThat(full.code()).as("quota ok (12 ≤ 15) ma il locale ha 20 posti: 18 + 4 > 20")
+                .isIn("BAND_CAPACITY_EXCEEDED", "CAPACITY_EXCEEDED");
         assertThat(confirmedCovers(shared)).isEqualTo(8);
     }
 

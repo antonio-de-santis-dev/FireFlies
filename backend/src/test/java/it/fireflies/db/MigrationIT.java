@@ -39,7 +39,7 @@ class MigrationIT extends PostgresIntegrationTest {
     void tutteLeMigrazioniApplicateEValide() {
         MigrationInfo[] applied = flyway.info().applied();
         assertThat(Arrays.stream(applied).map(m -> m.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13");
         assertThat(applied).allMatch(m -> m.getState().isApplied() && !m.getState().isFailed());
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
     }
@@ -58,7 +58,7 @@ class MigrationIT extends PostgresIntegrationTest {
                     .cleanDisabled(true).load();
             MigrateResult result = fresh.migrate();
             assertThat(result.success).isTrue();
-            assertThat(result.migrationsExecuted).isEqualTo(12);
+            assertThat(result.migrationsExecuted).isEqualTo(13);
             assertThat(fresh.migrate().migrationsExecuted).as("seconda esecuzione: niente da fare").isZero();
             assertThat(fresh.validateWithResult().validationSuccessful).isTrue();
         } finally {
@@ -95,7 +95,7 @@ class MigrationIT extends PostgresIntegrationTest {
                     .param(zone).update();
             old.sql("INSERT INTO opening_exceptions (day, closed) VALUES (DATE '2031-12-25', true)").update();
 
-            MigrateResult result = Flyway.configure().dataSource(db).locations("classpath:db/migration").load().migrate();
+            MigrateResult result = Flyway.configure().dataSource(db).locations("classpath:db/migration").target("12").load().migrate();
             assertThat(result.success).isTrue();
             assertThat(result.migrationsExecuted).isEqualTo(1);
             assertThat(old.sql("SELECT capacity_covers FROM capacity_slots").query(Integer.class).single())
@@ -108,6 +108,86 @@ class MigrationIT extends PostgresIntegrationTest {
                     .query(Integer.class).single()).as("nessuna impostazione fantasma").isZero();
         } finally {
             jdbc.sql("DROP DATABASE IF EXISTS fireflies_v11 WITH (FORCE)").update();
+        }
+    }
+
+    /**
+     * FIX 2: la V13 su un database V12 con prenotazioni reali di ogni stato. Il budget per fascia nasce solo dalle persone
+     * confermate, completate e non presentate; nessuna riga viene cancellata o spostata; i duplicati attivi già presenti
+     * restano com'erano (fuori dal nuovo vincolo), quelli nuovi sono bloccati dal database.
+     */
+    @Test
+    void v13DaUnDatabaseV12ConPrenotazioniEsistenti() {
+        String baseUrl = ((HikariDataSource) dataSource).getJdbcUrl();
+        String user = ((HikariDataSource) dataSource).getUsername();
+        String password = ((HikariDataSource) dataSource).getPassword();
+        jdbc.sql("DROP DATABASE IF EXISTS fireflies_v12 WITH (FORCE)").update();
+        jdbc.sql("CREATE DATABASE fireflies_v12").update();
+        try {
+            DriverManagerDataSource db = new DriverManagerDataSource(
+                    baseUrl.replaceFirst("/[^/?]+(\\?|$)", "/fireflies_v12$1"), user, password);
+            Flyway.configure().dataSource(db).locations("classpath:db/migration").target("12").load().migrate();
+            org.springframework.jdbc.core.simple.JdbcClient old = org.springframework.jdbc.core.simple.JdbcClient.create(db);
+            old.sql("UPDATE capacity_zones SET physical_capacity = 40, active = true WHERE name = 'Locale'").update();
+            java.util.UUID zone = old.sql("SELECT id FROM capacity_zones WHERE name = 'Locale'").query(java.util.UUID.class).single();
+            java.util.UUID window = old.sql("""
+                    INSERT INTO service_windows (zone_id, iso_day, name, first_start, last_start, slot_minutes, default_duration_minutes, valid_from)
+                    VALUES (?, 1, 'Aperitivo', '18:00', '21:00', 30, 120, DATE '2026-01-01') RETURNING id
+                    """).param(zone).query(java.util.UUID.class).single();
+            String insert = """
+                    INSERT INTO reservations (public_ref, status, source, reservation_date, starts_at, ends_at, occupied_until, guest_count,
+                                              service_window_id, capacity_zone_id, customer_name, customer_phone_e164,
+                                              privacy_ack_at, privacy_notice_version)
+                    VALUES (?, ?, ?, DATE '2031-03-03', TIMESTAMPTZ '2031-03-03 19:00+01' + ?::interval,
+                            TIMESTAMPTZ '2031-03-03 21:00+01' + ?::interval, ?, ?, ?, ?, 'Cliente di prova', ?, now(), 'v1')
+                    """;
+            Object[][] rows = {
+                {"FF-M13A01", "CONFIRMED", "PHONE", "0 minutes", 4, "+390000000101"},
+                {"FF-M13A02", "COMPLETED", "PHONE", "0 minutes", 2, "+390000000102"},
+                {"FF-M13A03", "NO_SHOW", "PHONE", "30 minutes", 3, "+390000000103"},
+                {"FF-M13A04", "CANCELLED", "PHONE", "0 minutes", 5, "+390000000104"},
+                {"FF-M13A05", "REJECTED", "WEB", "0 minutes", 6, "+390000000105"},
+                {"FF-M13A06", "PENDING", "WEB", "0 minutes", 2, "+390000000106"},
+                {"FF-M13A07", "PENDING", "WEB", "60 minutes", 2, "+390000000106"}, // duplicato già presente
+            };
+            for (Object[] r : rows) {
+                boolean occupying = List.of("CONFIRMED", "COMPLETED", "NO_SHOW").contains(r[1]);
+                old.sql(insert).params(r[0], r[1], r[2], r[3], r[3],
+                        occupying ? java.time.OffsetDateTime.parse("2031-03-03T20:00:00Z").plusMinutes(r[3].equals("0 minutes") ? 0 : r[3].equals("30 minutes") ? 30 : 60) : null,
+                        r[4], window, zone, r[5]).update();
+            }
+            java.util.UUID event = old.sql("""
+                    INSERT INTO events (slug, title, kind, status, starts_at, ends_at, exclusive, booking_mode)
+                    VALUES ('serata-v12', 'Serata V12', 'SERATA', 'DRAFT', TIMESTAMPTZ '2031-03-04 21:00+01', TIMESTAMPTZ '2031-03-05 01:00+01', true, 'NONE')
+                    RETURNING id
+                    """).query(java.util.UUID.class).single();
+
+            MigrateResult result = Flyway.configure().dataSource(db).locations("classpath:db/migration").load().migrate();
+            assertThat(result.success).isTrue();
+            assertThat(result.migrationsExecuted).isEqualTo(1);
+            assertThat(old.sql("SELECT count(*) FROM reservations").query(Integer.class).single()).as("nessuna riga cancellata").isEqualTo(7);
+            assertThat(old.sql("SELECT string_agg(status, ',' ORDER BY public_ref) FROM reservations").query(String.class).single())
+                    .isEqualTo("CONFIRMED,COMPLETED,NO_SHOW,CANCELLED,REJECTED,PENDING,PENDING");
+            assertThat(old.sql("SELECT count(*) FROM reservations WHERE service_band <> 'APERITIVO'").query(Integer.class).single()).isZero();
+            assertThat(old.sql("SELECT confirmed_covers FROM band_capacity_usage WHERE service_date = DATE '2031-03-03' AND band = 'APERITIVO'")
+                    .query(Integer.class).single()).as("4 confermate + 2 completate + 3 non presentate").isEqualTo(9);
+            assertThat(old.sql("SELECT count(*) FROM band_capacity_usage").query(Integer.class).single()).isEqualTo(1);
+            assertThat(old.sql("SELECT count(*) FROM reservations WHERE NOT dedup_enforced").query(Integer.class).single())
+                    .as("i due duplicati già presenti restano, fuori dal vincolo").isEqualTo(2);
+            assertThat(old.sql("SELECT starts_at = TIMESTAMPTZ '2031-03-04 21:00+01' FROM events WHERE id = ?").param(event)
+                    .query(Boolean.class).single()).as("orari degli eventi intatti").isTrue();
+
+            // dopo la V13: annullare una confermata restituisce il budget, una nuova richiesta duplicata è rifiutata dal database
+            old.sql("UPDATE reservations SET status = 'CANCELLED', occupied_until = NULL WHERE public_ref = 'FF-M13A01'").update();
+            assertThat(old.sql("SELECT confirmed_covers FROM band_capacity_usage").query(Integer.class).single()).isEqualTo(5);
+            old.sql(insert).params("FF-M13A08", "PENDING", "WEB", "90 minutes", "90 minutes", null, 2, window, zone, "+390000000105")
+                    .update(); // la precedente di quel telefono è rifiutata: si può chiedere di nuovo
+            org.assertj.core.api.Assertions.assertThatThrownBy(() -> old.sql(insert).params("FF-M13A09", "PENDING", "WEB",
+                    "30 minutes", "30 minutes", null, 2, window, zone, "+390000000105").update())
+                    .as("seconda richiesta attiva, stesso telefono, giorno e fascia, altro orario")
+                    .hasMessageContaining("ux_res_web_band_duplicate");
+        } finally {
+            jdbc.sql("DROP DATABASE IF EXISTS fireflies_v12 WITH (FORCE)").update();
         }
     }
 

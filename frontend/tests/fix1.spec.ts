@@ -305,7 +305,8 @@ test.describe('6. Impostazioni', () => {
       await expect(panel.locator('.week-table caption')).toContainText(band);
       await expect(panel.locator('.week-table tbody tr')).toHaveCount(7);
     }
-    await expect(panel.locator('thead th')).toHaveText(['Giorno', 'Prenotazioni', 'Persone confermate', 'Capienza', 'Disponibili']);
+    // FIX 2: budget della fascia (confermate / capienza, restanti) e disponibilità reale nello stesso momento
+    await expect(panel.locator('thead th')).toHaveText(['Giorno', 'Prenotazioni', 'Confermate / capienza', 'Restano nella fascia', 'Disponibili adesso']);
   });
 
   test('chiusura di un giorno, intervallo e apertura straordinaria: elenco, calendario del sito, modifica, eliminazione, conflitti', async ({ page }) => {
@@ -339,9 +340,13 @@ test.describe('6. Impostazioni', () => {
       await panel.getByLabel('Giorno', { exact: true }).fill(plus(first, 1));
       await panel.getByRole('button', { name: 'Aggiungi' }).click();
       await expect(page.locator('.toast')).toContainText('si sovrappongono');
-      // un giorno con prenotazione: avviso con i conteggi
+      // un giorno con prenotazione: FIX 2, prima la conferma consapevole con i conteggi, poi l'avviso
       await panel.getByLabel('Giorno', { exact: true }).fill(booked);
       await panel.getByRole('button', { name: 'Aggiungi' }).click();
+      const confirmBox = panel.getByRole('alertdialog');
+      await expect(confirmBox).toContainText('1 confermate (2 persone)');
+      await expect(confirmBox).toContainText('non vengono annullate né rifiutate');
+      await confirmBox.getByRole('button', { name: 'Chiudi comunque' }).click();
       await expect(panel.locator('.notice--warn')).toContainText('1 confermate (2 persone)');
       // apertura straordinaria su due giorni
       await panel.getByRole('radio', { name: 'Più giorni' }).check();

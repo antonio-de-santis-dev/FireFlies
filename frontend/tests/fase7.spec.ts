@@ -142,9 +142,10 @@ test.describe('Capienza, calendario di oggi, giorni chiusi', () => {
       await signIn(page);
       await go(page, '/gestione/impostazioni');
       const row = await weekSummaryRow(page, day, 'Sera');
-      await expect(row.locator('td[data-label="Capienza"]')).toHaveText('30');
-      await expect(row.locator('td[data-label="Persone confermate"]')).toHaveText('20');
-      await expect(row.locator('td[data-label="Disponibili"]')).toHaveText(/^\d+$/);
+      // FIX 2: persone confermate nella fascia su capienza, quante ne restano e disponibilità reale
+      await expect(row.locator('td[data-label="Confermate / capienza"]')).toHaveText('20 / 30');
+      await expect(row.locator('td[data-label="Restano nella fascia"]')).toHaveText('10');
+      await expect(row.locator('td[data-label="Disponibili adesso"]')).toHaveText(/^\d+/);
       // ridurre sotto i confermati: errore chiaro, nulla cambia
       await page.getByLabel('Capienza massima del locale (persone)').fill('15');
       await page.getByRole('button', { name: 'Salva la capienza' }).click();

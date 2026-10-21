@@ -1,34 +1,32 @@
 # WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Ultimo aggiornamento: 21/10/2026, **FIX-1 — correzioni UX/UI, prenotazioni, impostazioni** (completato e **approvato**:
-> portato su `main` il 21/10/2026, C-34).
+> Ultimo aggiornamento: 21/10/2026, **FIX 2 — prenotazioni, capienza ed eventi** (in collaudo sul branch
+> `fix2/prenotatavolo`, **non** portato su `main`). FIX-1 approvato e su `main` dal 21/10/2026 (C-34).
 
 ## Fase e branch
-- **FIX-1** sul branch `fix-1`, creato da `main` @ `395dcf5` (= FASE 8 completa, C-32).
-- Branch di collaudo: **nessun merge su `main`** senza approvazione esplicita dopo i test manuali; nessun force push,
-  nessun deploy, nessuna risorsa cloud, nessun dato del committente cancellato.
+- **FIX 2** sul branch `fix2/prenotatavolo`, creato da `main` @ `e558988` (= ultimo commit di `fix-1`).
+- Branch di collaudo: **nessun merge su `main` o `fix-1`** senza approvazione esplicita dopo i test manuali; nessun
+  force push, nessun deploy, nessun servizio acquistato, nessuna notifica reale, nessun dato esistente cancellato.
 
 ## Piano di lavoro
 | # | Requisito | Stato |
 |---|---|---|
-| 1 | Animazione iniziale più fluida | fatto |
-| 2 | Menu pubblico: navigazione categorie sul telefono | fatto |
-| 3 | «Perché FireFlies» (pagina Il locale): foto adattata | fatto |
-| 4 | Rate limiting equilibrato, doppio invio, idempotenza, 429 con attesa | fatto |
-| 5 | Navbar area gestori sul telefono | fatto |
-| 6.1–6.2 | Impostazioni: layout desktop, orari su telefono | fatto |
-| 6.3 | Capienza unica del locale (V12, `PUT /admin/venue-capacity`) | fatto |
-| 6.4 | Riepilogo settimanale con una fascia | fatto |
-| 6.5 | Via «persone massime dal sito» e limiti per data/fascia | fatto |
-| 6.6 | Chiusure/aperture su giorno o intervallo | fatto |
-| 7 | BOOKING_FLOW_AUDIT.md | fatto |
-| 8–9 | Test (82 + 334 + 136, tutti verdi), documenti, FIX1_REPORT | fatto |
+| 1 | Budget di persone confermate per giorno e fascia (V13, `BandBudget`, trigger) | fatto |
+| 2 | Duplicati: un'attiva per telefono, giorno e fascia (indice unico) | fatto |
+| 3 | Limite per IP: 5 richieste create all'ora | fatto |
+| 4 | Aperture/chiusure settimanali e straordinarie con conferma dei conflitti | fatto |
+| 5 | Eventi a qualunque minuto (quanti toccati in parte riservati) | fatto |
+| 6 | Interruttore «Pubblica sul sito» nell'elenco eventi, editor senza interruttore | fatto |
+| 7 | Riepilogo settimanale con budget della fascia e disponibilità reale | fatto |
+| 8 | Test backend e frontend con PostgreSQL reale | vedi FIX2_REPORT §10 |
+| 9 | Documenti e FIX2_REPORT | fatto |
+| 10 | Commit e push solo su `fix2/prenotatavolo`, report finale | fatto |
 
 ## Note per la ripresa
 - **Non compilare il backend mentre gira l'e2e** (il jar in `backend/target/` è quello usato da `scripts/e2e.mjs`).
 - Docker: se non risponde, avviare `dockerd` (vedi FASE 8).
-- Punti aperti da decidere con il titolare: FIX1_REPORT §9 (tetto di 30 persone dal sito, chiusure per singola fascia).
+- La CI ora parte anche sui branch `fix2/**`.
+- Punti aperti da decidere con il titolare: FIX2_REPORT §11.
 
 ## Prossima azione esatta
-FIX-1 approvato e su `main`. Creato `fix2/prenotatavolo` da `main`: in attesa delle istruzioni del titolare per il
-nuovo lavoro (nessuna modifica avviata).
+Collaudo manuale del titolare (FIX2_REPORT §12). Merge o deploy solo dopo approvazione esplicita.

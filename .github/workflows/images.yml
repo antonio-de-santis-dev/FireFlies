@@ -2,7 +2,7 @@
 name: images
 on:
   push:
-    branches: ['fase-8/**', 'fix-*', main]
+    branches: ['fase-8/**', 'fix-*', 'fix2/**', main]
   pull_request:
 permissions:
   contents: read

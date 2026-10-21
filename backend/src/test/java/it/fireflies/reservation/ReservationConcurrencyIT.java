@@ -53,7 +53,8 @@ class ReservationConcurrencyIT extends ReservationTestSupport {
         assertThat(results).noneMatch(Result::deadlock);
         assertThat(results).filteredOn(Result::ok).as("20 posti / 4 persone").hasSize(5);
         assertThat(results).filteredOn(r -> !r.ok())
-                .allSatisfy(r -> assertThat(((ApiException) r.error()).code()).isEqualTo("CAPACITY_EXCEEDED"));
+                // FIX 2: il budget della fascia (20) si controlla prima dei posti contemporanei: stesso limite, codice dedicato
+                .allSatisfy(r -> assertThat(((ApiException) r.error()).code()).isIn("BAND_CAPACITY_EXCEEDED", "CAPACITY_EXCEEDED"));
         assertThat(occupied("19:00")).isEqualTo(20);
         assertThat(jdbc.sql("SELECT count(*) FROM reservations WHERE status = 'PENDING'").query(Long.class).single()).isEqualTo(3);
     }

@@ -389,3 +389,25 @@ del worker legge solo le notifiche da inviare, in ordine di scadenza (25,4 → 0
 | `confirmation_mode = 'MANUAL'` | `AUTO` con policy |
 | eventi esclusivi o condivisi sulla stessa capienza | prenotazione di posti riservati all'evento (hold) |
 | — | lista d'attesa, clienti senza prenotazione, CRM |
+
+### 3.12 Budget per fascia, duplicati per fascia, eventi al minuto (V13, FIX 2)
+- **`fireflies_band(starts_at, service_window_id)`** (funzione SQL, `STABLE`): fascia della prenotazione con la stessa
+  regola di `dining/Band` — nome della fascia prenotabile se è uno dei quattro, altrimenti l'orario di arrivo in
+  Europe/Rome (<05 SERA, <11 COLAZIONE, <17 POMERIGGIO, <20 APERITIVO, altrimenti SERA).
+- **`reservations.service_band`** `text NOT NULL`, `ck_res_band`; la calcola il trigger `trg_res_band`
+  (`BEFORE INSERT OR UPDATE OF starts_at, service_window_id`), compilata per le righe esistenti dalla migrazione.
+- **`band_capacity_usage`** `(service_date date, band text, confirmed_covers int ≥ 0, updated_at)`, PK
+  `(service_date, band)`: persone `CONFIRMED` + `COMPLETED` + `NO_SHOW` per giorno e fascia. Inizializzata dalle
+  prenotazioni reali esistenti (nessun dato inventato); mantenuta dal trigger `trg_res_band_usage` (`AFTER INSERT OR
+  DELETE OR UPDATE OF status, guest_count, reservation_date, starts_at, service_window_id`): sottrae la vecchia
+  situazione se consumava, aggiunge la nuova se consuma, non tocca la riga se nulla cambia per il budget. La pulizia
+  notturna che elimina vecchie prenotazioni ne sottrae le persone (invariante: contatore = somma delle righe presenti).
+  Fasce future già oltre la capienza al momento della migrazione: solo `NOTICE`, restano valide.
+- **`reservations.dedup_enforced`** `boolean NOT NULL DEFAULT true` e indice unico parziale
+  **`ux_res_web_band_duplicate`** `(customer_phone_e164, reservation_date, service_band) WHERE source = 'WEB' AND status
+  IN ('PENDING','CONFIRMED') AND dedup_enforced`; i gruppi già duplicati prima della V13 restano com'erano
+  (`dedup_enforced = false`). `ux_res_web_duplicate` (stesso orario) resta.
+- **Eventi a qualunque minuto**: `ck_event_aligned` → `ck_event_minute` (multipli di 60 s); `ck_res_aligned` resta a 15'
+  per le prenotazioni ordinarie e passa a 60 s per quelle di un evento. Nessun orario salvato modificato.
+- Invariante nuova (riconciliazione dei test): `band_capacity_usage` = somma delle persone che consumano per giorno e
+  fascia; un quanto è coperto da una prenotazione se `starts_at < slot_start + 15 min AND occupied_until > slot_start`.

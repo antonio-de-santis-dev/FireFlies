@@ -179,6 +179,11 @@ public class ReservationService {
         // nella fascia e anche per una serata evento. Il messaggio non dice nulla dell'altra prenotazione; il vincolo
         // vero è l'indice unico ux_res_web_band_duplicate (due invii contemporanei: il secondo fallisce al salvataggio)
         if (store.activeSamePhoneBand(phone, serviceDate, band.name())) {
+            // reinvio contemporaneo con la stessa chiave: il primo ha appena salvato, stessa ricevuta (non un duplicato)
+            Optional<ReservationStore.Row> same = store.byIdempotencyKey(idempotencyKey);
+            if (same.isPresent() && same.get().fingerprint().equals(fingerprint)) {
+                return receipt(same.get());
+            }
             throw duplicateRequest();
         }
         // FIX 2: anteprima del budget della fascia (persone confermate nel giorno e fascia), senza lock

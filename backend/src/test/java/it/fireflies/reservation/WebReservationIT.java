@@ -128,14 +128,16 @@ class WebReservationIT extends ReservationTestSupport {
         ApiClient.Response full = web(browser(), webBody(DAY, "20:00", 2, nextPhone()));
         assertThat(full.status()).isEqualTo(422);
         assertThat(full.code()).isEqualTo("FULLY_BOOKED");
-        assertThat(web(browser(), webBody(DAY, "21:00", 2, nextPhone())).status()).as("alle 21 i primi sono usciti").isEqualTo(201);
+        // FIX 2: alle 21 i primi sono usciti, ma il budget della fascia (20 persone confermate) è esaurito
+        ApiClient.Response later = web(browser(), webBody(DAY, "21:00", 2, nextPhone()));
+        assertThat(later.code()).as("budget della fascia esaurito anche con il ricambio").isEqualTo("FULLY_BOOKED");
 
         JsonNode options = browser().get("/api/v1/public/booking-options?date=" + DAY + "&guests=2").body();
         JsonNode slots = options.path("groups").get(0).path("slots");
         assertThat(slots.get(0).path("time").asString()).startsWith("18:00");
         assertThat(slots.get(0).path("available").asBoolean()).as("18:00–20:00 attraversa le 19").isFalse();
         assertThat(slot(slots, "19:30").path("reason").asString()).isEqualTo("FULL");
-        assertThat(slot(slots, "21:00").path("available").asBoolean()).isTrue();
+        assertThat(slot(slots, "21:00").path("reason").asString()).as("FIX 2: budget della fascia esaurito").isEqualTo("FULL");
         assertThat(options.toString()).as("al pubblico mai i numeri dei posti").doesNotContain("capacity").doesNotContain("occupied");
     }
 
@@ -194,10 +196,11 @@ class WebReservationIT extends ReservationTestSupport {
     void limitiPerIndirizzoEPerTelefono() {
         String phone = "333 111 2222";
         ApiClient client = browser();
-        for (String time : List.of("18:00", "18:30", "19:00")) {
-            assertThat(web(client, webBody(DAY, time, 2, phone)).status()).isEqualTo(201);
+        // FIX 2: una richiesta attiva per telefono, giorno e fascia: il limite per telefono si prova su giorni diversi
+        for (int week = 0; week < 3; week++) {
+            assertThat(web(client, webBody(DAY.plusWeeks(week), "19:00", 2, phone)).status()).isEqualTo(201);
         }
-        ApiClient.Response perPhone = web(client, webBody(DAY, "19:30", 2, phone));
+        ApiClient.Response perPhone = web(client, webBody(DAY.plusWeeks(3), "19:30", 2, phone));
         assertThat(perPhone.status()).as("al massimo 3 richieste al giorno dallo stesso telefono").isEqualTo(429);
         assertThat(perPhone.body().path("context").path("retryAfterSeconds").asInt()).isPositive();
 

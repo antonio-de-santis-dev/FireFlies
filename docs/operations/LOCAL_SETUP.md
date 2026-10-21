@@ -94,7 +94,7 @@ alla fine cancella database, volume e foto. Non tocca il database di sviluppo de
 I test che modificano menu, foto o testi riportano i dati com'erano alla fine (`tests/baseline.ts`); le prenotazioni
 create dai test usano nomi, giorni e numeri di prova sempre diversi. Il backend e2e alza i limiti per IP del modulo
 pubblico (`web-requests-per-hour`, `web-attempts-per-10-minutes`, `availability-reads-per-minute`) perché tutte le
-richieste arrivano da 127.0.0.1; i limiti reali (FIX-1: 10 richieste create all'ora, 30 tentativi in 10 minuti, 120
+richieste arrivano da 127.0.0.1; i limiti reali (FIX 2: 5 richieste create all'ora, 30 tentativi in 10 minuti, 120
 letture al minuto) sono verificati dai test del backend (`WebRateLimitIT`). Nelle prove manuali in locale gli invii
 rifiutati non consumano più il limite delle richieste; per ripartire da zero basta riavviare il backend.
 

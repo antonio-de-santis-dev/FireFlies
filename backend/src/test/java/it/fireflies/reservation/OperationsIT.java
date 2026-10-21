@@ -65,7 +65,7 @@ class OperationsIT extends ReservationTestSupport {
         UUID first = pending("19:00", 4);
         UUID second = pending("19:00", 4);
         assertThat(confirm(staff, first).status()).isEqualTo(200);
-        assertThat(confirm(staff, second).code()).as("oltre le 6 persone del locale").isEqualTo("CAPACITY_EXCEEDED");
+        assertThat(confirm(staff, second).code()).as("oltre le 6 persone del locale").isIn("BAND_CAPACITY_EXCEEDED", "CAPACITY_EXCEEDED");
         JsonNode options = browser().get("/api/v1/public/booking-options?date=" + DAY + "&guests=3").body();
         assertThat(options.toString()).contains("FULL");
 
@@ -85,7 +85,12 @@ class OperationsIT extends ReservationTestSupport {
         assertThat(row.path("confirmed").asInt()).isEqualTo(1);
         assertThat(row.path("guests").asInt()).isEqualTo(4);
         assertThat(row.path("capacity").asInt()).isEqualTo(6);
-        assertThat(row.path("available").asInt()).as("il gruppo più grande ancora accoglibile").isEqualTo(6);
+        // FIX 2: fisicamente starebbero 6 persone in un orario della fascia, ma il budget della fascia ne lascia 2 (4 confermate su 6)
+        assertThat(row.path("physicalAvailable").asInt()).isEqualTo(6);
+        assertThat(row.path("bandCapacity").asInt()).isEqualTo(6);
+        assertThat(row.path("bandConfirmed").asInt()).isEqualTo(4);
+        assertThat(row.path("bandRemaining").asInt()).isEqualTo(2);
+        assertThat(row.path("available").asInt()).as("il gruppo più grande ancora accoglibile").isEqualTo(2);
         JsonNode morning = staff.get("/api/v1/admin/capacity-summary?from=" + DAY + "&to=" + DAY + "&band=COLAZIONE").body().path("rows");
         assertThat(morning.get(0).path("capacity").asInt()).as("stessa capienza a colazione").isEqualTo(6);
         assertThat(staff.get("/api/v1/admin/capacity-summary?from=" + DAY + "&to=" + DAY.plusDays(80)).code())
@@ -248,7 +253,15 @@ class OperationsIT extends ReservationTestSupport {
     void chiusuraConPrenotazioniEsistentiLeSegnalaSenzaCancellarle() {
         LocalDate day = DAY.plusDays(21);
         UUID confirmed = fixtures.confirm(zone, window, BusinessTime.toInstant(day, LocalTime.of(19, 0)), Duration.ofHours(2), 3);
-        ApiClient.Response closed = opening(day, day.plusDays(1), true);
+        // FIX 2: senza conferma esplicita la chiusura non si salva e il gestore vede i giorni coinvolti
+        ApiClient.Response refused = opening(day, day.plusDays(1), true);
+        assertThat(refused.status()).as(refused.raw()).isEqualTo(409);
+        assertThat(refused.code()).isEqualTo("CLOSURE_HAS_RESERVATIONS");
+        assertThat(refused.body().path("context").path("conflicts").get(0).path("confirmed").asInt()).isEqualTo(1);
+        assertThat(refused.body().toString()).as("nessun dato personale").doesNotContain("Cliente demo").doesNotContain("+39");
+        assertThat(jdbc.sql("SELECT count(*) FROM opening_exceptions").query(Long.class).single()).isZero();
+        ApiClient.Response closed = owner.post("/api/v1/admin/opening-exceptions", Map.of("from", day.toString(),
+                "to", day.plusDays(1).toString(), "closed", true, "confirmReservations", true));
         assertThat(closed.status()).as(closed.raw()).isEqualTo(201);
         assertThat(closed.body().path("activeReservations").asInt()).isEqualTo(1);
         JsonNode conflict = closed.body().path("conflicts").get(0);

@@ -13,7 +13,7 @@
   - STAFF e titolare: prenotazioni, eventi esclusivi, menu, foto, avvisi, calendario di oggi, riepilogo della capienza,
     nuovo invio di una notifica.
 - Limiti: login per account e per IP; modulo pubblico (FIX-1, T-80) per IP in memoria — letture della disponibilità
-  120/min, tentativi di invio 30 in 10 minuti, richieste create 10/ora contate solo al salvataggio — e per telefono sul
+  120/min, tentativi di invio 30 in 10 minuti, richieste create 5/ora (FIX 2) contate solo se salvate davvero — e per telefono sul
   database (3 in 24 ore); `429` con `Retry-After`. I messaggi non contengono dati personali; l'audit della creazione
   registra solo origine, persone e riferimento.
 - **Accessi negati** (FIX-1): ogni `403` di un gestore resta un `403` anche su percorsi lunghi (prima diventava `500`

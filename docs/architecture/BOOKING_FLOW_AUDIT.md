@@ -1,6 +1,6 @@
 # BOOKING_FLOW_AUDIT — come funziona davvero una richiesta di tavolo
 
-> FIX-1, 21/10/2026, branch `fix-1`. Ricostruito **dal codice**, non dai documenti di progetto. Per ogni punto: com'era
+> FIX-1, 21/10/2026, branch `fix-1`; **aggiornato in FIX 2** (branch `fix2/prenotatavolo`, §23). Ricostruito **dal codice**, non dai documenti di progetto. Per ogni punto: com'era
 > prima di FIX-1, i problemi trovati, cosa è cambiato in FIX-1, il comportamento finale. Percorsi relativi a
 > `backend/src/main/java/it/fireflies/` e `frontend/src/`.
 
@@ -224,3 +224,25 @@ doppio tocco o rete instabile; chi insiste a raffica riceve 429 con l'attesa. Le
 occupare posti; il gestore conferma e solo allora il server occupa i posti, sotto lock e mai oltre la capienza unica del
 locale, anche con più conferme nello stesso istante. Chiusure di un giorno o di un intervallo bloccano il sito, senza
 cancellare le prenotazioni esistenti.
+
+## 23. FIX 2 — cosa cambia nel flusso
+| Punto | Prima (FIX-1) | FIX 2 |
+|---|---|---|
+| Limite «quante persone in una fascia» | solo posti contemporanei: con il ricambio una fascia poteva accogliere più della capienza (100 alle 19 + 100 alle 21) | budget per giorno e fascia (`band_capacity_usage`, trigger + lock della riga, `BAND_CAPACITY_EXCEEDED`); i posti contemporanei restano controllati dal registro |
+| Duplicati | stesso telefono **e stesso orario** (`ux_res_web_duplicate`) | stesso telefono, giorno e **fascia** anche a orari diversi (`ux_res_web_band_duplicate`); messaggio generico |
+| Limite per IP | 10 richieste create all'ora | 5, restituite se il salvataggio fallisce |
+| Invio contemporaneo duplicato | — | il secondo perde sull'indice unico, la richiesta viene ripetuta in una nuova transazione: stessa ricevuta (stessa chiave) o `409 DUPLICATE_REQUEST` |
+| Chiusure con prenotazioni | salvate subito con un avviso | `409 CLOSURE_HAS_RESERVATIONS` fino alla conferma consapevole; nessun annullamento automatico |
+| Eventi | inizio e fine a passi di 15' | qualunque minuto; nel registro ogni quanto toccato anche in parte |
+| Pubblicazione | interruttore nell'editor, un solo «Salva» | interruttore «Pubblica sul sito» nell'elenco; l'editor salva solo bozze/contenuti |
+| Riepilogo settimanale | persone confermate, capienza, disponibili (solo posti fisici) | confermate / capienza della fascia, restanti, disponibili adesso = minimo tra budget e posti fisici, eventi |
+
+Problemi aggiunti a §21:
+
+| # | Problema | Gravità | Stato |
+|---|---|---|---|
+| P-11 | Ricambio dei tavoli: una fascia poteva superare la capienza del locale in persone totali | alta (requisito del titolare) | **corretto** (T-88) |
+| P-12 | Stesso cliente con più richieste attive nella stessa fascia a orari diversi | media | **corretto** (T-89) |
+| P-13 | Eventi solo a quarti d'ora | media | **corretto** (T-91) |
+| P-14 | Possibile stallo tra annullamento (quanti → riga del budget) e conferma (riga → quanti) | alta (concorrenza) | **evitato** in progettazione: l'annullamento blocca prima la riga del budget |
+| P-15 | Il budget di una prenotazione per evento segue la fascia dell'inizio dell'evento; spostare un evento con sole richieste in attesa non controlla il budget (non consumano) | nota | documentato (FIX2_REPORT §11) |

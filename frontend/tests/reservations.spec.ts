@@ -109,8 +109,10 @@ test.describe('Prenotazioni', () => {
       await signIn(page);
       await go(page, '/gestione/impostazioni');
       const row = await weekSummaryRow(page, day, 'Aperitivo');
-      await expect(row.locator('td[data-label="Persone confermate"]')).toHaveText(/^\d+$/);
-      return Number(await row.locator('td[data-label="Persone confermate"]').textContent());
+      // FIX 2: «confermate / capienza» della fascia
+      const cell = row.locator('td[data-label="Confermate / capienza"]');
+      await expect(cell).toHaveText(/^\d+ \/ \d+$/);
+      return Number((await cell.textContent())!.split('/')[0].trim());
     };
     const before = await persons();
     expect(before).toBeGreaterThanOrEqual(10);

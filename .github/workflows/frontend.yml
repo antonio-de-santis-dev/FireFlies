@@ -3,7 +3,7 @@ name: frontend
 
 on:
   push:
-    branches: ["main", "fase-*/**", "fix-*"]
+    branches: ["main", "fase-*/**", "fix-*", "fix2/**"]
     paths: ["frontend/**", "backend/**", "infra/**", ".github/workflows/frontend.yml"]
   pull_request:
     paths: ["frontend/**", "backend/**", "infra/**", ".github/workflows/frontend.yml"]

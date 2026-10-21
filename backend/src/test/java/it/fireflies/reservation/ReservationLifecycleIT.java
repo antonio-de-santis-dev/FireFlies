@@ -124,16 +124,16 @@ class ReservationLifecycleIT extends ReservationTestSupport {
 
         UUID a = pending("18:00", 10);   // 18:00–20:00
         UUID b = pending("19:00", 10);   // 19:00–21:00: si sovrappone ad a
-        UUID c = pending("20:00", 10);   // 20:00–22:00: a è già uscito
+        UUID c = pending("20:00", 5);    // 20:00–22:00: a è già uscito; FIX 2: budget della fascia 10 + 5 = 15
         assertThat(confirm(staff, a).status()).isEqualTo(200);
         ApiClient.Response over = confirm(staff, b);
         assertThat(over.status()).isEqualTo(409);
-        assertThat(over.code()).isEqualTo("CAPACITY_EXCEEDED");
+        assertThat(over.code()).isIn("BAND_CAPACITY_EXCEEDED", "CAPACITY_EXCEEDED");
         assertThat(status(b)).as("nulla cambia se i posti non bastano").isEqualTo("PENDING");
         assertThat(history(b)).isEqualTo(1);
         assertThat(confirm(staff, c).status()).isEqualTo(200);
         assertThat(occupied("19:45")).isEqualTo(10);
-        assertThat(occupied("20:00")).isEqualTo(10);
+        assertThat(occupied("20:00")).isEqualTo(5);
 
         JsonNode detailB = staff.get("/api/v1/admin/reservations/" + b).body();
         assertThat(detailB.path("capacity").path("fits").asBoolean()).isFalse();
@@ -152,13 +152,11 @@ class ReservationLifecycleIT extends ReservationTestSupport {
         assertThat(below.status()).isEqualTo(409);
         assertThat(below.code()).isEqualTo("CAPACITY_BELOW_CONFIRMED");
 
-        // annullando a resta c (20:00–22:00): b non ci sta ancora; annullando anche c, b ci sta
+        // annullando a restano c (20:00–22:00, 5 persone): b (10) ci sta, nei posti contemporanei e nel budget della fascia
         assertThat(changeStatus(staff, a, "CANCELLED", Map.of("reason", "VENUE_DECISION")).status()).isEqualTo(200);
-        assertThat(confirm(staff, b).code()).isEqualTo("CAPACITY_EXCEEDED");
-        assertThat(changeStatus(staff, c, "CANCELLED", Map.of("reason", "VENUE_DECISION")).status()).isEqualTo(200);
         assertThat(confirm(staff, b).status()).as("i posti liberati sono subito disponibili").isEqualTo(200);
         assertThat(occupied("18:00")).isZero();
-        assertThat(occupied("20:00")).isEqualTo(10);
+        assertThat(occupied("20:00")).isEqualTo(15);
     }
 
     @Test
@@ -171,7 +169,7 @@ class ReservationLifecycleIT extends ReservationTestSupport {
         Map<String, Object> bigger = new HashMap<>(Map.of("version", version(id), "guests", 9));
         ApiClient.Response refused = staff.patch("/api/v1/admin/reservations/" + id, bigger);
         assertThat(refused.status()).isEqualTo(409);
-        assertThat(refused.code()).isEqualTo("CAPACITY_EXCEEDED");
+        assertThat(refused.code()).isIn("BAND_CAPACITY_EXCEEDED", "CAPACITY_EXCEEDED");
         assertThat(occupied("19:00")).as("nulla cambia").isEqualTo(16);
 
         Map<String, Object> moved = new HashMap<>(Map.of("version", version(id), "time", "21:00", "guests", 6,
@@ -286,7 +284,7 @@ class ReservationLifecycleIT extends ReservationTestSupport {
         body.put("time", "19:00");
         body.put("guests", 16);
         ApiClient.Response full = staff.post("/api/v1/admin/reservations", body);
-        assertThat(full.code()).isEqualTo("CAPACITY_EXCEEDED");
+        assertThat(full.code()).isIn("BAND_CAPACITY_EXCEEDED", "CAPACITY_EXCEEDED");
         assertThat(jdbc.sql("SELECT count(*) FROM reservations").query(Long.class).single()).as("nessuna riga a metà").isEqualTo(1);
         body.put("confirmNow", false);
         body.put("needsCallback", true);
