@@ -191,3 +191,57 @@ Avvio locale come in `docs/operations/LOCAL_SETUP.md` (dati demo, capienza da im
    il ricaricamento; spegnilo → torna Bozza. Prova a pubblicare un esclusivo sovrapposto a un altro: l'interruttore torna
    spento e la riga spiega il conflitto. Con prenotazioni attive non si spegne.
 8. Telefono (360–430 px): elenco eventi senza sovrapposizioni né scorrimento orizzontale.
+
+## 13. Audit del calendario: mercoledì riaperto ma non selezionabile (21/10/2026)
+**Percorso verificato** su un database isolato (mai su quello del titolare): Impostazioni › Orari → `PUT
+/admin/site-settings` → `opening_hours` → `BookingCalendar.closedDays` → `GET /public/booking-options` →
+`BookingDialog`. Il salvataggio produce davvero l'UPDATE (`iso_day = 3`, `closed = false`), `closedDates` si svuota alla
+richiesta successiva senza riavvio, la numerazione ISO è corretta (lunedì = 1 … domenica = 7) sia nel salvataggio
+(`api/content.ts`) sia nella lettura (`DayOfWeek.getValue()`), nessuna cache (`no-store`, il dialog si rimonta a ogni
+apertura). Le date straordinarie prevalgono come previsto.
+
+**Causa del sintomo, distinta per tipo**
+| Tipo | Dove | Cosa |
+|---|---|---|
+| Configurazione mancante (probabile sul database locale) | `demo/DemoContentLoader` prima della FASE 7 (`57ad258`): `continue; // giorno di chiusura` | i database caricati con i dati demo prima della FASE 7 non hanno **fasce** il mercoledì: riaprire il giorno negli Orari non crea fasce, quindi il giorno resta senza arrivi. Si risolve aggiungendo le fasce in Impostazioni › Capienza e calendario › «Orari di arrivo delle fasce» (non modificato automaticamente) |
+| Bug software | `BookingCalendar.closedDays` + `BookingDialog` + `OperationsService.summary` | «locale chiuso» e «aperto ma senza fasce» finivano nella stessa lista `closedDates`: il sito scriveva «chiuso» e il riepilogo «Chiuso», nascondendo la causa vera; nessun avviso in area gestori |
+| Bug software | `CapacitySettings` (Impostazioni) | dopo «Salva» degli orari il riepilogo settimanale della stessa pagina non si ricaricava: il mercoledì restava «Chiuso» finché non si ricaricava la pagina |
+| Comportamento previsto | — | un giorno aperto senza fasce non è prenotabile; ora è detto chiaramente |
+
+**Correzioni** (nessuna migrazione, nessun dato modificato, regole di capienza ed eventi invariate)
+- `BookingCalendar.unavailableDays` con il motivo `DayClosure` (`VENUE_CLOSED`, `NO_SERVICE_WINDOWS`,
+  `ARRIVALS_CLOSED`); `closedDays` ne deriva (stesso risultato di prima). `GET /public/booking-options` aggiunge
+  `unavailableDays` (compatibile: `closedDates` invariato).
+- `BookingDialog`: «chiuso» solo per `VENUE_CLOSED`, altrimenti «no orari» / «nessun orario prenotabile» e messaggio
+  «non ci sono orari prenotabili dal sito»; i giorni si rileggono anche al ritorno sulla scheda del browser.
+- `OperationsService.summary`: «Chiuso» solo per locale o fasce chiusi; giorno senza fasce = «Fascia non prevista».
+- `CapacitySettings`: ricarica configurazione e riepilogo quando cambiano gli orari salvati; avviso «aperto ma senza
+  fasce prenotabili» con i giorni interessati.
+
+**Test eseguiti**
+| Suite | Esito |
+|---|---|
+| Backend unit + integrazione (`./mvnw -o verify`) | 82 / 82 e **353 / 353** (nuovo `CalendarOpeningIT`, 4 test) |
+| Frontend `npm run verifica` (typecheck + Playwright) | **148 / 148** (nuovo `calendar.spec.ts`, 5 test) |
+| Prova inversa | `calendar.spec.ts` «area gestori» con la correzione disattivata: fallisce («Chiuso» resta), ripristinata |
+
+`CalendarOpeningIT`: tutti e 7 i giorni chiusi → aperti (anche 4 settimane dopo, con orari prenotabili) → di nuovo
+chiusi senza riavvio; giorno aperto senza fasce = `NO_SERVICE_WINDOWS` e nel riepilogo non «Chiuso», con una fascia
+diventa prenotabile; chiusura straordinaria su una data (solo quella) e rimozione; fascia chiusa agli arrivi =
+`ARRIVALS_CLOSED`; richiesta su un giorno riaperto accettata (`201 PENDING`), richiuderlo con una richiesta attiva chiede
+conferma e non salva nulla. `calendar.spec.ts`: mercoledì chiuso → aperto con calendario aperto prima e riaperto dopo →
+selezionabile, orari disponibili, mese successivo senza giorni disabilitati per errore → di nuovo chiuso (1366 e 390 px);
+richiesta in un mercoledì riaperto inviata e ricevuta; riepilogo dei gestori aggiornato subito dopo «Salva»; avviso e
+etichetta «nessun orario prenotabile» con un giorno aperto senza fasce.
+
+**Verifica manuale**
+1. Impostazioni › Orari: Mercoledì «Aperto», Salva. Nella stessa pagina il riepilogo settimanale non mostra più «Chiuso»
+   per il mercoledì. Se compare l'avviso «Mercoledì: aperto ma senza fasce prenotabili», apri «Orari di arrivo delle
+   fasce» e aggiungi le fasce del mercoledì (es. Aperitivo 18:00–20:30): l'avviso sparisce.
+2. Sito › «Richiedi un tavolo»: il mercoledì è selezionabile e mostra gli orari (anche scegliendo un mercoledì del mese
+   dopo nel campo data). Se il giorno è aperto ma senza fasce, la casella dice «no orari», non «chiuso».
+3. Invia una richiesta per un mercoledì: arriva in Richieste come «In attesa».
+4. Richiudi il mercoledì: con richieste attive compare la conferma; dopo la conferma il calendario lo mostra «chiuso».
+
+**Rischi e limiti**: nessuna modifica dei dati; il campo `unavailableDays` è un'aggiunta compatibile. Un dialog lasciato
+aperto si aggiorna al ritorno sulla scheda o alla riapertura, non in tempo reale durante l'uso.

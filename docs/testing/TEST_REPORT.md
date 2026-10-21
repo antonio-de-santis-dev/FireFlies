@@ -3,6 +3,13 @@
 > Aggiornato in **FIX-1** (branch `fix-1`) il 21/10/2026. Seguono le FASI 8, 7, 6, 5, 4, 3 e, in fondo, la FASE 2.
 > Ambiente: OpenJDK 21.0.12, Maven 3.9.11, Node 22, Playwright 1.56.1 (Chromium), Docker 29.8.2, PostgreSQL **17.11**.
 
+## FIX 2 — Audit del calendario (21/10/2026)
+| Suite | Esito |
+|---|---|
+| Backend unit / integrazione | 82 / 82, 353 / 353 (nuovo `CalendarOpeningIT` 4) |
+| Frontend `npm run verifica` | 148 / 148 (nuovo `calendar.spec.ts` 5) |
+Dettaglio in `docs/architecture/FIX2_REPORT.md` §13.
+
 ## FIX 2 — Riepilogo
 21/10/2026, branch `fix2/prenotatavolo`, PostgreSQL 17 reale.
 
