@@ -1,10 +1,10 @@
 # WORK_PROGRESS — stato del lavoro per la ripresa (MASTER_PLAN §19)
 
-> Ultimo aggiornamento: 20/10/2026, **FASE 8 — hardening, performance, UX, preparazione al deploy** (completata, **in attesa del collaudo del titolare**).
+> Ultimo aggiornamento: 21/10/2026, **FASE 8 — hardening, performance, UX, preparazione al deploy** (completata, **in attesa del collaudo del titolare**).
 
 ## Fase e branch
 - **FASE 8** sul branch `fase-8/hardening-deploy`, creato da `fase-7/notifiche` @ `769cd1f` (FASE 7 approvata).
-- Nessun merge su `main`, nessun force push, **nessuna pubblicazione**, nessun servizio a pagamento, notifiche reali spente.
+- **21/10: `main` allineato alla FASE 8 su autorizzazione del titolare (C-32, fast-forward).** Nessun force push, **nessuna pubblicazione**, nessun servizio a pagamento, notifiche reali spente.
 
 ## Piano di lavoro
 | # | Requisito | Stato | Commit |
@@ -30,5 +30,5 @@
 - Nessuno.
 
 ## Prossima azione esatta
-Nessuna: **fermo per il collaudo manuale del titolare**. Nessun merge, nessun deploy, nessuna fase successiva senza
+Nessuna: **fermo per il collaudo manuale del titolare**. `main` = FASE 8; nessun deploy, nessuna fase successiva senza
 autorizzazione esplicita.

@@ -39,12 +39,13 @@
 | C-29 | Le quattro verifiche V-01…V-04 (§4-bis) restano aperte e sono requisiti pre-deploy; **nessun componente complesso** (Redis, Kafka) introdotto solo per risolverle | 20/10 |
 | C-30 | **FASE 7 — completamento obbligatorio**: requisiti 1–14 oltre al 15 già fatto; nessun invio reale senza autorizzazione, credenziali e provider; conservazione: prenotazioni 1 mese, eventi 2 mesi, statistiche anonime conservate; nessuna migrazione distruttiva | 20/10 |
 | C-31 | **FASE 7 approvata** (482 test, CI verde); **FASE 8**: hardening, performance, UX responsive, preparazione al deploy **senza pubblicare**, senza servizi a pagamento, notifiche reali spente; editor eventi senza ora di fine e senza coperti (valori ricavati nel backend) | 20/10 |
+| C-32 | **Autorizzazione del titolare a portare la FASE 8 su `main`** (fast-forward da `fase-8/hardening-deploy`, nessun force push). **Non** autorizza il deploy, servizi a pagamento o notifiche reali | 21/10 |
 
 ## 1-bis. Strategia Git (C-21, regola definitiva)
 
 | Branch | Deriva da | Stato |
 |---|---|---|
-| `main` | — | solo README iniziale; non si modifica senza autorizzazione |
+| `main` | — | dal 21/10/2026 allineato a `fase-8/hardening-deploy` (C-32); si modifica solo con autorizzazione |
 | `fase-0/audit` | `main` | completato e approvato |
 | `fase-1/progettazione` | `fase-0/audit` | completato e approvato |
 | `fase-2/backend-foundation` | `fase-1/progettazione` | completato e approvato |
