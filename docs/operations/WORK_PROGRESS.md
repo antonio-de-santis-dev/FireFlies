@@ -31,7 +31,7 @@
 ## Branch fix2/fasceorarie (21/10/2026)
 - Creato da `fix2/prenotatavolo` @ `ee3ba4c`. Orari di apertura come unica impostazione del calendario, fasce interne
   (`ArrivalRules`/`ArrivalCatalog`), pannello «Orari di arrivo delle fasce» rimosso. Nessuna migrazione.
-- Report: `docs/architecture/FIX2_FASCEORARIE_REPORT.md`. In attesa del collaudo; nessun merge.
+- Report: `docs/architecture/FIX2_FASCEORARIE_REPORT.md`. **Approvato e portato su `main` il 22/10/2026** (C-35).
 
 ## Note per la ripresa
 - **Non compilare il backend mentre gira l'e2e** (il jar in `backend/target/` è quello usato da `scripts/e2e.mjs`).
@@ -40,4 +40,4 @@
 - Punti aperti da decidere con il titolare: FIX2_REPORT §11.
 
 ## Prossima azione esatta
-Collaudo manuale del titolare (FIX2_REPORT §12). Merge o deploy solo dopo approvazione esplicita.
+FIX 2 (con fasce orarie interne) è su `main` (C-35). Nessun deploy: serve un'autorizzazione separata del titolare.

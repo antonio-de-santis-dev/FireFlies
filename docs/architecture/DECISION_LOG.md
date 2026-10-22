@@ -42,6 +42,7 @@
 | C-32 | **Autorizzazione del titolare a portare la FASE 8 su `main`** (fast-forward da `fase-8/hardening-deploy`, nessun force push). **Non** autorizza il deploy, servizi a pagamento o notifiche reali | 21/10 |
 | C-33 | **FIX-1** sul branch di collaudo `fix-1` (da `main`): animazione iniziale, categorie del menu sul telefono, foto di «Perché FireFlies», rate limiting equilibrato, menu dei gestori sul telefono, Impostazioni (capienza unica, riepilogo settimanale, chiusure su intervalli), report sul flusso di prenotazione. Merge in `main` solo dopo il collaudo manuale | 21/10 |
 | C-34 | **FIX-1 approvato dal titolare** dopo il collaudo: `fix-1` portato su `main` (fast-forward, nessun force push). Nuovo branch `fix2/prenotatavolo` da `main` per il lavoro successivo. Non autorizza il deploy | 21/10 |
+| C-35 | **FIX 2 approvato dal titolare**: `fix2/fasceorarie` (che contiene `fix2/prenotatavolo`: budget per fascia, duplicati, limite IP, eventi al minuto, pubblicazione dall'elenco, audit del calendario, reset dei dati di prova, fasce orarie interne) portato su `main` con fast-forward (`e558988..c119664`), nessun force push. Non autorizza il deploy | 22/10 |
 
 ## 1-bis. Strategia Git (C-21, regola definitiva)
 
@@ -49,7 +50,8 @@
 |---|---|---|
 | `main` | — | dal 21/10/2026 allineato a `fase-8/hardening-deploy` (C-32); si modifica solo con autorizzazione |
 | `fix-1` | `main` (`395dcf5`) | correzioni FIX-1, approvate e portate su `main` il 21/10/2026 (C-34) |
-| `fix2/prenotatavolo` | `main` dopo FIX-1 | nuovo branch di lavoro (C-34) |
+| `fix2/prenotatavolo` | `main` dopo FIX-1 | FIX 2, portato su `main` il 22/10/2026 (C-35) |
+| `fix2/fasceorarie` | `fix2/prenotatavolo` (`ee3ba4c`) | fasce orarie interne, portato su `main` il 22/10/2026 (C-35) |
 | `fase-0/audit` | `main` | completato e approvato |
 | `fase-1/progettazione` | `fase-0/audit` | completato e approvato |
 | `fase-2/backend-foundation` | `fase-1/progettazione` | completato e approvato |
