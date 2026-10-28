@@ -78,6 +78,19 @@ class ReservationStore {
                 .query(UUID.class).single();
     }
 
+    /** Consenso WhatsApp dato nel modulo pubblico (V14): ora e versione del testo della casella. */
+    void recordWhatsAppConsent(UUID id, String version, Instant at) {
+        jdbc.sql("UPDATE reservations SET whatsapp_consent_at = ?, whatsapp_consent_version = ? WHERE id = ? AND whatsapp_consent_at IS NULL")
+                .params(utc(at), version, id).update();
+    }
+
+    /** Consenso WhatsApp presente e non revocato. */
+    boolean hasWhatsAppConsent(UUID id) {
+        return jdbc.sql("""
+                SELECT whatsapp_consent_at IS NOT NULL AND whatsapp_consent_withdrawn_at IS NULL FROM reservations WHERE id = ?
+                """).param(id).query(Boolean.class).optional().orElse(false);
+    }
+
     boolean refExists(String ref) {
         return jdbc.sql("SELECT EXISTS (SELECT 1 FROM reservations WHERE public_ref = ?)").param(ref).query(Boolean.class).single();
     }

@@ -50,6 +50,8 @@ import it.fireflies.notification.NotificationOutbox;
 public class ReservationService {
 
     public static final String PRIVACY_VERSION = "2026-10";
+    /** Versione del testo della casella del consenso WhatsApp nel modulo (frontend BookingDialog). */
+    public static final String WHATSAPP_CONSENT_VERSION = "WA-1";
     static final String AGGREGATE = "RESERVATION";
     private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$");
     private static final Set<String> REJECT_REASONS = Set.of("NO_CAPACITY", "VENUE_DECISION", "DUPLICATE", "OTHER");
@@ -57,9 +59,12 @@ public class ReservationService {
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final DateTimeFormatter DATE_IT = DateTimeFormatter.ofPattern("d/M/yyyy");
 
-    /** {@code eventId}: richiesta per un evento (giorno e orari sono quelli dell'evento, {@code date}/{@code time} ignorati). */
+    /**
+     * {@code eventId}: richiesta per un evento (giorno e orari sono quelli dell'evento, {@code date}/{@code time} ignorati).
+     * {@code whatsappConsent}: casella facoltativa e mai preselezionata, distinta dall'informativa privacy (V14).
+     */
     public record WebRequest(LocalDate date, LocalTime time, int guests, String name, String phone, String email,
-            String notes, boolean privacyAccepted, String website, UUID eventId) {
+            String notes, boolean privacyAccepted, String website, UUID eventId, boolean whatsappConsent) {
     }
 
     public record Receipt(String reference, String status, LocalDate date, LocalTime time, int guests, String message) {
@@ -214,6 +219,9 @@ public class ReservationService {
                 end, r.guests(), slot == null ? null : slot.window().id(), zoneId, name, phone, email, notes, null,
                 PRIVACY_VERSION, now, idempotencyKey, fingerprint, null, event == null ? null : event.id()));
         store.history(id, null, "PENDING", null, null, null);
+        if (r.whatsappConsent()) {
+            store.recordWhatsAppConsent(id, WHATSAPP_CONSENT_VERSION, now);
+        }
         ReservationStore.Row row = store.find(id).orElseThrow();
         notify(row, "RESERVATION_NEW_FOR_VENUE", "created");
         notify(row, "RESERVATION_RECEIVED", "created");
@@ -824,6 +832,13 @@ public class ReservationService {
         if (!template.equals("RESERVATION_RECEIVED")) {
             outbox.enqueue(key + ":SMS", AGGREGATE, row.id(), NotificationOutbox.Channel.SMS,
                     NotificationOutbox.Recipient.CUSTOMER, row.customerPhone(), template, payload, row.endsAt());
+        }
+        // WhatsApp (V14): solo la conferma, solo con il consenso esplicito del cliente. Chiave senza versione: una
+        // prenotazione si conferma una volta sola, quindi al massimo un messaggio WhatsApp di conferma per prenotazione.
+        if (template.equals("RESERVATION_CONFIRMED") && store.hasWhatsAppConsent(row.id())) {
+            outbox.enqueue("RES:" + row.id() + ":RESERVATION_CONFIRMED:WHATSAPP", AGGREGATE, row.id(),
+                    NotificationOutbox.Channel.WHATSAPP, NotificationOutbox.Recipient.CUSTOMER, row.customerPhone(), template,
+                    payload, row.endsAt());
         }
     }
 

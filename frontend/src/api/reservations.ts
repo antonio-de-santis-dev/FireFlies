@@ -58,7 +58,7 @@ export type DayClosure = 'VENUE_CLOSED' | 'NO_ARRIVAL_TIMES' | 'ARRIVALS_CLOSED'
 export type Receipt = { reference: string; status: ReservationStatus; date: string; time: string; guests: number; message: string };
 export type WebRequest = {
   date: string; time: string; guests: number; name: string; phone: string; email: string; notes: string;
-  privacyAccepted: boolean; website: string; eventId?: string;
+  privacyAccepted: boolean; website: string; eventId?: string; whatsappConsent?: boolean;
 };
 
 export const bookingOptions = (date?: string, guests?: number) => {
@@ -88,8 +88,13 @@ export type Detail = {
   history: { fromStatus: ReservationStatus | null; toStatus: ReservationStatus; reason: string | null; note: string | null; by: string | null; at: string }[];
   changes: { action: string; by: string | null; at: string; details: Record<string, unknown> }[];
   notifications: {
-    id: string; template: string; channel: 'EMAIL' | 'SMS'; recipient: 'CUSTOMER' | 'STAFF'; state: string; skipReason: string | null;
+    id: string; template: string; channel: 'EMAIL' | 'SMS' | 'WHATSAPP'; recipient: 'CUSTOMER' | 'STAFF'; state: string; skipReason: string | null;
     delivered: boolean; simulated: boolean; resendable: boolean; createdAt: string;
+    /** fake, meta-test, … (chi ha gestito l'ultimo tentativo) */
+    provider?: string | null;
+    /** stato di consegna dal webhook di WhatsApp */
+    deliveryStatus?: 'SENT' | 'DELIVERED' | 'READ' | 'FAILED' | null;
+    errorCode?: string | null;
   }[];
   capacity: { zoneId: string; capacity: number; minFree: number; pendingOthers: number; eventBlocks: boolean; fits: boolean } | null;
   actions: Action[];
@@ -226,7 +231,46 @@ export const deleteOpeningException = (id: string) => api.del(`/admin/opening-ex
 /** Testo per lo stato di una notifica: mai «inviata» se non è partita davvero. */
 export const resendNotification = (id: string) => api.post<void>(`/admin/notifications/${id}/resend`, {});
 
+export const CHANNEL_LABEL: Record<string, string> = { EMAIL: 'email', SMS: 'SMS', WHATSAPP: 'WhatsApp' };
+
+/** Motivo breve e comprensibile di un errore WhatsApp (dal codice tecnico, mai dal messaggio del provider). */
+export function whatsAppReason(code: string | null | undefined): string {
+  const c = code ?? '';
+  if (c.startsWith('ACCOUNT_LOCKED') || c === 'META_131031') return 'account WhatsApp Business bloccato';
+  if (c.startsWith('TOKEN_EXPIRED')) return 'token di accesso scaduto';
+  if (c.startsWith('AUTH_INVALID') || c.startsWith('PERMISSION_DENIED')) return 'credenziali non valide';
+  if (c.startsWith('RECIPIENT_NOT_ALLOWED')) return 'numero non autorizzato per le prove';
+  if (c.startsWith('INVALID_RECIPIENT') || c.startsWith('PHONE_NOT_REGISTERED')) return 'numero non valido';
+  if (c.startsWith('UNDELIVERABLE') || c === 'META_131026') return 'numero non raggiungibile su WhatsApp';
+  if (c.startsWith('TEMPLATE_')) return 'modello non approvato o non valido';
+  if (c.startsWith('INVALID_PARAMETER')) return 'dati del messaggio non validi';
+  if (c.startsWith('RATE_LIMITED')) return 'troppi invii in poco tempo';
+  if (c.startsWith('SERVICE_UNAVAILABLE') || c.startsWith('NETWORK_CONNECT')) return 'servizio non raggiungibile';
+  if (c.startsWith('TIMEOUT') || c.startsWith('NETWORK_ERROR')) return 'nessuna risposta da Meta';
+  if (c === 'LEASE_EXPIRED') return 'invio interrotto';
+  return c ? `errore ${c}` : 'errore sconosciuto';
+}
+
+function whatsAppLabel(n: Detail['notifications'][number]): string {
+  if (n.skipReason === 'WHATSAPP_DISABLED') return 'WhatsApp disattivato: nessun messaggio';
+  if (n.skipReason === 'NO_CONSENT') return 'Non inviato: consenso WhatsApp revocato';
+  if (n.skipReason === 'SUPERSEDED') return 'Superato: prenotazione non più confermata';
+  if (n.skipReason === 'EXPIRED') return 'Non inviato: ormai superato dalla data';
+  if (n.deliveryStatus === 'READ') return 'Letto dal cliente';
+  if (n.deliveryStatus === 'DELIVERED') return 'Consegnato';
+  if (n.deliveryStatus === 'FAILED') return `Non consegnato: ${whatsAppReason(n.errorCode)}`;
+  if (n.simulated) return 'Simulato (FAKE): nessun messaggio reale';
+  if (n.state === 'SENT') return n.deliveryStatus === 'SENT' ? 'Inviato da WhatsApp, in consegna' : 'Inviato a Meta';
+  if (n.state === 'PENDING') return 'In attesa di invio';
+  if (n.state === 'SENDING') return 'In invio';
+  if (n.state === 'FAILED') return `Nuovo tentativo automatico: ${whatsAppReason(n.errorCode)}`;
+  if (n.state === 'UNCERTAIN') return 'Esito incerto, non ritentato: verifica col cliente';
+  if (n.state === 'DEAD') return `Non riuscito: ${whatsAppReason(n.errorCode)}`;
+  return 'Non inviato';
+}
+
 export function notificationLabel(n: Detail['notifications'][number]): string {
+  if (n.channel === 'WHATSAPP') return whatsAppLabel(n);
   if (n.delivered) return 'Inviata';
   if (n.simulated) return 'Simulata: nessun messaggio reale';
   if (n.state === 'SENDING') return 'In invio';

@@ -45,11 +45,13 @@ public class ReservationViews {
 
     /**
      * Notifica accodata. {@code delivered} è vero solo se un provider reale ha accettato il messaggio ({@code SENT}
-     * non simulato): in questa versione non succede mai. {@code simulated}: «inviata» dal gateway finto, nessun
-     * messaggio è partito. {@code resendable}: un gestore può chiederne un nuovo invio.
+     * non simulato). {@code simulated}: «inviata» dal gateway finto, nessun messaggio è partito. {@code resendable}: un
+     * gestore può chiederne un nuovo invio (mai per WhatsApp). {@code provider}: {@code fake}, {@code meta-test}, …
+     * {@code deliveryStatus}: stato di consegna dal webhook di WhatsApp; {@code errorCode}: motivo tecnico breve.
      */
     public record NotificationEntry(UUID id, String template, String channel, String recipient, String state, String skipReason,
-            boolean delivered, boolean simulated, boolean resendable, Instant createdAt) {
+            boolean delivered, boolean simulated, boolean resendable, Instant createdAt, String provider, String deliveryStatus,
+            String errorCode) {
     }
 
     /** Posti nell'intervallo della prenotazione: minimo libero tra i quanti, e persone di altre richieste in attesa. */
@@ -100,10 +102,11 @@ public class ReservationViews {
         List<NotificationEntry> notifications = outbox.forAggregate(ReservationService.AGGREGATE, r.id()).stream()
                 .map(n -> {
                     boolean simulated = "SENT".equals(n.state()) && "fake".equals(n.provider());
-                    boolean resendable = List.of("FAILED", "DEAD", "UNCERTAIN").contains(n.state())
+                    boolean resendable = List.of("FAILED", "DEAD", "UNCERTAIN").contains(n.state()) && !"WHATSAPP".equals(n.channel())
                             && n.manualResends() < it.fireflies.notification.NotificationDispatcher.MAX_MANUAL_RESENDS;
+                    boolean delivered = ("SENT".equals(n.state()) || "DELIVERED".equals(n.state())) && !simulated;
                     return new NotificationEntry(n.id(), n.templateCode(), n.channel(), n.recipientKind(), n.state(), n.skipReason(),
-                            "SENT".equals(n.state()) && !simulated, simulated, resendable, n.createdAt());
+                            delivered, simulated, resendable, n.createdAt(), n.provider(), n.deliveryStatus(), n.errorCode());
                 })
                 .toList();
         return new Detail(summary(r), r.customerNotes(), r.internalNote(), zoneName(r.zoneId()),

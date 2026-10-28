@@ -63,6 +63,9 @@ class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/public/reservations").permitAll() // con CSRF e Idempotency-Key
+                        // webhook di Meta (V14): niente login né CSRF, ma verify token, firma HMAC, limiti; 404 se non configurato
+                        .requestMatchers(HttpMethod.GET, "/api/v1/webhooks/whatsapp").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/webhooks/whatsapp").permitAll()
                         .requestMatchers(HttpMethod.GET, "/media/**").permitAll() // varianti delle foto (solo storage locale)
                         .requestMatchers("/api/v1/admin/users", "/api/v1/admin/users/**").hasRole("OWNER")
                         .requestMatchers("/api/v1/admin/site-content", "/api/v1/admin/site-settings").hasRole("OWNER")
@@ -74,7 +77,7 @@ class SecurityConfiguration {
                         .requestMatchers("/api/v1/auth/**").authenticated()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().denyAll())
-                .csrf(csrf -> csrf.spa())
+                .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/v1/webhooks/whatsapp"))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .requestCache(cache -> cache.disable())

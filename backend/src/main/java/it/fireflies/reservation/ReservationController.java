@@ -45,7 +45,7 @@ import it.fireflies.security.Role;
 class ReservationController {
 
     record WebBody(LocalDate date, LocalTime time, Integer guests, String name, String phone, String email, String notes,
-            Boolean privacyAccepted, String website, UUID eventId) {
+            Boolean privacyAccepted, String website, UUID eventId, Boolean whatsappConsent) {
     }
 
     record ManualBody(String source, LocalDate date, LocalTime time, Integer durationMinutes, Integer guests, String name,
@@ -101,7 +101,8 @@ class ReservationController {
             @RequestBody WebBody body, HttpServletRequest request) {
         ReservationService.WebRequest web = new ReservationService.WebRequest(body.date(), body.time(),
                 body.guests() == null ? 0 : body.guests(), body.name(), body.phone(), body.email(), body.notes(),
-                Boolean.TRUE.equals(body.privacyAccepted()), body.website(), body.eventId());
+                Boolean.TRUE.equals(body.privacyAccepted()), body.website(), body.eventId(),
+                Boolean.TRUE.equals(body.whatsappConsent()));
         UUID idempotencyKey = uuid(key);
         ReservationService.Receipt receipt;
         try {

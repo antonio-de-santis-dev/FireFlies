@@ -12,7 +12,7 @@ import { ConfirmBadge } from './ui';
 // quando il locale la conferma, e l'esito lo dice chiaramente.
 type Values = {
   date: string; time: string; guests: number; name: string; phone: string; email: string; notes: string; privacy: boolean;
-  website: string;
+  website: string; whatsapp: boolean;
 };
 type Errors = Partial<Record<keyof Values | 'form', string>>;
 
@@ -54,7 +54,7 @@ export function BookingDialog() {
   const [choice, setChoice] = useState<'ask' | 'table' | 'party'>(event ? 'table' : 'ask');
   const [values, setValues] = useState<Values>({
     date: event?.date ?? '', time: eventMode ? event?.time ?? '' : '', guests: 2, name: '', phone: '', email: '', notes: '',
-    privacy: false, website: '',
+    privacy: false, website: '', whatsapp: false, // consenso WhatsApp mai preselezionato
   });
   const [errors, setErrors] = useState<Errors>({});
   const [receipt, setReceipt] = useState<Receipt | null>(null);
@@ -155,7 +155,7 @@ export function BookingDialog() {
       const r = await sendRequest({
         date: values.date, time: values.time, guests: values.guests, name: values.name.trim(), phone: values.phone.trim(),
         email: values.email.trim(), notes: values.notes.trim(), privacyAccepted: values.privacy, website: values.website,
-        eventId: eventMode ? event!.uuid : undefined,
+        whatsappConsent: values.whatsapp, eventId: eventMode ? event!.uuid : undefined,
       }, keyRef.current);
       setReceipt(r);
     } catch (e) {
@@ -410,6 +410,14 @@ export function BookingDialog() {
                       <span>Ho letto l'informativa privacy <ConfirmBadge>testo da redigere</ConfirmBadge> e acconsento all'uso dei miei dati solo per gestire questa richiesta.</span>
                     </label>
                   </div>
+                  {/* consenso WhatsApp: facoltativo, separato dall'informativa, mai spuntato in partenza */}
+                  <div className="field">
+                    <label className="check" htmlFor="bk-whatsapp">
+                      <input id="bk-whatsapp" type="checkbox" checked={values.whatsapp} onChange={(e) => set('whatsapp', e.target.checked)} aria-describedby="bk-whatsapp-hint" />
+                      <span>Voglio ricevere su WhatsApp la conferma della prenotazione <span className="muted">(facoltativo)</span></span>
+                    </label>
+                    <p className="hint" id="bk-whatsapp-hint">Un solo messaggio di servizio al numero indicato quando il locale conferma il tavolo: niente pubblicità.</p>
+                  </div>
                 </div>
               )}
 
@@ -425,6 +433,7 @@ export function BookingDialog() {
                       ['Telefono', values.phone, 3],
                       ['Email', values.email || '—', 3],
                       ['Note', values.notes || '—', 3],
+                      ['Conferma su WhatsApp', values.whatsapp ? 'Sì' : 'No', 3],
                     ].map(([k, v, s]) => (
                       <div key={k as string}>
                         <dt>{k}</dt>

@@ -22,21 +22,32 @@ import tools.jackson.databind.ObjectMapper;
 @Service
 public class NotificationOutbox {
 
-    public enum Channel { EMAIL, SMS }
+    public enum Channel { EMAIL, SMS, WHATSAPP }
 
     public enum Recipient { CUSTOMER, STAFF }
 
-    /** {@code provider}: chi ha gestito l'ultimo tentativo ({@code fake} = invio simulato, nessun messaggio reale). */
+    /**
+     * {@code provider}: chi ha gestito l'ultimo tentativo ({@code fake} = invio simulato, nessun messaggio reale).
+     * {@code deliveryStatus}: ultimo stato di consegna riportato dal webhook di WhatsApp (SENT, DELIVERED, READ, FAILED).
+     * {@code errorCode}: codice tecnico dell'ultimo errore (mai il messaggio d'errore del provider).
+     */
     public record Entry(UUID id, String templateCode, String channel, String recipientKind, String state, String skipReason,
-            Instant createdAt, Instant sentAt, String provider, int manualResends) {
+            Instant createdAt, Instant sentAt, String provider, int manualResends, String deliveryStatus, String errorCode) {
     }
 
     private final JdbcClient jdbc;
     private final ObjectMapper json;
+    private final WhatsAppProperties whatsApp;
 
-    NotificationOutbox(JdbcClient jdbc, ObjectMapper json) {
+    NotificationOutbox(JdbcClient jdbc, ObjectMapper json, WhatsAppProperties whatsApp) {
         this.jdbc = jdbc;
         this.json = json;
+        this.whatsApp = whatsApp;
+    }
+
+    /** Modalità WhatsApp attuale (DISABLED, FAKE, META_TEST): la si mostra anche in area gestori. */
+    public WhatsAppProperties.Mode whatsAppMode() {
+        return whatsApp.mode();
     }
 
     /**
@@ -58,6 +69,8 @@ public class NotificationOutbox {
             skip = "NO_RECIPIENT";
         } else if (channel == Channel.SMS && !smsEnabled()) {
             skip = "SMS_DISABLED";
+        } else if (channel == Channel.WHATSAPP && whatsApp.mode() == WhatsAppProperties.Mode.DISABLED) {
+            skip = "WHATSAPP_DISABLED"; // registrato per trasparenza: il gestore vede che il canale è spento
         }
         jdbc.sql("""
                 INSERT INTO notification_outbox (business_event_key, aggregate_type, aggregate_id, channel, recipient_kind,
@@ -86,14 +99,14 @@ public class NotificationOutbox {
         return jdbc.sql("""
                 SELECT o.id, o.template_code, o.channel, o.recipient_kind, o.state, o.skip_reason, o.created_at, o.sent_at,
                        (SELECT a.provider FROM notification_attempts a WHERE a.outbox_id = o.id ORDER BY a.attempt_no DESC LIMIT 1),
-                       o.manual_resend_count
+                       o.manual_resend_count, o.delivery_status, coalesce(o.delivery_error_code, o.last_error_code)
                   FROM notification_outbox o WHERE o.aggregate_type = ? AND o.aggregate_id = ? ORDER BY o.created_at, o.id
                 """)
                 .params(aggregateType, aggregateId)
                 .query((rs, n) -> new Entry(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getString(4),
                         rs.getString(5), rs.getString(6), rs.getObject(7, OffsetDateTime.class).toInstant(),
                         rs.getObject(8, OffsetDateTime.class) == null ? null : rs.getObject(8, OffsetDateTime.class).toInstant(),
-                        rs.getString(9), rs.getInt(10)))
+                        rs.getString(9), rs.getInt(10), rs.getString(11), rs.getString(12)))
                 .list();
     }
 

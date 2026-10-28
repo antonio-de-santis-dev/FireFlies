@@ -35,7 +35,10 @@ import tools.jackson.databind.ObjectMapper;
  * lease scaduto (worker morto a metà) → UNCERTAIN; scaduto o con modello spento → SKIPPED con il motivo;</li>
  * <li>l'esito lo scrive solo chi ha ancora il lease: un worker in ritardo non sovrascrive nulla.</li>
  * </ul>
- * Gateway solo finti in questa versione ({@link NotificationGatewaysConfiguration}): nessun messaggio reale parte.
+ * Gateway email e SMS solo finti ({@link NotificationGatewaysConfiguration}). WhatsApp (V14) segue la modalità
+ * {@code FIREFLIES_WHATSAPP_MODE} ({@link WhatsAppConfiguration}): DISABLED → SKIPPED senza chiamate, FAKE → simulato,
+ * META_TEST → Cloud API di Meta solo verso i numeri di prova. Prima di ogni invio WhatsApp si ricontrollano consenso e
+ * stato della prenotazione; l'id del messaggio di Meta resta nell'outbox per il webhook di consegna.
  */
 @Service
 public class NotificationDispatcher {
@@ -58,14 +61,16 @@ public class NotificationDispatcher {
     private final TransactionTemplate tx;
     private final EmailGateway email;
     private final SmsGateway sms;
+    private final WhatsAppGateway whatsApp;
+    private final WhatsAppProperties whatsAppConfig;
     private final ObjectMapper json;
     private final AuditLog audit;
     private final int batchSize;
     private final int maxAttempts;
     private final Duration lease;
 
-    NotificationDispatcher(JdbcClient jdbc, TransactionTemplate tx, EmailGateway email, SmsGateway sms, ObjectMapper json,
-            AuditLog audit,
+    NotificationDispatcher(JdbcClient jdbc, TransactionTemplate tx, EmailGateway email, SmsGateway sms, WhatsAppGateway whatsApp,
+            WhatsAppProperties whatsAppConfig, ObjectMapper json, AuditLog audit,
             @Value("${fireflies.notifications.worker.batch-size:20}") int batchSize,
             @Value("${fireflies.notifications.worker.max-attempts:5}") int maxAttempts,
             @Value("${fireflies.notifications.worker.lease:PT2M}") Duration lease) {
@@ -73,6 +78,8 @@ public class NotificationDispatcher {
         this.tx = tx;
         this.email = email;
         this.sms = sms;
+        this.whatsApp = whatsApp;
+        this.whatsAppConfig = whatsAppConfig;
         this.json = json;
         this.audit = audit;
         this.batchSize = batchSize;
@@ -131,6 +138,9 @@ public class NotificationDispatcher {
 
     /** Invia un messaggio preso in carico e ne registra l'esito. Restituisce lo stato finale. */
     String process(Claimed c) {
+        if (c.channel().equals("WHATSAPP")) {
+            return processWhatsApp(c);
+        }
         Optional<String[]> template = jdbc.sql("SELECT subject, body FROM notification_templates WHERE code = ? AND channel = ? AND active")
                 .params(c.templateCode(), c.channel()).query((rs, n) -> new String[] {rs.getString(1), rs.getString(2)}).optional();
         if (template.isEmpty()) {
@@ -141,10 +151,7 @@ public class NotificationDispatcher {
         String subject = template.get()[0] == null ? null : render(template.get()[0], values);
         String body = render(template.get()[1], values);
         String provider = c.channel().equals("SMS") ? sms.providerName() : email.providerName();
-        long attemptId = jdbc.sql("""
-                INSERT INTO notification_attempts (outbox_id, attempt_no, provider, idempotency_key_used)
-                VALUES (?, (SELECT coalesce(max(attempt_no), 0) + 1 FROM notification_attempts WHERE outbox_id = ?), ?, ?) RETURNING id
-                """).params(c.id(), c.id(), provider, c.idempotencyKey()).query(Long.class).single();
+        long attemptId = startAttempt(c, provider);
         long started = System.nanoTime();
         SendResult result;
         try {
@@ -156,11 +163,82 @@ public class NotificationDispatcher {
             result = new SendResult(SendResult.Outcome.UNKNOWN, null, "GATEWAY_EXCEPTION");
         }
         SendResult outcome = result;
+        endAttempt(attemptId, outcome, started);
+        return settle(c, outcome);
+    }
+
+    /**
+     * WhatsApp: modalità spenta → SKIPPED senza chiamate; consenso revocato o prenotazione non più confermata → SKIPPED;
+     * parametri del modello non validi → DEAD senza chiamate; poi un tentativo come per gli altri canali.
+     */
+    private String processWhatsApp(Claimed c) {
+        if (whatsApp.mode() == WhatsAppProperties.Mode.DISABLED) {
+            return finish(c, "SKIPPED", "WHATSAPP_DISABLED", null, null);
+        }
+        String blocked = jdbc.sql("""
+                SELECT CASE WHEN r.id IS NULL OR r.status <> 'CONFIRMED' THEN 'SUPERSEDED'
+                            WHEN r.whatsapp_consent_at IS NULL OR r.whatsapp_consent_withdrawn_at IS NOT NULL THEN 'NO_CONSENT'
+                            ELSE '' END
+                  FROM notification_outbox o LEFT JOIN reservations r ON r.id = o.aggregate_id WHERE o.id = ?
+                """).param(c.id()).query(String.class).optional().orElse("SUPERSEDED");
+        if (!blocked.isEmpty()) {
+            return finish(c, "SKIPPED", blocked, null, null);
+        }
+        Optional<List<String>> parameters = confirmationParameters(values(c.payload()));
+        if (parameters.isEmpty()) {
+            return finish(c, "DEAD", null, "INVALID_PARAMETER", null);
+        }
+        long attemptId = startAttempt(c, whatsApp.providerName());
+        long started = System.nanoTime();
+        SendResult result;
+        try {
+            result = whatsApp.sendTemplate(c.recipient(), whatsAppConfig.templateName(), whatsAppConfig.templateLanguage(),
+                    parameters.get(), c.idempotencyKey());
+        } catch (RuntimeException e) {
+            log.warn("Invio WHATSAPP {}: eccezione del gateway ({})", c.id(), e.getClass().getSimpleName());
+            result = new SendResult(SendResult.Outcome.UNKNOWN, null, "GATEWAY_EXCEPTION");
+        }
+        endAttempt(attemptId, result, started);
+        if (result.outcome() == SendResult.Outcome.ACCEPTED && result.providerMessageId() != null) {
+            jdbc.sql("UPDATE notification_outbox SET provider_message_id = ? WHERE id = ? AND lease_token = ?")
+                    .params(result.providerMessageId(), c.id(), c.lease()).update();
+        }
+        return settle(c, result);
+    }
+
+    /**
+     * Parametri del modello {@code fireflies_prenotazione_confermata}: {{1}} nome, {{2}} data, {{3}} ora, {{4}} persone.
+     * Meta rifiuta parametri vuoti, con a capo o tabulazioni, o con più di quattro spazi di fila: si normalizzano gli
+     * spazi e un valore vuoto o troppo lungo blocca l'invio prima di qualunque chiamata.
+     */
+    static Optional<List<String>> confirmationParameters(Map<String, String> values) {
+        List<String> out = new java.util.ArrayList<>();
+        for (String key : List.of("nome", "data", "ora", "persone")) {
+            String v = values.getOrDefault(key, "").replaceAll("\\s+", " ").strip();
+            if (v.isEmpty() || v.length() > 200) {
+                return Optional.empty();
+            }
+            out.add(v);
+        }
+        return Optional.of(List.copyOf(out));
+    }
+
+    private long startAttempt(Claimed c, String provider) {
+        return jdbc.sql("""
+                INSERT INTO notification_attempts (outbox_id, attempt_no, provider, idempotency_key_used)
+                VALUES (?, (SELECT coalesce(max(attempt_no), 0) + 1 FROM notification_attempts WHERE outbox_id = ?), ?, ?) RETURNING id
+                """).params(c.id(), c.id(), provider, c.idempotencyKey()).query(Long.class).single();
+    }
+
+    private void endAttempt(long attemptId, SendResult outcome, long started) {
         jdbc.sql("""
                 UPDATE notification_attempts SET finished_at = now(), outcome = ?, provider_message_id = ?, error_code = ?, duration_ms = ?
                  WHERE id = ?
                 """).params(outcome.outcome().name(), outcome.providerMessageId(), outcome.errorCode(),
                 (int) Duration.ofNanos(System.nanoTime() - started).toMillis(), attemptId).update();
+    }
+
+    private String settle(Claimed c, SendResult outcome) {
         return switch (outcome.outcome()) {
             case ACCEPTED -> finish(c, "SENT", null, null, null);
             case REJECTED_PERMANENT -> finish(c, "DEAD", null, outcome.errorCode(), null);
@@ -223,9 +301,14 @@ public class NotificationDispatcher {
      */
     public void resend(UUID actor, UUID id) {
         tx.executeWithoutResult(s -> {
-            Map<String, Object> row = jdbc.sql("SELECT state, manual_resend_count, aggregate_id FROM notification_outbox WHERE id = ? FOR UPDATE")
+            Map<String, Object> row = jdbc.sql("SELECT state, manual_resend_count, aggregate_id, channel FROM notification_outbox WHERE id = ? FOR UPDATE")
                     .param(id).query().listOfRows().stream().findFirst().orElseThrow(() -> ApiErrors.notFound("La notifica non esiste."));
             String state = (String) row.get("state");
+            if ("WHATSAPP".equals(row.get("channel"))) {
+                // Meta non ha chiavi di idempotenza: un nuovo invio manuale potrebbe arrivare due volte al cliente
+                throw new ApiException(HttpStatus.CONFLICT, "WHATSAPP_RESEND_DISABLED", "Operazione non possibile",
+                        "I messaggi WhatsApp non si inviano di nuovo dall'area gestori: se serve, contatta il cliente a voce.");
+            }
             if (!List.of("FAILED", "DEAD", "UNCERTAIN").contains(state)) {
                 throw new ApiException(HttpStatus.CONFLICT, "INVALID_TRANSITION", "Operazione non possibile",
                         "Si può inviare di nuovo solo una notifica non riuscita o dall'esito incerto.");

@@ -58,6 +58,19 @@ management:
         enabled: true
 
 fireflies:
+  # WhatsApp Cloud API (V14): spento se non configurato. Valori solo da variabili d'ambiente, mai nel repository.
+  # Vedi docs/architecture/WHATSAPP_CLOUD_API_REPORT.md. Con il profilo prod sono ammesse solo DISABLED.
+  whatsapp:
+    mode: ${FIREFLIES_WHATSAPP_MODE:DISABLED}
+    access-token: ${FIREFLIES_WHATSAPP_ACCESS_TOKEN:}
+    phone-number-id: ${FIREFLIES_WHATSAPP_PHONE_NUMBER_ID:}
+    waba-id: ${FIREFLIES_WHATSAPP_WABA_ID:}
+    graph-api-version: ${FIREFLIES_WHATSAPP_GRAPH_API_VERSION:v21.0}
+    test-recipients: ${FIREFLIES_WHATSAPP_TEST_RECIPIENTS:}
+    webhook-verify-token: ${FIREFLIES_WHATSAPP_WEBHOOK_VERIFY_TOKEN:}
+    app-secret: ${FIREFLIES_WHATSAPP_APP_SECRET:}
+    template-name: ${FIREFLIES_WHATSAPP_TEMPLATE_NAME:fireflies_prenotazione_confermata}
+    template-language: ${FIREFLIES_WHATSAPP_TEMPLATE_LANGUAGE:it}
   security:
     login:
       max-failures-per-account: 5

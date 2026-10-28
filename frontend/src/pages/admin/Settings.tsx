@@ -9,6 +9,7 @@ import { useStore } from '../../store';
 import { AdminHead } from './AdminLayout';
 import { CapacitySettings, ClosureConfirm, closureConflicts } from './CapacitySettings';
 import { Switch } from './MenuAdmin';
+import { WhatsAppStatus } from './WhatsAppStatus';
 
 /** Interruttore delle richieste dal sito: salva subito la regola sul server (capienza e calendario nella sezione «Capienza»). */
 function BookingSwitch() {
@@ -170,6 +171,7 @@ export function Settings() {
       </div>
     </form>
     <CapacitySettings />
+    <WhatsAppStatus />
     </>
   );
 }

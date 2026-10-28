@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { ApiError } from '../../api/client';
 import { listEvents, type AdminEvent } from '../../api/events';
 import {
-  changeStatus, createManual, getReservation, hhmm, listReservations, notificationLabel, resendNotification,
+  CHANNEL_LABEL, changeStatus, createManual, getReservation, hhmm, listReservations, notificationLabel, resendNotification,
   REASON_LABEL, SOURCE_LABEL, STATUS_LABEL, TEMPLATE_LABEL, updateReservation,
   type Detail, type ListResult, type ReservationSource, type ReservationStatus, type StatusChange,
 } from '../../api/reservations';
@@ -365,7 +365,7 @@ function ReservationDialog({ id, onClose, onChanged }: { id: string; onClose: ()
             <ul className="res-detail__list">
               {detail.notifications.map((n) => (
                 <li key={n.id}>
-                  <span>{TEMPLATE_LABEL[n.template] ?? n.template} · {n.channel === 'EMAIL' ? 'email' : 'SMS'} {n.recipient === 'STAFF' ? 'al locale' : 'al cliente'}</span>
+                  <span>{TEMPLATE_LABEL[n.template] ?? n.template} · {CHANNEL_LABEL[n.channel] ?? n.channel} {n.recipient === 'STAFF' ? 'al locale' : 'al cliente'}</span>
                   <span className={`badge ${n.delivered ? 'badge--success' : 'badge--neutral'}`}>{notificationLabel(n)}</span>
                   {n.resendable && (
                     <button type="button" className="btn btn--quiet btn--sm" disabled={busy}
