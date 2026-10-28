@@ -33,11 +33,19 @@
   (`ArrivalRules`/`ArrivalCatalog`), pannello «Orari di arrivo delle fasce» rimosso. Nessuna migrazione.
 - Report: `docs/architecture/FIX2_FASCEORARIE_REPORT.md`. **Approvato e portato su `main` il 22/10/2026** (C-35).
 
+## FIX 3 «theBug» (28/10/2026)
+- Branch `fix3/theBug` da `main` @ `0d43244`: 9 bug backend, 9 frontend, cache di Caddy, CI; viste di eventi e
+  prenotazioni con query in blocco (−48…−83% p50). Nessuna migrazione. Report: `docs/FIX3_THEBUG_REPORT.md`.
+- **Non portato su `main`**: in attesa del collaudo manuale e dell'approvazione del titolare.
+- Branch `serviotelefonico` (WhatsApp): lavoro in pausa, salvato e pubblicato; mancano IT, suite complete e report.
+
 ## Note per la ripresa
+- Dopo ogni cambio di branch: `./mvnw clean …` (Maven non toglie da `target/` le migrazioni di altri branch).
 - **Non compilare il backend mentre gira l'e2e** (il jar in `backend/target/` è quello usato da `scripts/e2e.mjs`).
 - Docker: se non risponde, avviare `dockerd` (vedi FASE 8).
 - La CI ora parte anche sui branch `fix2/**`.
 - Punti aperti da decidere con il titolare: FIX2_REPORT §11.
 
 ## Prossima azione esatta
-FIX 2 (con fasce orarie interne) è su `main` (C-35). Nessun deploy: serve un'autorizzazione separata del titolare.
+Collaudo manuale di `fix3/theBug` (report §11). Merge solo su richiesta esplicita del titolare. Poi riprendere WhatsApp
+su `serviotelefonico`. Nessun deploy: serve un'autorizzazione separata del titolare.

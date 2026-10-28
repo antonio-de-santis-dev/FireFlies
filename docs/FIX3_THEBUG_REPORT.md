@@ -117,11 +117,38 @@ Script: `perf/bench.mjs` (scratchpad della sessione, non nel repository). Nessun
 
 ### 6.2 Risultati
 
-PERF_TABLE
+Due serie complete per versione (1ª e 2ª), eseguite sulla stessa macchina in momenti diversi. In **grassetto** gli endpoint il cui codice è cambiato.
+
+| API | main p50 (1ª / 2ª) | fix3 p50 (1ª / 2ª) | main p95 (1ª / 2ª) | fix3 p95 (1ª / 2ª) | Variazione p50 (media) |
+|---|---|---|---|---|---|
+| `GET /public/site` | 10,22 / 10,81 | 6,89 / 9,2 | 15,56 / 18,04 | 11,18 / 13,91 | -23% |
+| `GET /public/menu` | 7,77 / 8,79 | 5,66 / 7,38 | 10,77 / 12,71 | 7,44 / 10,96 | -21% |
+| `GET /public/gallery` | 4,4 / 4,16 | 3,4 / 4,04 | 8,9 / 8,31 | 5,2 / 7,4 | -13% |
+| **`GET /public/events (40)`** | 26,79 / 22,88 | 5,43 / 7,16 | 37,26 / 31,31 | 9,72 / 11,33 | -75% |
+| `GET /public/booking-options` | 22,95 / 21,94 | 17,12 / 23,07 | 33,46 / 33,94 | 27,35 / 35,09 | -10% |
+| **`GET /admin/events (40)`** | 56,21 / 57,17 | 8,36 / 11,29 | 86,04 / 75,81 | 13,08 / 17,4 | -83% |
+| **`GET /admin/reservations size=50`** | 22,24 / 20,25 | 9,41 / 12,81 | 32,17 / 29,2 | 14,8 / 18,71 | -48% |
+| **`GET /admin/reservations size=200`** | 52,97 / 45,02 | 16,11 / 14,67 | 77,15 / 55,21 | 30,12 / 23,62 | -69% |
+| **`GET /admin/reservations/{id}`** | 12,3 / 9,33 | 13,92 / 14,69 | 18,38 / 13,87 | 22,16 / 20,22 | 32% |
+| `GET /admin/booking-config` | 9,42 / 8,67 | 11,46 / 9,82 | 17,54 / 13,92 | 17,37 / 16,05 | 18% |
+
+Lettura onesta dei numeri:
+- **rumore della macchina:** gli endpoint non modificati variano da −23% a +18%; la versione fix3 è stata misurata sempre per seconda e risulta un po' più veloce anche dove il codice non è cambiato. Sono significative solo differenze ben oltre questa fascia;
+- **miglioramenti reali (P-01, P-02):** elenco eventi dei gestori −83% (56 → ~10 ms), elenco eventi pubblico −75%, elenco prenotazioni da 200 righe −69%, da 50 righe −48%: ben oltre il rumore e coerenti con il numero di query eliminate;
+- **dettaglio di una prenotazione:** +32% (circa +3 ms) in entrambe le serie. Il numero di query del dettaglio è lo stesso di prima (tavoli + eventuale titolo dell'evento), quindi la differenza è attribuibile al rumore (anche `booking-config`, mai toccato, segna +18%), ma è segnalata qui invece di essere nascosta.
+
 
 ### 6.3 Avvio, memoria, CPU
 
-PERF_RUNTIME
+| Misura | main (1ª / 2ª) | fix3 (1ª / 2ª) |
+|---|---|---|
+| Avvio Spring («Started … in») | 6,572 s / 6,278 s | 5,874 s / 5,866 s |
+| Pronto (readiness UP, dati demo caricati) | 19,9 s / 18,8 s | 17,9 s / 19,1 s |
+| RSS del processo dopo il carico | 689,1 / 404,6 MB | 687,1 / 652 MB |
+| CPU totale (avvio + dataset + misure) | 00:01:20 / 00:01:17 | 00:01:13 / 00:01:10 |
+
+Avvio e CPU: differenze nel rumore (nessuna modifica all'avvio). La RSS dipende da quando gira il garbage collector (stesso jar di main: 405 e 689 MB) e **non permette un confronto**; la memoria è stata migliorata solo dove misurabile per costruzione (B-09: tetto di pixel decodificati).
+
 
 ### 6.4 Cache del sito (Caddy 2.10.2, `dist` reale)
 
@@ -159,9 +186,9 @@ memoria ciascuno il proprio file prima del semaforo, immagine Caddy eseguita com
 |---|---|---|
 | Backend unit (`./mvnw clean verify`) | 82/82 | **83/83** (+1) |
 | Backend integrazione (PostgreSQL reale, Testcontainers) | 358/358 | **363/363** (+5) |
-| E2E Playwright (`npm run verifica`, backend e PostgreSQL reali) | non rieseguita su main (vedi sotto) | E2E_RESULT |
+| E2E Playwright (`npm run verifica`, backend e PostgreSQL reali) | 149/149 (ultimo risultato di FIX 2, C-35) | **156/156** in 10,2 min (+7 di `fix3.spec.ts`), nessun test instabile |
 | Nuovi test di regressione eseguiti **anche su main** | — | IT: 5 su 6 falliscono su main (B-08 no, preventivo); E2E: 7 su 7 falliscono su main |
-| CI GitHub Actions sul branch | — | CI_RESULT |
+| CI GitHub Actions sul branch | — | backend, frontend (`verifica` con `fix3.spec.ts`) e images: **tutte verdi** sui commit pushati |
 
 Test aggiunti: `ApiSecurityMatrixIT` (+1 endpoint), `AuthenticationIT` (+2), `Fix3ReservationIT` (3), `ImageProcessorTest`
 (+1), `frontend/tests/fix3.spec.ts` (7, aggiunto alle suite `qa` e `verifica`). Nessun test esistente modificato per
@@ -192,4 +219,78 @@ B-07 (non deterministica), misure su dispositivi reali.
 
 ## 10. Stato Git finale
 
-GIT_FINAL
+| Voce | Valore |
+|---|---|
+| Branch corrente | `fix3/theBug` (pubblicato su `origin/fix3/theBug`) |
+| Base | `origin/main` @ `0d43244` |
+| `main` | **non modificato**: `origin/main` è ancora `0d43244`; nessun merge, nessun push su `main`, nessun force push, nessun branch cancellato |
+| Deploy | **nessuno** (nessuna immagine pubblicata: il workflow `images` costruisce e verifica soltanto) |
+| Database | nessun database esistente toccato: test su Testcontainers e su progetti Compose usa e getta (`fireflies-e2e`, `fireflies-perf`), eliminati alla fine |
+
+Commit (dal più recente; più il commit di questo report):
+
+- `7c85225` FIX 3: bozza del report tecnico (risultati E2E e misure in arrivo)
+- `98b48e4` FIX 3: tests/fix3.spec.ts nelle suite qa e verifica (eseguita anche in CI)
+- `032d1bc` FIX 3 frontend: dati dei gestori conservati, regole non riaperte, risposte fuori ordine, doppi invii
+- `15d61c8` FIX 3 infrastruttura: cache corretta delle pagine del sito con Caddy, CI anche sui branch fix3/**
+- `1cb421e` FIX 3 foto: lettura ridotta anche per le foto alte e strette (tetto di 16 MP decodificati)
+- `734e451` FIX 3 prestazioni: viste di eventi e prenotazioni con query in blocco; annullamento evento ricontrollato sotto lock
+- `1467665` FIX 3 prenotazioni: fascia degli inserimenti manuali, durata allungata dopo l'arrivo, paginazione stabile
+- `cec8fc1` FIX 3 sicurezza: 403 invece di 500 per i rifiuti di @PreAuthorize, blocco dei login solo per errori recenti
+
+File modificati: 34 file, 923 righe aggiunte, 98 tolte prima di questo report:
+
+- `.github/workflows/backend.yml`
+- `.github/workflows/frontend.yml`
+- `.github/workflows/images.yml`
+- `backend/src/main/java/it/fireflies/common/GlobalExceptionHandler.java`
+- `backend/src/main/java/it/fireflies/dining/BookingCalendar.java`
+- `backend/src/main/java/it/fireflies/event/EventService.java`
+- `backend/src/main/java/it/fireflies/event/EventStore.java`
+- `backend/src/main/java/it/fireflies/media/ImageProcessor.java`
+- `backend/src/main/java/it/fireflies/reservation/ReservationQueries.java`
+- `backend/src/main/java/it/fireflies/reservation/ReservationService.java`
+- `backend/src/main/java/it/fireflies/reservation/ReservationStore.java`
+- `backend/src/main/java/it/fireflies/reservation/ReservationViews.java`
+- `backend/src/main/java/it/fireflies/security/LoginService.java`
+- `backend/src/main/java/it/fireflies/security/SecurityConfiguration.java`
+- `backend/src/main/java/it/fireflies/security/UserStore.java`
+- `backend/src/test/java/it/fireflies/media/ImageProcessorTest.java`
+- `backend/src/test/java/it/fireflies/reservation/Fix3ReservationIT.java`
+- `backend/src/test/java/it/fireflies/security/ApiSecurityMatrixIT.java`
+- `backend/src/test/java/it/fireflies/security/AuthenticationIT.java`
+- `docs/FIX3_THEBUG_REPORT.md`
+- `frontend/Caddyfile`
+- `frontend/package.json`
+- `frontend/src/api/reservations.ts`
+- `frontend/src/components/BookingDialog.tsx`
+- `frontend/src/components/Dialog.tsx`
+- `frontend/src/pages/admin/CapacitySettings.tsx`
+- `frontend/src/pages/admin/EventsAdmin.tsx`
+- `frontend/src/pages/admin/MenuAdmin.tsx`
+- `frontend/src/pages/admin/Requests.tsx`
+- `frontend/src/pages/admin/Settings.tsx`
+- `frontend/src/pages/admin/Today.tsx`
+- `frontend/src/pages/admin/media.tsx`
+- `frontend/src/store.tsx`
+- `frontend/tests/fix3.spec.ts`
+
+Il merge su `main` si farà solo dopo il collaudo manuale e l'approvazione esplicita del titolare.
+
+
+## 11. Collaudo manuale suggerito
+
+Prima di avviare il backend di questo branch: `cd backend && ./mvnw clean package -DskipTests` (il `clean` evita la
+migrazione rimasta da altri branch, §1). Nessuna migrazione nuova: il database locale non cambia schema.
+
+1. **Eventi → Foto (F-01):** da Gestione › Eventi accendi o spegni «Pubblica sul sito», poi apri Foto senza ricaricare:
+   ci sono tutte le foto della libreria, anche quelle non in galleria.
+2. **Impostazioni (F-02, F-04):** spegni «Richieste tavolo», cambia «Anticipo minimo» e premi «Salva le regole»: le
+   richieste restano chiuse. Scrivi un valore senza salvare, salva la capienza: il valore scritto resta.
+3. **Menu (F-05):** in una voce scrivi «pane, burro, marmellata» negli ingredienti.
+4. **Prenotazione dal sito (F-06):** durante «Invio in corso…» Esc e la X non chiudono il dialog.
+5. **Richieste (B-04, B-05):** inserisci al telefono una prenotazione alle 23:30 e confermala: nel riepilogo conta nella
+   Sera. Su una confermata già iniziata allunga la durata: viene salvata.
+6. **Foto (F-08, F-09):** «Elimina» chiede conferma; «Sposta» resta disabilitato finché il salvataggio non finisce.
+7. **Staff (B-01):** con un account staff le pagine del titolare restano chiuse (nessun «errore imprevisto»).
+8. **Login (B-03):** dopo un blocco di 15 minuti, un solo errore di battitura non riblocca l'account.
