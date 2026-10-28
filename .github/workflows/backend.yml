@@ -4,7 +4,7 @@ name: backend
 
 on:
   push:
-    branches: ["main", "fase-*/**", "fix-*", "fix2/**"]
+    branches: ["main", "fase-*/**", "fix-*", "fix2/**", "fix3/**"]
     paths: ["backend/**", "frontend/public/assets/**", ".github/workflows/backend.yml"]
   pull_request:
     paths: ["backend/**", "frontend/public/assets/**", ".github/workflows/backend.yml"]
