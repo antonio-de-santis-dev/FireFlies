@@ -324,7 +324,7 @@ public class ReservationService {
             t = new Timing(null, zone, event.startsAt(), event.endsAt(), List.of());
             eventId = event.id();
         } else {
-            t = timing(r.date(), r.time(), r.durationMinutes(), r.zoneId(), now);
+            t = timing(r.date(), r.time(), r.durationMinutes(), r.zoneId(), now, null);
         }
 
         UUID id = store.insert(new ReservationStore.NewRow(newReference(), "PENDING", source, BusinessTime.serviceDate(t.start()),
@@ -350,8 +350,13 @@ public class ReservationService {
     record Timing(DiningStore.WindowRow window, UUID zoneId, Instant start, Instant end, List<String> warnings) {
     }
 
-    /** Orario per un inserimento o una modifica dei gestori: vincoli rigidi solo dove servono (passato, allineamento). */
-    private Timing timing(LocalDate date, LocalTime time, Integer durationMinutes, UUID zoneId, Instant now) {
+    /**
+     * Orario per un inserimento o una modifica dei gestori: vincoli rigidi solo dove servono (passato, allineamento).
+     * {@code currentStart}: inizio attuale di una prenotazione che si modifica. Se l'inizio non cambia può essere già
+     * passato (FIX 3, B-05: clienti che restano oltre l'orario, BOOKING_RULES §3.4 «il gestore allunga la durata»):
+     * basta che la prenotazione non sia già finita. Prima ogni modifica di durata o persone dopo l'arrivo dava 422.
+     */
+    private Timing timing(LocalDate date, LocalTime time, Integer durationMinutes, UUID zoneId, Instant now, Instant currentStart) {
         if (date == null || time == null) {
             throw ApiErrors.invalid("date", "Indica giorno e orario di arrivo.");
         }
@@ -370,7 +375,11 @@ public class ReservationService {
             throw ApiErrors.invalid("durationMinutes", "La durata va da 15 minuti a 12 ore, a passi di 15 minuti.");
         }
         Instant start = BusinessTime.toInstant(date, time);
-        if (!start.isAfter(now)) {
+        boolean started = start.equals(currentStart) && !start.isAfter(now);
+        if (started && !start.plus(Duration.ofMinutes(minutes)).isAfter(now)) {
+            throw ApiErrors.invalid("durationMinutes", "Con questa durata la prenotazione sarebbe già finita: allungala oltre l'ora attuale.");
+        }
+        if (!start.isAfter(now) && !started) {
             throw ApiErrors.invalid("time", "L'orario è già passato.");
         }
         List<String> warnings = new ArrayList<>();
@@ -381,7 +390,7 @@ public class ReservationService {
             warnings.add("DAY_CLOSED");
         }
         calendar.policy(BusinessTime.serviceDate(now)).ifPresent(p -> {
-            if (start.isBefore(now.plus(Duration.ofMinutes(p.minLeadMinutes())))) {
+            if (!started && start.isBefore(now.plus(Duration.ofMinutes(p.minLeadMinutes())))) {
                 warnings.add("SHORT_NOTICE");
             }
         });
@@ -608,7 +617,8 @@ public class ReservationService {
             LocalDate newDate = u.date() != null ? u.date() : local.toLocalDate();
             LocalTime newTime = u.time() != null ? u.time() : local.toLocalTime();
             int minutes = u.durationMinutes() != null ? u.durationMinutes() : (int) Duration.between(row.startsAt(), row.endsAt()).toMinutes();
-            Timing t = timing(newDate, newTime, minutes, u.zoneId() != null ? u.zoneId() : row.zoneId(), Instant.now(clock));
+            Timing t = timing(newDate, newTime, minutes, u.zoneId() != null ? u.zoneId() : row.zoneId(), Instant.now(clock),
+                    row.status().equals("CONFIRMED") ? row.startsAt() : null); // solo una confermata può essere già iniziata
             guests = u.guests() != null ? u.guests() : row.guestCount();
             if (guests < 1 || guests > 50) {
                 throw ApiErrors.invalid("guests", "Le persone vanno da 1 a 50.");

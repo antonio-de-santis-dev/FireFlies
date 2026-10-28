@@ -279,7 +279,8 @@ class ReservationStore {
         pageParams.add(f.size());
         pageParams.add((long) f.page() * f.size());
         List<Row> items = jdbc.sql("SELECT " + COLUMNS + " FROM reservations" + where
-                        + " ORDER BY (status = 'PENDING') DESC, starts_at, created_at LIMIT ? OFFSET ?")
+                        // FIX 3 (B-08): id come ultimo criterio, ordine stabile tra le pagine (stesso created_at)
+                        + " ORDER BY (status = 'PENDING') DESC, starts_at, created_at, id LIMIT ? OFFSET ?")
                 .params(pageParams).query(ReservationStore::row).list();
         return new Page(items, total, counts);
     }

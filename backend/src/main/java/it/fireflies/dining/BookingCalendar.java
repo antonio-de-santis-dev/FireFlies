@@ -39,12 +39,18 @@ public class BookingCalendar {
 
     /**
      * Fascia di una zona per un orario (inserimenti manuali): prima quella in cui l'orario è un arrivo (21:00 → «Sera»
-     * anche se l'«Aperitivo» delle 20:30 copre ancora le 21:00), poi quella che lo copre, oppure la prima del giorno.
+     * anche se l'«Aperitivo» delle 20:30 copre ancora le 21:00), poi quella che lo copre, poi quella della fascia
+     * dell'orario ({@link Band#at}: 12:30 → «Pomeriggio», 23:00 → «Sera»), solo in ultimo la prima del giorno.
+     * <p>
+     * FIX 3 (B-04): mancava il terzo passo, e un inserimento manuale fuori dagli arrivi (12:30, 23:00) finiva nella
+     * prima fascia del giorno, «Colazione»: la fascia della prenotazione la decide il nome della fascia (V13), quindi il
+     * budget consumato era quello della colazione e la sera poteva essere riempita oltre la capienza.
      */
     public Optional<DiningStore.WindowRow> windowFor(UUID zoneId, LocalDate date, LocalTime time) {
         List<DiningStore.WindowRow> windows = store.windowsOfZone(zoneId).stream().filter(w -> w.validOn(date)).toList();
         return windows.stream().filter(w -> !time.isBefore(w.firstStart()) && !time.isAfter(w.lastStart())).findFirst()
                 .or(() -> windows.stream().filter(w -> w.covers(time)).findFirst())
+                .or(() -> windows.stream().filter(w -> Band.of(w.name(), w.firstStart()) == Band.at(time)).findFirst())
                 .or(() -> windows.stream().findFirst());
     }
 
