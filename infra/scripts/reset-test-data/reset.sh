@@ -71,7 +71,7 @@ q() { docker exec "$container" psql -X -q -U "$user" -d "$db" -v ON_ERROR_STOP=1
 known="allergens announcements app_users audit_logs band_capacity_usage booking_exceptions booking_policies capacity_slots
 capacity_zones dining_areas dining_tables event_media events flyway_schema_history hero_slides maintenance_runs media_assets
 media_orphans media_variants menu_categories menu_item_allergens menu_items notification_attempts notification_outbox
-notification_templates opening_exceptions opening_hours owners reservation_stats reservation_status_history
+notification_templates opening_exceptions opening_hours owners reservation_stats whatsapp_webhook_events reservation_status_history
 reservation_table_assignments reservations service_windows site_content site_sections site_settings spring_session
 spring_session_attributes staff_members"
 for t in $(q "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY 1"); do

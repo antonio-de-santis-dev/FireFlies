@@ -13,6 +13,12 @@ LOCK TABLE reservations, reservation_status_history, reservation_table_assignmen
 DELETE FROM notification_attempts a USING notification_outbox o
  WHERE a.outbox_id = o.id AND o.aggregate_type = 'RESERVATION';
 DELETE FROM notification_outbox WHERE aggregate_type = 'RESERVATION';
+-- V14: chiavi di deduplica del webhook WhatsApp (nessun dato personale), solo se la tabella esiste
+DO $$ BEGIN
+    IF to_regclass('whatsapp_webhook_events') IS NOT NULL THEN
+        DELETE FROM whatsapp_webhook_events;
+    END IF;
+END $$;
 
 -- 2. figli delle prenotazioni (fk_assign_reservation, fk_history_reservation: ON DELETE RESTRICT)
 DELETE FROM reservation_table_assignments;

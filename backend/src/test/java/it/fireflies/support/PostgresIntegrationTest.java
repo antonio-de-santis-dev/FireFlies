@@ -51,7 +51,7 @@ public abstract class PostgresIntegrationTest {
         } finally {
             jdbc.sql("""
                     TRUNCATE reservation_table_assignments, reservation_status_history, reservations,
-                             notification_attempts, notification_outbox, capacity_slots, band_capacity_usage, booking_exceptions,
+                             notification_attempts, notification_outbox, whatsapp_webhook_events, capacity_slots, band_capacity_usage, booking_exceptions,
                              event_media, events, dining_tables, dining_areas, service_windows, reservation_stats,
                              maintenance_runs
                     """).update();

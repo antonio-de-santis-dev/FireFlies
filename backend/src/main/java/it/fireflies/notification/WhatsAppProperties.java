@@ -52,7 +52,7 @@ public record WhatsAppProperties(
         if (testRecipients == null || testRecipients.isBlank()) {
             return List.of();
         }
-        return Arrays.stream(testRecipients.split("[,;\\s]+")).map(WhatsAppProperties::digits).filter(s -> !s.isEmpty())
+        return Arrays.stream(testRecipients.split("[,;\\n]+")).map(WhatsAppProperties::digits).filter(s -> !s.isEmpty())
                 .distinct().toList();
     }
 

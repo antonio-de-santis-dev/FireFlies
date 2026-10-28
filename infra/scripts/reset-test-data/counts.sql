@@ -19,6 +19,9 @@ UNION ALL SELECT 'ELIMINA', 'band_capacity_usage', 'fasce con budget occupato', 
 UNION ALL SELECT 'ELIMINA', 'notification_outbox', 'notifiche delle prenotazioni', count(*) FROM notification_outbox WHERE aggregate_type = 'RESERVATION'
 UNION ALL SELECT 'ELIMINA', 'notification_attempts', 'tentativi di quelle notifiche', count(*) FROM notification_attempts a
           JOIN notification_outbox o ON o.id = a.outbox_id WHERE o.aggregate_type = 'RESERVATION'
+UNION ALL SELECT 'ELIMINA', 'whatsapp_webhook_events', 'stati WhatsApp già ricevuti (solo chiavi tecniche, V14)',
+          CASE WHEN to_regclass('whatsapp_webhook_events') IS NULL THEN 0
+               ELSE (xpath('/row/c/text()', query_to_xml('SELECT count(*) AS c FROM whatsapp_webhook_events', false, true, '')))[1]::text::bigint END
 UNION ALL SELECT :'stats_section', 'reservation_stats', 'statistiche anonime ' || coalesce(min(service_date)::text, '-') || '..' || coalesce(max(service_date)::text, '-'), count(*) FROM reservation_stats
 UNION ALL SELECT 'CONSERVA', 'notification_outbox', 'altre notifiche (non di prenotazioni)', count(*) FROM notification_outbox WHERE aggregate_type <> 'RESERVATION'
 UNION ALL SELECT 'CONSERVA', 'app_users', 'ruolo ' || role || CASE WHEN active THEN ' attivi' ELSE ' disattivati' END, count(*) FROM app_users GROUP BY role, active

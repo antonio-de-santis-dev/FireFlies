@@ -39,7 +39,7 @@ class MigrationIT extends PostgresIntegrationTest {
     void tutteLeMigrazioniApplicateEValide() {
         MigrationInfo[] applied = flyway.info().applied();
         assertThat(Arrays.stream(applied).map(m -> m.getVersion().getVersion()))
-                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13");
+                .containsExactly("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14");
         assertThat(applied).allMatch(m -> m.getState().isApplied() && !m.getState().isFailed());
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
     }
@@ -58,7 +58,7 @@ class MigrationIT extends PostgresIntegrationTest {
                     .cleanDisabled(true).load();
             MigrateResult result = fresh.migrate();
             assertThat(result.success).isTrue();
-            assertThat(result.migrationsExecuted).isEqualTo(13);
+            assertThat(result.migrationsExecuted).isEqualTo(14);
             assertThat(fresh.migrate().migrationsExecuted).as("seconda esecuzione: niente da fare").isZero();
             assertThat(fresh.validateWithResult().validationSuccessful).isTrue();
         } finally {
@@ -164,8 +164,13 @@ class MigrationIT extends PostgresIntegrationTest {
 
             MigrateResult result = Flyway.configure().dataSource(db).locations("classpath:db/migration").load().migrate();
             assertThat(result.success).isTrue();
-            assertThat(result.migrationsExecuted).isEqualTo(1);
+            assertThat(result.migrationsExecuted).as("V13 e V14").isEqualTo(2);
             assertThat(old.sql("SELECT count(*) FROM reservations").query(Integer.class).single()).as("nessuna riga cancellata").isEqualTo(7);
+            // V14: nessun consenso WhatsApp presunto per le prenotazioni già esistenti
+            assertThat(old.sql("SELECT count(*) FROM reservations WHERE whatsapp_consent_at IS NOT NULL OR whatsapp_consent_version IS NOT NULL")
+                    .query(Integer.class).single()).isZero();
+            assertThat(old.sql("SELECT active FROM notification_templates WHERE code = 'RESERVATION_CONFIRMED' AND channel = 'WHATSAPP'")
+                    .query(Boolean.class).single()).isFalse();
             assertThat(old.sql("SELECT string_agg(status, ',' ORDER BY public_ref) FROM reservations").query(String.class).single())
                     .isEqualTo("CONFIRMED,COMPLETED,NO_SHOW,CANCELLED,REJECTED,PENDING,PENDING");
             assertThat(old.sql("SELECT count(*) FROM reservations WHERE service_band <> 'APERITIVO'").query(Integer.class).single()).isZero();
@@ -211,7 +216,8 @@ class MigrationIT extends PostgresIntegrationTest {
         assertThat(count("SELECT count(*) FROM booking_policies WHERE confirmation_mode <> 'MANUAL'")).isZero();
         assertThat(count("SELECT count(*) FROM capacity_zones WHERE name = 'Locale' AND NOT active AND physical_capacity = 0"))
                 .isEqualTo(1);
-        assertThat(count("SELECT count(*) FROM notification_templates")).isEqualTo(12);
+        assertThat(count("SELECT count(*) FROM notification_templates")).isEqualTo(13); // V14: conferma WhatsApp
+        assertThat(count("SELECT count(*) FROM notification_templates WHERE channel = 'WHATSAPP'")).isEqualTo(1);
         assertThat(count("SELECT count(*) FROM notification_templates WHERE active")).as("testi da approvare").isZero();
         assertThat(count("SELECT count(*) FROM app_users")).as("nessun account creato dalle migrazioni").isZero();
     }
