@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react';
 import { onUnauthorized } from './api/client';
 import { loadPublic, type PublicData } from './api/content';
+import { loadPublicEvents } from './api/events';
 import { photos, type Asset } from './data/assets';
 import type { Announcement, MediaItem, SiteContent } from './data/content';
 import type { FireEvent } from './data/events';
@@ -35,6 +36,7 @@ type State = {
 
 type Action =
   | { type: 'public/loaded'; data: PublicData }
+  | { type: 'public/events'; events: FireEvent[]; mediaIndex: Record<string, Asset> }
   | { type: 'public/error' }
   | { type: 'admin/menu'; categories: Category[]; items: MenuItem[]; allergens: { code: string; name: string }[]; mediaIndex: Record<string, Asset> }
   | { type: 'media/set'; items: MediaItem[] }
@@ -70,6 +72,10 @@ function reducer(state: State, action: Action): State {
         mediaIndex: { ...state.mediaIndex, ...d.mediaIndex }, events: d.events,
       };
     }
+    // FIX 3 (F-01): dopo una modifica agli eventi si aggiornano SOLO gli eventi pubblici; «public/loaded» sostituirebbe
+    // anche foto, menu, avvisi e contenuti dell'area gestori con le versioni pubbliche filtrate
+    case 'public/events':
+      return { ...state, events: action.events, mediaIndex: { ...state.mediaIndex, ...action.mediaIndex } };
     case 'public/error':
       return { ...state, contentStatus: 'error' };
     case 'admin/menu':
@@ -121,6 +127,8 @@ type Store = State & {
   dispatch: (a: Action) => void;
   /** Riprova il caricamento dei contenuti pubblici (dopo un errore di rete). */
   reloadPublic: () => void;
+  /** Ricarica solo gli eventi pubblici (dopo una modifica in area gestori), senza toccare gli altri dati. */
+  reloadPublicEvents: () => void;
   /** Foto per id: libreria del backend, oppure foto del mockup (eventi dimostrativi); null se non esiste. */
   mediaAsset: (id: string | null | undefined) => Asset | null;
   /** Come mediaAsset, ma con una foto reale di riserva per gli spazi che non possono restare vuoti. */
@@ -187,6 +195,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
   useEffect(reloadPublic, [reloadPublic]);
 
+  const reloadPublicEvents = useCallback(() => {
+    if (import.meta.env.MODE === 'static') return;
+    const mediaIndex: Record<string, Asset> = {};
+    loadPublicEvents(mediaIndex)
+      .then((events) => dispatch({ type: 'public/events', events, mediaIndex }))
+      .catch(() => undefined); // l'elenco dei gestori è già aggiornato; il sito si riallinea al prossimo caricamento
+  }, []);
+
   // Sessione scaduta mentre la scheda era aperta: la prima API dei gestori che risponde 401 riporta all'accesso.
   useEffect(() => {
     onUnauthorized(() => {
@@ -207,6 +223,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...state,
       dispatch,
       reloadPublic,
+      reloadPublicEvents,
       mediaAsset,
       mediaOr: (id: string | null | undefined) => mediaAsset(id) ?? photos.bartenderShaker,
       mediaUsage,
@@ -216,7 +233,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       openBooking,
       closeBooking,
     };
-  }, [state, reloadPublic, toast, notify, booking, openBooking, closeBooking]);
+  }, [state, reloadPublic, reloadPublicEvents, toast, notify, booking, openBooking, closeBooking]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

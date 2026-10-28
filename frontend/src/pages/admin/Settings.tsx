@@ -2,7 +2,7 @@ import { CircleAlert, Save } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { ApiError } from '../../api/client';
 import { saveSettings } from '../../api/content';
-import { bookingConfig, savePolicy, type Policy } from '../../api/reservations';
+import { bookingConfig, patchPolicy, type Policy } from '../../api/reservations';
 import type { SiteSettings } from '../../data/site';
 import { usePageMeta } from '../../router';
 import { useStore } from '../../store';
@@ -22,10 +22,7 @@ function BookingSwitch() {
     if (!policy || busy) return;
     setBusy(true);
     try {
-      const saved = await savePolicy({
-        webBookingEnabled: !policy.webBookingEnabled, minLeadMinutes: policy.minLeadMinutes, maxAdvanceDays: policy.maxAdvanceDays,
-        pendingExpiryMinutesBeforeStart: policy.pendingExpiryMinutesBeforeStart,
-      });
+      const saved = await patchPolicy({ webBookingEnabled: !policy.webBookingEnabled }); // le regole restano quelle salvate
       setPolicy(saved);
       notify(saved.webBookingEnabled ? 'Richieste dal sito aperte.' : 'Richieste dal sito chiuse: il modulo invita a chiamare.');
     } catch (err) {

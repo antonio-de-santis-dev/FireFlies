@@ -252,7 +252,7 @@ export function BookingDialog() {
   const groups = options?.date === values.date ? options.data?.groups ?? null : null;
 
   return (
-    <Dialog title={receipt ? 'Richiesta inviata' : 'Richiedi un tavolo'} onClose={closeBooking}>
+    <Dialog title={receipt ? 'Richiesta inviata' : 'Richiedi un tavolo'} onClose={closeBooking} busy={sending}>
       <div ref={bodyRef}>
         {receipt ? (
           <div className="booking-done" role="status">

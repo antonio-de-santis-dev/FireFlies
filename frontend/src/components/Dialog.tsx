@@ -7,17 +7,19 @@ type Props = {
   children: ReactNode;
   wide?: boolean;
   headExtra?: ReactNode;
+  /** FIX 3 (F-06): operazione in corso (es. invio della richiesta): Esc, sfondo e «Chiudi» non chiudono. */
+  busy?: boolean;
 };
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Dialog modale: focus trap, Esc, blocco scroll e ritorno del focus al trigger. */
-export function Dialog({ title, onClose, children, wide, headExtra }: Props) {
+export function Dialog({ title, onClose, children, wide, headExtra, busy = false }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const closeRef = useRef(onClose);
-  closeRef.current = onClose;
+  closeRef.current = busy ? () => undefined : onClose;
 
   // Solo al montaggio: callback inline del genitore non devono resettare focus e blocco scroll.
   useEffect(() => {
@@ -55,7 +57,7 @@ export function Dialog({ title, onClose, children, wide, headExtra }: Props) {
   }, []);
 
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && closeRef.current()}>
       <div
         ref={ref}
         className={`dialog${wide ? ' dialog--wide' : ''}`}
@@ -67,7 +69,7 @@ export function Dialog({ title, onClose, children, wide, headExtra }: Props) {
           <h2 id={titleId}>{title}</h2>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {headExtra}
-            <button type="button" className="icon-btn" onClick={onClose} aria-label="Chiudi">
+            <button type="button" className="icon-btn" onClick={() => closeRef.current()} aria-label="Chiudi" disabled={busy}>
               <X aria-hidden="true" />
             </button>
           </div>

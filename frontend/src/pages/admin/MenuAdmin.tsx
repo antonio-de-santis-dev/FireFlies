@@ -155,6 +155,9 @@ export function MenuEditor({ id }: { id: string }) {
   usePageMeta(isNew ? 'Nuova voce menu' : existing ? `Modifica ${existing.name}` : 'Voce non trovata');
   const [item, setItem] = useState<MenuItem>(() => existing ?? blank(categories[0]?.id ?? ''));
   const [price, setPrice] = useState(existing?.price != null ? existing.price.toFixed(2).replace('.', ',') : '');
+  // FIX 3 (F-05): il testo resta com'è scritto (virgole e spazi compresi); l'elenco si ricava a ogni modifica.
+  // Prima il campo si ricostruiva da item.ingredients e la virgola appena digitata spariva («pane, burro» diventava «paneburro»)
+  const [ingredients, setIngredients] = useState(() => (existing?.ingredients ?? []).join(', '));
   const [declared, setDeclared] = useState(existing?.allergens != null);
   const [errors, setErrors] = useState<{ name?: string; price?: string }>({});
   const [failure, setFailure] = useState<string | null>(null);
@@ -271,8 +274,8 @@ export function MenuEditor({ id }: { id: string }) {
           </div>
           <div className="field">
             <label htmlFor="me-ingr">Ingredienti</label>
-            <input id="me-ingr" className="input" value={item.ingredients.join(', ')} aria-describedby="me-ingr-hint"
-              onChange={(e) => up('ingredients', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} />
+            <input id="me-ingr" className="input" value={ingredients} aria-describedby="me-ingr-hint"
+              onChange={(e) => { setIngredients(e.target.value); up('ingredients', e.target.value.split(',').map((s) => s.trim()).filter(Boolean)); }} />
             <p className="hint" id="me-ingr-hint">Separali con una virgola.</p>
           </div>
           <fieldset className="allergens">

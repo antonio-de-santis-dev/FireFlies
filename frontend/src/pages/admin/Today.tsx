@@ -1,7 +1,7 @@
 // Calendario prenotazioni oggi (FASE 7, req. 9): solo le prenotazioni CONFERMATE di oggi (ora di Roma), con un solo
 // filtro per fascia. Niente tavoli, niente telefoni: chi è in sala vede orario, nome, persone, fascia ed evento.
 import { CalendarCheck, CircleAlert, RefreshCw, Users } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../api/client';
 import { BANDS, hhmm, todayReservations, type Band, type Today as TodayData } from '../../api/reservations';
 import { usePageMeta } from '../../router';
@@ -14,10 +14,14 @@ export function Today() {
   const [data, setData] = useState<TodayData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // FIX 3 (F-03): vale solo l'ultima lettura partita. Cambiando fascia in fretta (Colazione → Sera) la risposta più
+  // lenta della fascia precedente sovrascriveva l'elenco mentre il filtro mostrava già l'altra fascia
+  const seq = useRef(0);
   const load = useCallback(() => {
+    const mine = ++seq.current;
     todayReservations(band)
-      .then((d) => { setData(d); setError(null); })
-      .catch((e) => setError(e instanceof ApiError ? e.message : 'Calendario non caricato: riprova.'));
+      .then((d) => { if (mine === seq.current) { setData(d); setError(null); } })
+      .catch((e) => { if (mine === seq.current) setError(e instanceof ApiError ? e.message : 'Calendario non caricato: riprova.'); });
   }, [band]);
 
   // si aggiorna da solo: ogni minuto, al ritorno sulla scheda e quando un'altra pagina cambia una prenotazione

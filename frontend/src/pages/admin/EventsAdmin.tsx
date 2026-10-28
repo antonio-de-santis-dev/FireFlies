@@ -49,7 +49,7 @@ function ConflictList({ list, label }: { list: EventConflict[] | undefined; labe
 }
 
 function PublishSwitch({ event, onSaved, onStale }: { event: AdminEvent; onSaved: (e: AdminEvent) => void; onStale: () => void }) {
-  const { notify, reloadPublic } = useStore();
+  const { notify, reloadPublicEvents } = useStore();
   const published = event.status === 'PUBLISHED';
   const [shown, setShown] = useState(published);
   const [busy, setBusy] = useState(false);
@@ -66,7 +66,7 @@ function PublishSwitch({ event, onSaved, onStale }: { event: AdminEvent; onSaved
       const saved = await setEventVisibility(event.id, event.version, next, acknowledgePending);
       onSaved(saved);
       setShown(saved.status === 'PUBLISHED');
-      reloadPublic();
+      reloadPublicEvents();
       notify(saved.status === 'PUBLISHED' ? `«${saved.title}» pubblicato sul sito.` : `«${saved.title}» tolto dal sito: ora è una bozza.`);
     } catch (err) {
       setShown(published); // torna allo stato salvato
@@ -191,7 +191,7 @@ function problemOf(e: unknown): Problem {
 }
 
 export function EventEditor({ id }: { id: string }) {
-  const { notify, mediaOr, role, reloadPublic } = useStore();
+  const { notify, mediaOr, role, reloadPublicEvents } = useStore();
   const owner = role === 'titolare';
   const [createdId, setCreatedId] = useState<string | null>(null);
   const isNew = id === 'nuovo' && !createdId;
@@ -248,7 +248,7 @@ export function EventEditor({ id }: { id: string }) {
       const text = published ? `«${saved.title}» salvato.`
         : existing ? `Bozza «${saved.title}» salvata.`
         : `Bozza «${saved.title}» creata: pubblicala dall'elenco con l'interruttore «Sul sito».`;
-      reloadPublic();
+      reloadPublicEvents();
       if (saved.warnings.length) {
         // si resta sull'evento salvato (anche dopo un ricaricamento della pagina) per leggere gli avvisi
         setWarnings(saved.warnings);
@@ -276,7 +276,7 @@ export function EventEditor({ id }: { id: string }) {
     setProblem(null);
     try {
       await cancelEvent(existing.id, existing.version, cancelReservations);
-      reloadPublic();
+      reloadPublicEvents();
       notify(`«${existing.title}» annullato${cancelReservations ? ': prenotazioni annullate e posti liberati' : ''}.`);
       navigate('/gestione/eventi');
     } catch (err) {
@@ -292,7 +292,7 @@ export function EventEditor({ id }: { id: string }) {
     setProblem(null);
     try {
       await deleteEvent(existing.id);
-      reloadPublic();
+      reloadPublicEvents();
       notify(`«${existing.title}» eliminato definitivamente.`);
       navigate('/gestione/eventi');
     } catch (err) {

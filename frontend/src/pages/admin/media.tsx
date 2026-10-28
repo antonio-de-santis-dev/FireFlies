@@ -172,11 +172,25 @@ export function Photos() {
   usePageMeta('Foto');
   const { media, dispatch, notify, mediaUsage } = useStore();
   const [blocked, setBlocked] = useState<string | null>(null);
+  // FIX 3 (F-08, F-09): una modifica alla volta (ordine e galleria partivano dall'elenco del momento del clic: due clic
+  // rapidi perdevano uno spostamento) e conferma prima di eliminare (un clic eliminava per sempre)
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState<string | null>(null);
   const inGallery = media.filter((m) => m.inGallery).length;
+  const once = async (op: () => Promise<void>) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await op();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const fail = (e: unknown, fallback: string) => setBlocked(e instanceof ApiError ? e.message : fallback);
 
-  const remove = async (m: MediaItem) => {
+  const remove = (m: MediaItem) => once(async () => {
+    setConfirming(null);
     const used = mediaUsage(m.id);
     if (used.length) {
       setBlocked(`Non puoi eliminare questa foto: è usata in ${used.join(', ')}. Sostituiscila prima lì.`);
@@ -190,18 +204,18 @@ export function Photos() {
     } catch (e) {
       fail(e, 'Foto non eliminata: riprova.'); // 409 MEDIA_IN_USE: il backend elenca dove è usata
     }
-  };
+  });
 
-  const toggleGallery = async (m: MediaItem) => {
+  const toggleGallery = (m: MediaItem) => once(async () => {
     try {
       const saved = await updatePhoto(m.id, { inGallery: !m.inGallery });
       dispatch({ type: 'media/merge', id: m.id, inGallery: saved.inGallery });
     } catch (e) {
       fail(e, 'Modifica non salvata: riprova.');
     }
-  };
+  });
 
-  const move = async (i: number, dir: -1 | 1) => {
+  const move = (i: number, dir: -1 | 1) => once(async () => {
     const ids = media.map((m) => m.id);
     [ids[i], ids[i + dir]] = [ids[i + dir], ids[i]];
     try {
@@ -210,7 +224,7 @@ export function Photos() {
     } catch (e) {
       fail(e, 'Ordine non salvato: riprova.');
     }
-  };
+  });
 
   return (
     <>
@@ -231,19 +245,33 @@ export function Photos() {
             <div className="photos__body">
               {m.uploaded ? <span className="badge badge--action">Caricata ora</span> : <span className="badge badge--neutral">Foto del locale</span>}
               <AltField key={m.asset.alt} item={m} />
-              <Switch checked={m.inGallery} label={m.inGallery ? 'In galleria' : 'Non in galleria'} onChange={() => toggleGallery(m)} />
+              <Switch checked={m.inGallery} label={m.inGallery ? 'In galleria' : 'Non in galleria'} onChange={() => void toggleGallery(m)} disabled={busy} busy={busy} />
               <div className="photos__actions">
-                <button type="button" className="icon-btn" aria-label={`Sposta prima: ${m.asset.alt}`} disabled={i === 0} onClick={() => move(i, -1)}>
+                <button type="button" className="icon-btn" aria-label={`Sposta prima: ${m.asset.alt}`} disabled={i === 0 || busy} onClick={() => void move(i, -1)}>
                   <ArrowUp size={18} aria-hidden="true" />
                 </button>
-                <button type="button" className="icon-btn" aria-label={`Sposta dopo: ${m.asset.alt}`} disabled={i === media.length - 1} onClick={() => move(i, 1)}>
+                <button type="button" className="icon-btn" aria-label={`Sposta dopo: ${m.asset.alt}`} disabled={i === media.length - 1 || busy} onClick={() => void move(i, 1)}>
                   <ArrowDown size={18} aria-hidden="true" />
                 </button>
                 <ReplaceButton item={m} onError={setBlocked} />
-                <button type="button" className="btn btn--quiet btn--sm photos__del" onClick={() => remove(m)} aria-label={`Elimina la foto: ${m.asset.alt}`}>
+                <button type="button" className="btn btn--quiet btn--sm photos__del" disabled={busy}
+                  onClick={() => {
+                    // una foto in uso non si può eliminare: lo si dice subito, senza chiedere conferma
+                    const used = mediaUsage(m.id);
+                    if (used.length) setBlocked(`Non puoi eliminare questa foto: è usata in ${used.join(', ')}. Sostituiscila prima lì.`);
+                    else { setBlocked(null); setConfirming(m.id); }
+                  }}
+                  aria-label={`Elimina la foto: ${m.asset.alt}`} aria-expanded={confirming === m.id}>
                   <Trash2 size={16} aria-hidden="true" /> <span className="photos__btn-text">Elimina</span>
                 </button>
               </div>
+              {confirming === m.id && (
+                <div className="confirm-row" role="group" aria-label="Conferma l'eliminazione">
+                  <p className="small"><strong>Eliminare la foto dalla libreria?</strong> Non si può recuperare.</p>
+                  <button type="button" className="btn btn--quiet btn--sm" onClick={() => setConfirming(null)}>No, tienila</button>
+                  <button type="button" className="btn btn--action btn--sm" disabled={busy} onClick={() => void remove(m)}>Elimina la foto</button>
+                </div>
+              )}
             </div>
           </li>
         ))}

@@ -173,6 +173,20 @@ export const updateZone = (z: Zone, patch: Partial<Pick<Zone, 'name' | 'physical
 
 export const savePolicy = (p: Omit<Policy, 'id' | 'effectiveFrom'>) => api.put<Policy>('/admin/booking-policy', p);
 
+/**
+ * FIX 3 (F-02): cambia solo i campi indicati delle regole, partendo da quelle salvate ADESSO sul server. L'interruttore
+ * «Richieste tavolo» e il pannello «Regole» tenevano ognuno la propria copia: salvando l'uno si rimandavano i valori
+ * vecchi dell'altro (es. le richieste dal sito si riaprivano da sole).
+ */
+export async function patchPolicy(patch: Partial<Omit<Policy, 'id' | 'effectiveFrom'>>): Promise<Policy> {
+  const { policy } = await bookingConfig();
+  const base = {
+    webBookingEnabled: policy?.webBookingEnabled ?? false, minLeadMinutes: policy?.minLeadMinutes ?? 60,
+    maxAdvanceDays: policy?.maxAdvanceDays ?? 60, pendingExpiryMinutesBeforeStart: policy?.pendingExpiryMinutesBeforeStart ?? 60,
+  };
+  return savePolicy({ ...base, ...patch });
+}
+
 /** FIX-1: l'unica capienza da configurare. Errore `CAPACITY_BELOW_CONFIRMED` se ci sono già più persone confermate. */
 export const saveVenueCapacity = (capacity: number) => api.put<Zone>('/admin/venue-capacity', { capacity });
 

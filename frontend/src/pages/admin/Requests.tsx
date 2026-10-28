@@ -369,7 +369,13 @@ function ReservationDialog({ id, onClose, onChanged }: { id: string; onClose: ()
                   <span className={`badge ${n.delivered ? 'badge--success' : 'badge--neutral'}`}>{notificationLabel(n)}</span>
                   {n.resendable && (
                     <button type="button" className="btn btn--quiet btn--sm" disabled={busy}
-                      onClick={() => void resendNotification(n.id).then(() => { notify('Nuovo invio in coda.'); load(); }).catch((e) => setError(message(e)))}>
+                      onClick={() => {
+                        // FIX 3 (F-07): disabilitato subito, fino alla risposta: un doppio clic accodava due nuovi invii
+                        if (busy) return;
+                        setBusy(true);
+                        void resendNotification(n.id).then(() => { notify('Nuovo invio in coda.'); load(); })
+                          .catch((e) => setError(message(e))).finally(() => setBusy(false));
+                      }}>
                       Invia di nuovo
                     </button>
                   )}

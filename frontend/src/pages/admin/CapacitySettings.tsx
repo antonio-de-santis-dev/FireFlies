@@ -6,7 +6,7 @@ import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 
 import { ApiError } from '../../api/client';
 import {
   addOpeningException, BANDS, bookingConfig, capacitySummary, deleteException, deleteOpeningException,
-  hhmm, savePolicy, saveVenueCapacity, updateOpeningException,
+  hhmm, patchPolicy, saveVenueCapacity, updateOpeningException,
   type Band, type BookingConfig, type OpeningException, type OpeningInput, type OpeningResult, type Policy,
   type SummaryRow,
 } from '../../api/reservations';
@@ -74,6 +74,8 @@ function message(e: unknown): string {
 
 type Act = <T>(op: () => Promise<T>, done: string | ((result: T) => string)) => Promise<boolean>;
 
+const policyKey = (p: Policy | null) => (p ? `${p.minLeadMinutes}-${p.maxAdvanceDays}-${p.pendingExpiryMinutesBeforeStart}` : 'none');
+
 /** Sezione «Capienza» delle Impostazioni (solo titolare: la pagina è già riservata, il backend lo verifica comunque). */
 export function CapacitySettings() {
   const { notify, settings } = useStore();
@@ -124,8 +126,10 @@ export function CapacitySettings() {
       {!config && !error && <p className="muted" role="status">Caricamento della capienza…</p>}
       {config && (
         <div className="cap-grid">
-          <VenueCapacityPanel key={`v${version}`} capacity={config.venueCapacity} act={act} />
-          <PolicyPanel key={`p${version}`} policy={config.policy} act={act} />
+          {/* FIX 3 (F-04): ogni pannello riparte dai valori salvati solo quando cambiano i SUOI valori; prima la chiave era
+              un contatore comune e qualunque azione (es. aggiungere una data) cancellava i campi non ancora salvati */}
+          <VenueCapacityPanel key={`v${config.venueCapacity}`} capacity={config.venueCapacity} act={act} />
+          <PolicyPanel key={`p${policyKey(config.policy)}`} policy={config.policy} act={act} />
           <WeekSummaryPanel refreshKey={`${version}-${hoursTick}`} />
           <OpeningDatesPanel items={config.openingExceptions} act={act} />
           {config.exceptions.length > 0 && <ClosedBandsPanel config={config} act={act} />}
@@ -173,7 +177,7 @@ function PolicyPanel({ policy, act }: { policy: Policy | null; act: Act }) {
   const up = (k: keyof typeof p, v: number) => setP((x) => ({ ...x, [k]: v }));
   const save = (e: FormEvent) => {
     e.preventDefault();
-    void act(() => savePolicy({ webBookingEnabled: !!policy?.webBookingEnabled, ...p }), 'Regole delle richieste salvate.');
+    void act(() => patchPolicy(p), 'Regole delle richieste salvate.'); // l'interruttore delle richieste resta com'è
   };
   return (
     <form className="panel cap-grid__policy" aria-labelledby="cap-policy" onSubmit={save}>
