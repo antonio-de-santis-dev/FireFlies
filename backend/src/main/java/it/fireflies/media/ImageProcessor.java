@@ -148,7 +148,7 @@ final class ImageProcessor {
             }
             // Le foto molto grandi si leggono già ridotte (meno memoria); la qualità finale la dà la riduzione sotto.
             ImageReadParam param = reader.getDefaultReadParam();
-            int step = Math.max(1, width / (Size.W1600.width * 2));
+            int step = readStep(width, height);
             if (step > 1) {
                 param.setSourceSubsampling(step, step, 0, 0);
             }
@@ -165,6 +165,20 @@ final class ImageProcessor {
         } finally {
             reader.dispose();
         }
+    }
+
+    /** Pixel massimi decodificati in memoria: 16 MP ≈ 64 MB di raster a 8 bit per canale. */
+    static final long MAX_DECODED_PIXELS = 16_000_000L;
+
+    /**
+     * Passo di sottocampionamento in lettura. FIX 3 (B-09): prima dipendeva solo dalla larghezza, quindi una foto alta e
+     * stretta dentro i limiti (es. 3.200×12.000, 38 MP) si decodificava intera, circa 150 MB (il doppio per un PNG a 16
+     * bit) contro un heap di produzione di circa 540 MB. Ora il passo rispetta anche un tetto di pixel decodificati.
+     */
+    static int readStep(int width, int height) {
+        int byWidth = Math.max(1, width / (Size.W1600.width * 2));
+        int byPixels = (int) Math.ceil(Math.sqrt((double) width * height / MAX_DECODED_PIXELS));
+        return Math.max(byWidth, Math.max(1, byPixels));
     }
 
     /** Trasparenza reale: un PNG «con alfa» ma tutto opaco diventa comunque JPEG (molto più leggero). */

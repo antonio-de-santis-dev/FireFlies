@@ -17,6 +17,23 @@ class ImageProcessorTest {
 
     private final ImageProcessor processor = new ImageProcessor();
 
+    /**
+     * FIX 3 (B-09): il passo di lettura tiene conto anche dei pixel, non solo della larghezza. Una foto alta e stretta
+     * dentro i limiti (3.200×12.000) prima si decodificava intera (38 MP, circa 150 MB di raster).
+     */
+    @Test
+    void fotoAltaEStrettaLettaRidottaEntroIlTettoDiPixel() {
+        int[][] sizes = {{3200, 12000}, {6399, 7800}, {12000, 4166}, {7071, 7071}};
+        for (int[] s : sizes) {
+            int step = ImageProcessor.readStep(s[0], s[1]);
+            long decoded = (long) (s[0] / step) * (s[1] / step);
+            assertThat(decoded).as(s[0] + "×" + s[1] + " passo " + step).isLessThanOrEqualTo(ImageProcessor.MAX_DECODED_PIXELS);
+        }
+        assertThat(ImageProcessor.readStep(3200, 12000)).as("prima: 1, foto intera").isGreaterThan(1);
+        assertThat(ImageProcessor.readStep(2400, 1600)).as("foto normali: nessuna riduzione in lettura").isEqualTo(1);
+        assertThat(ImageProcessor.readStep(4000, 3000)).isEqualTo(1);
+    }
+
     @Test
     void jpegGrandeProduceTreVariantiJpegProgressiveSenzaIngrandire() {
         ImageProcessor.Processed p = processor.process(TestImages.jpeg(2400, 1600));
