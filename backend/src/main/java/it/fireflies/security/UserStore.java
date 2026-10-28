@@ -2,6 +2,7 @@ package it.fireflies.security;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -92,18 +93,32 @@ public class UserStore {
     }
 
     /**
-     * Registra un tentativo fallito in modo atomico e, al raggiungimento della soglia, blocca l'account fino a
-     * {@code lockUntil}. Restituisce il blocco risultante (vuoto se l'account non è bloccato).
+     * Registra un tentativo fallito e, al raggiungimento della soglia, blocca l'account fino a {@code lockUntil}.
+     * Restituisce il blocco risultante (vuoto se l'account non è bloccato).
+     * <p>
+     * FIX 3 (B-02, B-03): contano solo i tentativi falliti <b>recenti</b>, cioè nella stessa finestra del limitatore in
+     * memoria e dopo l'ultimo accesso riuscito, l'ultimo cambio di password e la fine dell'ultimo blocco (letti
+     * dall'audit, indice {@code ix_audit_object}). Prima il contatore non scadeva mai: cinque errori in giorni diversi
+     * bloccavano l'account (e un'email esistente rispondeva 429 mentre una inesistente 401, rivelando quali account
+     * esistono); dopo la fine di un blocco bastava un solo errore per bloccarlo di nuovo.
      */
-    Optional<Instant> recordFailure(UUID id, int threshold, Instant lockUntil) {
+    Optional<Instant> recordFailure(UUID id, int threshold, Instant now, Duration window, Instant lockUntil) {
         return jdbc.sql("""
+                WITH recent AS (
+                    SELECT count(*) AS n FROM audit_logs a, app_users u
+                     WHERE u.id = ? AND a.object_type = 'USER' AND a.object_id = u.id::text AND a.action = 'LOGIN_FAILED'
+                       AND a.occurred_at > greatest(?::timestamptz, coalesce(u.last_login_at, '-infinity'),
+                                                    coalesce(u.password_changed_at, '-infinity'),
+                                                    CASE WHEN u.locked_until <= ? THEN u.locked_until ELSE '-infinity' END))
                 UPDATE app_users
-                   SET failed_login_count = failed_login_count + 1,
-                       locked_until = CASE WHEN failed_login_count + 1 >= ? THEN ? ELSE locked_until END
+                   SET failed_login_count = recent.n + 1,
+                       locked_until = CASE WHEN recent.n + 1 >= ? THEN ?
+                                           WHEN locked_until > ? THEN locked_until END
+                  FROM recent
                  WHERE id = ?
                 RETURNING locked_until
                 """)
-                .params(threshold, utc(lockUntil), id)
+                .params(id, utc(now.minus(window)), utc(now), threshold, utc(lockUntil), utc(now), id)
                 .query((rs, n) -> Optional.ofNullable(rs.getObject(1, OffsetDateTime.class)).map(OffsetDateTime::toInstant))
                 .single();
     }

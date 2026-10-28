@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -71,6 +72,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 "Dati non validi", "Alcuni campi non sono validi.");
         problem.setProperty("errors", errors);
         return problem;
+    }
+
+    /**
+     * FIX 3 (B-01): un {@code @PreAuthorize} più stretto della regola sull'URL nega l'accesso dentro Spring MVC, prima
+     * che il filtro di sicurezza lo veda. Senza questo handler finiva in {@link #handleUnexpected} (500 e stack trace nel
+     * log, nessun evento ACCESS_DENIED nell'audit). Rilanciandola la gestisce ExceptionTranslationFilter come ogni altro
+     * rifiuto: 403 (o 401 senza sessione) con lo stesso corpo e la riga nell'audit.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    void rethrowAccessDenied(AccessDeniedException ex) {
+        throw ex;
     }
 
     @ExceptionHandler(Exception.class)

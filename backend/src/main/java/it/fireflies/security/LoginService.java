@@ -111,7 +111,8 @@ class LoginService {
         }
         AppUser account = user.get();
         Instant lockUntil = clock.instant().plus(properties.lockDuration());
-        Optional<Instant> locked = users.recordFailure(account.id(), properties.maxFailuresPerAccount(), lockUntil);
+        Optional<Instant> locked = users.recordFailure(account.id(), properties.maxFailuresPerAccount(), clock.instant(),
+                properties.window(), lockUntil);
         audit.record(account.id(), AuditAction.LOGIN_FAILED, "USER", account.id().toString(), Map.of("ip", ip, "reason", reason));
         if (locked.isPresent() && !account.lockedAt(clock.instant())) {
             log.warn("Account {} bloccato fino a {} dopo troppi tentativi", account.id(), locked.get());

@@ -67,6 +67,8 @@ class SecurityConfiguration {
                         .requestMatchers("/api/v1/admin/users", "/api/v1/admin/users/**").hasRole("OWNER")
                         .requestMatchers("/api/v1/admin/site-content", "/api/v1/admin/site-settings").hasRole("OWNER")
                         // configurazione delle prenotazioni: la legge anche lo staff, la cambia solo il titolare
+                        // FIX 3 (B-01): le chiusure straordinarie le legge solo il titolare (come @PreAuthorize nel controller)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/opening-exceptions", "/api/v1/admin/opening-exceptions/**").hasRole("OWNER")
                         .requestMatchers(HttpMethod.POST, CONFIG_PATHS).hasRole("OWNER")
                         .requestMatchers(HttpMethod.PUT, CONFIG_PATHS).hasRole("OWNER")
                         .requestMatchers(HttpMethod.DELETE, CONFIG_PATHS).hasRole("OWNER")

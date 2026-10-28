@@ -107,7 +107,9 @@ class ApiSecurityMatrixIT extends ReservationTestSupport {
                 new Endpoint("PUT", "/api/v1/admin/service-windows/00000000-0000-0000-0000-000000000000"),
                 new Endpoint("PUT", "/api/v1/admin/opening-exceptions/00000000-0000-0000-0000-000000000000"),
                 new Endpoint("DELETE", "/api/v1/admin/opening-exceptions/00000000-0000-0000-0000-000000000000"),
-                new Endpoint("DELETE", "/api/v1/admin/booking-exceptions/00000000-0000-0000-0000-000000000000")));
+                new Endpoint("DELETE", "/api/v1/admin/booking-exceptions/00000000-0000-0000-0000-000000000000"),
+                // FIX 3 (B-01): la lettura delle chiusure straordinarie dava 500 allo staff invece di 403
+                new Endpoint("GET", "/api/v1/admin/opening-exceptions")));
         List<String> wrong = new ArrayList<>();
         for (Endpoint e : ownerOnly) {
             int status = call(staff, e, true).status();

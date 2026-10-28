@@ -2,6 +2,7 @@ package it.fireflies.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
@@ -212,6 +213,42 @@ class AuthenticationIT extends SecurityIntegrationTest {
         loginLimiter.clear();
         assertThat(browser.login(owner.email(), owner.password()).status()).isEqualTo(200);
         assertThat(accounts.list().getFirst().failedLoginCount()).isZero();
+    }
+
+    /**
+     * FIX 3 (B-02): cinque errori distanti più della finestra (15') non bloccano l'account. Prima il contatore sul
+     * database non scadeva mai: al sesto tentativo un'email esistente riceveva 429 e una inesistente 401, e si poteva
+     * scoprire quali account esistono.
+     */
+    @Test
+    void erroriDistantiNelTempoNonBloccanoNeRivelanoLAccount() {
+        TestUser owner = user("titolare@example.invalid", Role.OWNER);
+        ApiClient browser = browser();
+        for (int i = 0; i < 5; i++) {
+            assertThat(browser.login(owner.email(), "sbagliata-" + i).status()).isEqualTo(401);
+            assertThat(browser.login("nessuno@example.invalid", "sbagliata-" + i).status()).isEqualTo(401);
+            clock.advance(Duration.ofMinutes(20));
+        }
+        Response existing = browser.login(owner.email(), "sbagliata-ancora");
+        Response unknown = browser.login("nessuno@example.invalid", "sbagliata-ancora");
+        assertThat(existing.status()).as("account esistente").isEqualTo(401);
+        assertThat(unknown.status()).as("stessa risposta per un'email inesistente").isEqualTo(existing.status());
+        assertThat(accounts.list().getFirst().lockedUntil()).as("nessun blocco").isNull();
+        assertThat(browser.login(owner.email(), owner.password()).status()).isEqualTo(200);
+    }
+
+    /** FIX 3 (B-03): finito un blocco i tentativi ripartono da zero: un solo errore di battitura non riblocca. */
+    @Test
+    void finitoIlBloccoUnSoloErroreNonRiblocca() {
+        TestUser owner = user("titolare@example.invalid", Role.OWNER);
+        ApiClient browser = browser();
+        for (int i = 0; i < 5; i++) {
+            browser.login(owner.email(), "sbagliata-" + i);
+        }
+        assertThat(browser.login(owner.email(), owner.password()).status()).as("bloccato").isEqualTo(429);
+        clock.advance(Duration.ofMinutes(16));
+        assertThat(browser.login(owner.email(), "errore-di-battitura").status()).isEqualTo(401);
+        assertThat(browser.login(owner.email(), owner.password()).status()).as("non bloccato di nuovo").isEqualTo(200);
     }
 
     @Test
