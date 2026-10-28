@@ -81,12 +81,25 @@ public class ReservationViews {
     }
 
     public Summary summary(ReservationStore.Row r) {
-        ZonedDateTime start = r.startsAt().atZone(BusinessTime.ZONE);
-        List<String> tables = store.assignments(r.id(), true).stream().map(ReservationStore.AssignmentRow::tableCode).toList();
-        return new Summary(r.id(), r.publicRef(), r.status(), r.statusReason(), r.source(), start.toLocalDate(),
-                start.toLocalTime(), r.endsAt().atZone(BusinessTime.ZONE).toLocalTime(), r.guestCount(), r.customerName(),
-                r.customerPhone(), r.customerEmail(), r.customerNotes(), r.needsCallback(), r.zoneId(), tables,
-                r.createdAt(), r.version(), r.eventId(), eventTitle(r.eventId()));
+        return summaries(List.of(r)).getFirst();
+    }
+
+    /**
+     * FIX 3 (P-02): righe dell'elenco con due query in tutto (tavoli attivi, titoli degli eventi) invece di due per riga:
+     * una pagina da 200 prenotazioni ne faceva circa 400.
+     */
+    public List<Summary> summaries(List<ReservationStore.Row> rows) {
+        Map<UUID, List<String>> tables = store.activeTableCodes(rows.stream().map(ReservationStore.Row::id).toList());
+        Map<UUID, String> titles = eventTitles(rows.stream().map(ReservationStore.Row::eventId).filter(java.util.Objects::nonNull)
+                .distinct().toList());
+        return rows.stream().map(r -> {
+            ZonedDateTime start = r.startsAt().atZone(BusinessTime.ZONE);
+            return new Summary(r.id(), r.publicRef(), r.status(), r.statusReason(), r.source(), start.toLocalDate(),
+                    start.toLocalTime(), r.endsAt().atZone(BusinessTime.ZONE).toLocalTime(), r.guestCount(), r.customerName(),
+                    r.customerPhone(), r.customerEmail(), r.customerNotes(), r.needsCallback(), r.zoneId(),
+                    tables.getOrDefault(r.id(), List.of()), r.createdAt(), r.version(), r.eventId(),
+                    r.eventId() == null ? null : titles.get(r.eventId()));
+        }).toList();
     }
 
     Detail detail(ReservationStore.Row r, List<String> warnings) {
@@ -182,9 +195,14 @@ public class ReservationViews {
                 .list();
     }
 
-    private String eventTitle(UUID eventId) {
-        return eventId == null ? null
-                : jdbc.sql("SELECT title FROM events WHERE id = ?").param(eventId).query(String.class).optional().orElse(null);
+    private Map<UUID, String> eventTitles(List<UUID> eventIds) {
+        Map<UUID, String> out = new java.util.HashMap<>();
+        if (!eventIds.isEmpty()) {
+            jdbc.sql("SELECT id, title FROM events WHERE id = ANY (?)").param(eventIds.toArray(UUID[]::new))
+                    .query((rs, n) -> Map.entry(rs.getObject(1, UUID.class), rs.getString(2))).list()
+                    .forEach(e -> out.put(e.getKey(), e.getValue()));
+        }
+        return out;
     }
 
     private String zoneName(UUID zoneId) {

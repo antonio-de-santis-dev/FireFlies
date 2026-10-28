@@ -5,7 +5,10 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -106,6 +109,43 @@ class EventStore {
                 """).param(utc(now)).query(EventStore::row).list();
     }
 
+    /** Conteggi delle prenotazioni di un evento per la vista dei gestori. */
+    record Counts(long confirmed, long pending, long pendingCovers) {
+        static final Counts NONE = new Counts(0, 0, 0);
+    }
+
+    /**
+     * FIX 3 (P-01): foto di più eventi in una sola lettura (prima una query per evento, ripetuta due volte per vista).
+     * Ogni elenco è nell'ordine scelto dai gestori; gli eventi senza foto non compaiono nella mappa.
+     */
+    Map<UUID, List<UUID>> mediaOf(Collection<UUID> eventIds) {
+        Map<UUID, List<UUID>> out = new HashMap<>();
+        if (eventIds.isEmpty()) {
+            return out;
+        }
+        jdbc.sql("SELECT event_id, media_id FROM event_media WHERE event_id = ANY (?) ORDER BY event_id, sort_order, media_id")
+                .param(eventIds.toArray(UUID[]::new))
+                .query((rs, n) -> Map.entry(rs.getObject(1, UUID.class), rs.getObject(2, UUID.class)))
+                .list().forEach(e -> out.computeIfAbsent(e.getKey(), k -> new java.util.ArrayList<>()).add(e.getValue()));
+        return out;
+    }
+
+    /** FIX 3 (P-01): confermate, in attesa e persone in attesa di più eventi con una query sola (prima tre per evento). */
+    Map<UUID, Counts> counts(Collection<UUID> eventIds) {
+        Map<UUID, Counts> out = new HashMap<>();
+        if (eventIds.isEmpty()) {
+            return out;
+        }
+        jdbc.sql("""
+                SELECT event_id, count(*) FILTER (WHERE status = 'CONFIRMED'), count(*) FILTER (WHERE status = 'PENDING'),
+                       coalesce(sum(guest_count) FILTER (WHERE status = 'PENDING'), 0)
+                  FROM reservations WHERE event_id = ANY (?) GROUP BY event_id
+                """).param(eventIds.toArray(UUID[]::new))
+                .query((rs, n) -> Map.entry(rs.getObject(1, UUID.class), new Counts(rs.getLong(2), rs.getLong(3), rs.getLong(4))))
+                .list().forEach(e -> out.put(e.getKey(), e.getValue()));
+        return out;
+    }
+
     List<UUID> media(UUID eventId) {
         return jdbc.sql("SELECT media_id FROM event_media WHERE event_id = ? ORDER BY sort_order, media_id")
                 .param(eventId).query(UUID.class).list();
@@ -142,11 +182,6 @@ class EventStore {
     long countReservations(UUID eventId, String status) {
         return jdbc.sql("SELECT count(*) FROM reservations WHERE event_id = ? AND status = ?").params(eventId, status)
                 .query(Long.class).single();
-    }
-
-    long pendingCovers(UUID eventId) {
-        return jdbc.sql("SELECT coalesce(sum(guest_count), 0) FROM reservations WHERE event_id = ? AND status = 'PENDING'")
-                .param(eventId).query(Long.class).single();
     }
 
     boolean hasReservations(UUID eventId) {

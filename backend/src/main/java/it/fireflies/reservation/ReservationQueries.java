@@ -49,7 +49,7 @@ public class ReservationQueries {
     @Transactional(readOnly = true)
     public Result search(ReservationStore.Filter filter) {
         ReservationStore.Page page = store.search(filter);
-        return new Result(page.items().stream().map(views::summary).toList(), page.total(), page.counts());
+        return new Result(views.summaries(page.items()), page.total(), page.counts());
     }
 
     @Transactional(readOnly = true)

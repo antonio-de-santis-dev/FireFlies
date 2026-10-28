@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -109,7 +110,7 @@ public class EventService {
 
     @Transactional(readOnly = true)
     public List<AdminEvent> list() {
-        return store.all().stream().map(r -> admin(r, List.of())).toList();
+        return admins(store.all(), List.of());
     }
 
     @Transactional(readOnly = true)
@@ -120,13 +121,13 @@ public class EventService {
     @Transactional(readOnly = true)
     public List<PublicEvent> publicEvents() {
         Instant now = Instant.now(clock);
-        return store.visible(now).stream().map(r -> pub(r, now)).toList();
+        return pubs(store.visible(now), now);
     }
 
     @Transactional(readOnly = true)
     public PublicEvent publicEvent(String slug) {
         Instant now = Instant.now(clock);
-        return store.bySlug(slug).filter(r -> !r.status().equals("DRAFT")).map(r -> pub(r, now))
+        return store.bySlug(slug).filter(r -> !r.status().equals("DRAFT")).map(r -> pubs(List.of(r), now).getFirst())
                 .orElseThrow(EventService::notFound);
     }
 
@@ -332,6 +333,13 @@ public class EventService {
         }
         if (row.status().equals("DRAFT")) {
             throw transition("Una bozza non si annulla: si elimina.");
+        }
+        // FIX 3 (B-07): il controllo «solo il titolare» si ripete sotto il lock dell'evento. Quello sopra legge senza
+        // lock: una conferma arrivata nel frattempo (che prende lo stesso lock) lasciava a uno STAFF annullare un evento
+        // con una prenotazione confermata
+        if (!actor.owner() && !store.reservationsOf(id, List.of("PENDING", "CONFIRMED")).isEmpty()) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN", "Solo il titolare",
+                    "L'evento ha prenotazioni attive: annullarlo spetta al titolare.");
         }
         int cancelled = 0;
         if (cancelReservations) {
@@ -550,31 +558,60 @@ public class EventService {
     // =========================================================================================================
 
     private AdminEvent admin(EventStore.Row r, List<String> warnings) {
-        Map<UUID, MediaRef> refs = media.refs(concat(r.posterMediaId(), store.media(r.id())));
-        return new AdminEvent(r.id(), r.slug(), r.title(), r.kind(), r.status(), date(r.startsAt()), time(r.startsAt()),
-                time(r.endsAt()), r.zoneId(), r.exclusive(), r.bookingMode(), r.capacityCovers(), r.confirmedCovers(),
-                store.pendingCovers(r.id()), store.countReservations(r.id(), "CONFIRMED"), store.countReservations(r.id(), "PENDING"),
-                r.artist(), r.summary(), r.body(), refs.get(r.posterMediaId()),
-                store.media(r.id()).stream().map(refs::get).filter(Objects::nonNull).toList(), r.updatedAt(), r.version(), warnings);
+        return admins(List.of(r), warnings).getFirst();
     }
 
-    private PublicEvent pub(EventStore.Row r, Instant now) {
-        Map<UUID, MediaRef> refs = media.refs(concat(r.posterMediaId(), store.media(r.id())));
-        List<String> body = r.body() == null ? List.of()
-                : Arrays.stream(r.body().split("\\n\\s*\\n")).map(String::strip).filter(p -> !p.isEmpty()).toList();
-        return new PublicEvent(r.id(), r.slug(), r.title(), r.kind(), r.status(), date(r.startsAt()), time(r.startsAt()),
-                time(r.endsAt()), r.artist(), r.summary(), body, refs.get(r.posterMediaId()),
-                store.media(r.id()).stream().map(refs::get).filter(Objects::nonNull).toList(), booking(r, now));
+    /**
+     * FIX 3 (P-01): viste di più eventi con un numero fisso di query (foto degli eventi, foto, conteggi), invece di circa
+     * sei per evento (foto lette due volte, tre {@code count(*)}). Stesso risultato della versione per singolo evento.
+     */
+    private List<AdminEvent> admins(List<EventStore.Row> rows, List<String> warnings) {
+        List<UUID> ids = rows.stream().map(EventStore.Row::id).toList();
+        Map<UUID, List<UUID>> photos = store.mediaOf(ids);
+        Map<UUID, MediaRef> refs = refs(rows, photos);
+        Map<UUID, EventStore.Counts> counts = store.counts(ids);
+        return rows.stream().map(r -> {
+            EventStore.Counts c = counts.getOrDefault(r.id(), EventStore.Counts.NONE);
+            return new AdminEvent(r.id(), r.slug(), r.title(), r.kind(), r.status(), date(r.startsAt()), time(r.startsAt()),
+                    time(r.endsAt()), r.zoneId(), r.exclusive(), r.bookingMode(), r.capacityCovers(), r.confirmedCovers(),
+                    c.pendingCovers(), c.confirmed(), c.pending(), r.artist(), r.summary(), r.body(), refs.get(r.posterMediaId()),
+                    gallery(photos, refs, r.id()), r.updatedAt(), r.version(), warnings);
+        }).toList();
     }
 
-    private Booking booking(EventStore.Row r, Instant now) {
+    /** Come {@link #admins}: foto in due letture e regole delle richieste lette una volta sola per tutto l'elenco. */
+    private List<PublicEvent> pubs(List<EventStore.Row> rows, Instant now) {
+        Map<UUID, List<UUID>> photos = store.mediaOf(rows.stream().map(EventStore.Row::id).toList());
+        Map<UUID, MediaRef> refs = refs(rows, photos);
+        Optional<DiningStore.PolicyRow> policy = rows.stream().anyMatch(r -> r.bookingMode().equals("REQUEST"))
+                ? calendar.policy(BusinessTime.serviceDate(now)) : Optional.empty();
+        return rows.stream().map(r -> {
+            List<String> body = r.body() == null ? List.of()
+                    : Arrays.stream(r.body().split("\\n\\s*\\n")).map(String::strip).filter(p -> !p.isEmpty()).toList();
+            return new PublicEvent(r.id(), r.slug(), r.title(), r.kind(), r.status(), date(r.startsAt()), time(r.startsAt()),
+                    time(r.endsAt()), r.artist(), r.summary(), body, refs.get(r.posterMediaId()), gallery(photos, refs, r.id()),
+                    booking(r, now, policy));
+        }).toList();
+    }
+
+    private Map<UUID, MediaRef> refs(List<EventStore.Row> rows, Map<UUID, List<UUID>> photos) {
+        List<UUID> all = new ArrayList<>();
+        rows.forEach(r -> all.addAll(concat(r.posterMediaId(), photos.getOrDefault(r.id(), List.of()))));
+        return media.refs(all);
+    }
+
+    private static List<MediaRef> gallery(Map<UUID, List<UUID>> photos, Map<UUID, MediaRef> refs, UUID eventId) {
+        return photos.getOrDefault(eventId, List.of()).stream().map(refs::get).filter(Objects::nonNull).toList();
+    }
+
+    private Booking booking(EventStore.Row r, Instant now, Optional<DiningStore.PolicyRow> policies) {
         if (!r.bookingMode().equals("REQUEST")) {
             return new Booking("NONE", false, "NONE");
         }
         if (r.status().equals("CANCELLED")) {
             return new Booking("REQUEST", false, "CANCELLED");
         }
-        DiningStore.PolicyRow policy = calendar.policy(BusinessTime.serviceDate(now)).orElse(null);
+        DiningStore.PolicyRow policy = policies.orElse(null);
         if (policy == null || !policy.webBookingEnabled()) {
             return new Booking("REQUEST", false, "CLOSED");
         }

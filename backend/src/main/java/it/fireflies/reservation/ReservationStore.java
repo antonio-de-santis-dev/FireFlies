@@ -190,6 +190,24 @@ class ReservationStore {
         }
     }
 
+    /** FIX 3 (P-02): codici dei tavoli attivi di più prenotazioni in una query, nell'ordine di {@link #assignments}. */
+    Map<UUID, List<String>> activeTableCodes(List<UUID> reservationIds) {
+        Map<UUID, List<String>> out = new java.util.HashMap<>();
+        if (reservationIds.isEmpty()) {
+            return out;
+        }
+        jdbc.sql("""
+                SELECT a.reservation_id, t.code
+                  FROM reservation_table_assignments a
+                  JOIN dining_tables t ON t.id = a.table_id JOIN dining_areas ar ON ar.id = t.area_id
+                 WHERE a.reservation_id = ANY (?) AND a.active
+                 ORDER BY a.reservation_id, t.code
+                """).param(reservationIds.toArray(UUID[]::new))
+                .query((rs, n) -> Map.entry(rs.getObject(1, UUID.class), rs.getString(2))).list()
+                .forEach(e -> out.computeIfAbsent(e.getKey(), k -> new ArrayList<>()).add(e.getValue()));
+        return out;
+    }
+
     List<AssignmentRow> assignments(UUID reservationId, boolean onlyActive) {
         return jdbc.sql("""
                 SELECT a.id, a.table_id, t.code, ar.name, t.max_seats, lower(a.occupied), upper(a.occupied), a.active,
