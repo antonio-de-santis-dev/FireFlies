@@ -1,7 +1,7 @@
 # FIX 3 — «theBug»: report tecnico
 
-> Branch `fix3/theBug`, creato da `origin/main` @ `0d43244` il 28/10/2026. **Nessun merge, nessun push su `main`, nessun
-> deploy.** Il branch resta separato per il collaudo manuale del titolare.
+> Branch `fix3/theBug`, creato da `origin/main` @ `0d43244` il 28/10/2026. **Approvato dal titolare e portato su `main`
+> il 09/11/2026 con fast-forward (`0d43244..b022e5b`, C-36).** Nessun deploy: serve un'autorizzazione separata.
 
 ## 1. Stato iniziale
 
@@ -201,6 +201,7 @@ B-07 (non deterministica), misure su dispositivi reali.
 
 | Tema | Rischio | Perché non ora / proposta |
 |---|---|---|
+| Test E2E instabile in CI: `fix1.spec.ts` «chip che portano alla sezione… a 360px» | un'esecuzione su quattro in CI è fallita (titolo 23 px più in basso della soglia), codice identico alle esecuzioni riuscite; 30/30 in locale | il test misura la posizione mentre lo scorrimento può essere ancora in corso: attendere la fine dello scorrimento prima di misurare (non è un difetto del sito) |
 | Lost update su categorie del menu e avvisi | due gestori: una categoria nascosta torna visibile | serve una colonna `version` (migrazione): da fare **dopo** aver deciso l'ordine con la V14 di WhatsApp |
 | Branch e `target/` di Maven | migrazione di un altro branch applicata al DB locale | usare sempre `./mvnw clean …` dopo un cambio di branch |
 | Prenotazione per evento confermata in un'altra zona dopo lo spostamento dell'evento | solo con più zone | validare la zona dell'evento alla conferma |
@@ -223,7 +224,7 @@ B-07 (non deterministica), misure su dispositivi reali.
 |---|---|
 | Branch corrente | `fix3/theBug` (pubblicato su `origin/fix3/theBug`) |
 | Base | `origin/main` @ `0d43244` |
-| `main` | **non modificato**: `origin/main` è ancora `0d43244`; nessun merge, nessun push su `main`, nessun force push, nessun branch cancellato |
+| `main` | fino all'approvazione **non modificato** (`0d43244`). Il 09/11/2026, su richiesta esplicita del titolare: fast-forward `0d43244..b022e5b`, nessun commit di merge, nessun force push, nessun branch cancellato |
 | Deploy | **nessuno** (nessuna immagine pubblicata: il workflow `images` costruisce e verifica soltanto) |
 | Database | nessun database esistente toccato: test su Testcontainers e su progetti Compose usa e getta (`fireflies-e2e`, `fireflies-perf`), eliminati alla fine |
 
@@ -275,7 +276,9 @@ File modificati: 34 file, 923 righe aggiunte, 98 tolte prima di questo report:
 - `frontend/src/store.tsx`
 - `frontend/tests/fix3.spec.ts`
 
-Il merge su `main` si farà solo dopo il collaudo manuale e l'approvazione esplicita del titolare.
+Merge: autorizzato dal titolare il 09/11/2026 e fatto con fast-forward (C-36). Prima del merge: CI del branch verde su
+`98b48e4` (ultimo codice), un solo fallimento intermittente su `b022e5b` (solo documentazione, §9), test ripetuto 30/30
+in locale.
 
 
 ## 11. Collaudo manuale suggerito

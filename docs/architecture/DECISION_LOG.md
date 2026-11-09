@@ -43,6 +43,7 @@
 | C-33 | **FIX-1** sul branch di collaudo `fix-1` (da `main`): animazione iniziale, categorie del menu sul telefono, foto di «Perché FireFlies», rate limiting equilibrato, menu dei gestori sul telefono, Impostazioni (capienza unica, riepilogo settimanale, chiusure su intervalli), report sul flusso di prenotazione. Merge in `main` solo dopo il collaudo manuale | 21/10 |
 | C-34 | **FIX-1 approvato dal titolare** dopo il collaudo: `fix-1` portato su `main` (fast-forward, nessun force push). Nuovo branch `fix2/prenotatavolo` da `main` per il lavoro successivo. Non autorizza il deploy | 21/10 |
 | C-35 | **FIX 2 approvato dal titolare**: `fix2/fasceorarie` (che contiene `fix2/prenotatavolo`: budget per fascia, duplicati, limite IP, eventi al minuto, pubblicazione dall'elenco, audit del calendario, reset dei dati di prova, fasce orarie interne) portato su `main` con fast-forward (`e558988..c119664`), nessun force push. Non autorizza il deploy | 22/10 |
+| C-36 | **FIX 3 approvato dal titolare**: `fix3/theBug` (correzioni di sicurezza, prenotazioni, foto, area gestori, cache di Caddy, CI e query in blocco; report `docs/FIX3_THEBUG_REPORT.md`) portato su `main` con fast-forward (`0d43244..b022e5b`), nessun force push, nessuna migrazione. Non autorizza il deploy. `serviotelefonico` (WhatsApp) resta separato | 09/11 |
 
 ## 1-bis. Strategia Git (C-21, regola definitiva)
 
@@ -52,6 +53,8 @@
 | `fix-1` | `main` (`395dcf5`) | correzioni FIX-1, approvate e portate su `main` il 21/10/2026 (C-34) |
 | `fix2/prenotatavolo` | `main` dopo FIX-1 | FIX 2, portato su `main` il 22/10/2026 (C-35) |
 | `fix2/fasceorarie` | `fix2/prenotatavolo` (`ee3ba4c`) | fasce orarie interne, portato su `main` il 22/10/2026 (C-35) |
+| `fix3/theBug` | `main` (`0d43244`) | FIX 3, portato su `main` il 09/11/2026 (C-36) |
+| `serviotelefonico` | `main` (`0d43244`) | WhatsApp Cloud API, in corso (non su `main`) |
 | `fase-0/audit` | `main` | completato e approvato |
 | `fase-1/progettazione` | `fase-0/audit` | completato e approvato |
 | `fase-2/backend-foundation` | `fase-1/progettazione` | completato e approvato |

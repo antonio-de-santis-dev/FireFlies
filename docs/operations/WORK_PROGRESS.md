@@ -36,7 +36,7 @@
 ## FIX 3 «theBug» (28/10/2026)
 - Branch `fix3/theBug` da `main` @ `0d43244`: 9 bug backend, 9 frontend, cache di Caddy, CI; viste di eventi e
   prenotazioni con query in blocco (−48…−83% p50). Nessuna migrazione. Report: `docs/FIX3_THEBUG_REPORT.md`.
-- **Non portato su `main`**: in attesa del collaudo manuale e dell'approvazione del titolare.
+- **Approvato e portato su `main` il 09/11/2026** con fast-forward `0d43244..b022e5b` (C-36). Nessun deploy.
 - Branch `serviotelefonico` (WhatsApp): lavoro in pausa, salvato e pubblicato; mancano IT, suite complete e report.
 
 ## Note per la ripresa
@@ -47,5 +47,5 @@
 - Punti aperti da decidere con il titolare: FIX2_REPORT §11.
 
 ## Prossima azione esatta
-Collaudo manuale di `fix3/theBug` (report §11). Merge solo su richiesta esplicita del titolare. Poi riprendere WhatsApp
+FIX 3 è su `main` (C-36). Prossimo lavoro: riprendere WhatsApp
 su `serviotelefonico`. Nessun deploy: serve un'autorizzazione separata del titolare.
